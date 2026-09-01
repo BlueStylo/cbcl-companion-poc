@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>같은 점수, 다른 의견 · 비교 데모</title>
+<style>
+  :root { --ink: #2f3437; --sub: #6b7280; --line: #e5e2dc; --bg: #f7f6f3;
+          --card: #fff; --accent: #4a6fa5;
+          --chip-normal: #eef2ec; --chip-normal-ink: #4f6b52;
+          --chip-borderline: #f8ecd9; --chip-borderline-ink: #8a6425;
+          --chip-clinical: #f6e0d8; --chip-clinical-ink: #97462a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.65; font-size: 14.5px;
+         font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 24px 0 10px; }
+  h3 { font-size: 14.5px; margin: 16px 0 8px; }
+  .meta { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+  .badge { display: inline-block; background: var(--chip-borderline); color: var(--chip-borderline-ink);
+           border-radius: 20px; padding: 1px 10px; font-weight: 600; margin-right: 6px; font-size: 12px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+  th { color: var(--sub); font-weight: 600; }
+  .chip { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 20px; padding: 0 9px; }
+  .chip.normal { background: var(--chip-normal); color: var(--chip-normal-ink); }
+  .chip.borderline { background: var(--chip-borderline); color: var(--chip-borderline-ink); }
+  .chip.clinical { background: var(--chip-clinical); color: var(--chip-clinical-ink); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 8px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .col { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
+  .col header { font-weight: 700; font-size: 15.5px; border-bottom: 2px solid var(--ink);
+                padding-bottom: 6px; margin-bottom: 10px; }
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin-bottom: 7px; }
+  .note-quote { background: #f2f5f9; border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+                padding: 8px 12px; margin: 6px 0; font-size: 13.5px; }
+  .src { color: var(--accent); font-size: 11.5px; white-space: nowrap; }
+  footer { color: var(--sub); font-size: 12.5px; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>같은 점수, 다른 의견</h1>
+  <p class="meta"><span class="badge">자작 가상 데이터</span>
+    T점수 프로파일이 동일한 두 케이스에서 보호자 의견만 다를 때, 해설과 질문이 어떻게
+    달라지는지의 비교 데모입니다. 생성 모드 {{ mode_label }}.</p>
+
+  <div class="panel">
+    <h2 style="margin-top:0">공통 T점수 프로파일 (두 케이스 동일)</h2>
+    <table>
+      <tr><th>척도</th><th>T점수</th><th>원 보고서 라벨</th></tr>
+      {% for s in shared_scales %}
+      <tr><td>{{ s.name }}</td><td>{{ s.t }}</td>
+          <td><span class="chip {{ s.band }}">{{ s.band_ko }}</span></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="cols">
+    {% for c in cases %}
+    <div class="col">
+      <header>케이스 {{ loop.index == 1 and "A" or "B" }} · {{ c.profile_id }}</header>
+
+      <h3>보호자 의견 (유일하게 다른 입력)</h3>
+      {% for note in c.notes %}<div class="note-quote">"{{ note }}"</div>{% endfor %}
+
+      <h3>생성된 전체 요약</h3>
+      <p>{{ c.overview }}</p>
+
+      <h3>생성된 질문 리스트</h3>
+      <ul>
+        {% for q in c.questions %}
+        <li>{{ q.text }} <span class="src">근거: {{ q.source_name }}</span></li>
+        {% endfor %}
+      </ul>
+
+      <h3>생성된 관찰 포인트</h3>
+      <ul>
+        {% for o in c.observations %}
+        <li>{{ o.text }} <span class="src">근거: {{ o.source_name }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+
+  <footer>
+    수치와 라벨은 두 케이스에서 완전히 같습니다. 달라진 것은 보호자의 문장뿐이고,
+    그 문장이 인용된 질문이 상담 출석의 동기가 됩니다 - LLM이 템플릿으로 대체되지 않는 지점의 실증.
+  </footer>
+</main>
+</body>
+</html>

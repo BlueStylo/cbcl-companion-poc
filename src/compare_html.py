@@ -1,0 +1,44 @@
+"""동점-상이의견 페어(P5a/P5b) 나란히 비교 HTML.
+
+동일한 T점수 프로파일에서 보호자 의견 텍스트만 다를 때 해설과 질문이
+실제로 달라지는지를 한 화면에서 보여준다. "LLM이 템플릿으로 대체되지
+않는 지점"의 실증이 곧 데모다.
+"""
+
+from __future__ import annotations
+
+from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile
+from .report_html import _items_view, _template_env
+
+
+def build_compare_html(profile_a: CBCLProfile, results_a: dict,
+                       profile_b: CBCLProfile, results_b: dict,
+                       mode_label: str = "mock") -> str:
+    """두 프로파일과 생성 결과를 받아 비교 HTML 문자열을 만든다.
+
+    두 프로파일의 T점수가 실제로 같은지 먼저 확인한다 (다르면 비교 의미가 없다).
+    """
+    t_a = {s.scale_id: s.t_score for s in profile_a.all_scales()}
+    t_b = {s.scale_id: s.t_score for s in profile_b.all_scales()}
+    if t_a != t_b:
+        raise ValueError("비교 대상 두 프로파일의 T점수가 동일하지 않습니다")
+
+    m = profile_a.scale_map()
+    shared_scales = [{"name": m[sid].name_ko, "t": m[sid].t_score,
+                      "band": m[sid].band, "band_ko": BAND_KO[m[sid].band]}
+                     for sid in (*COMPOSITE_IDS, *SYNDROME_IDS)]
+
+    def case_view(profile: CBCLProfile, results: dict) -> dict:
+        return {
+            "profile_id": profile.profile_id,
+            "notes": list(profile.caregiver_notes),
+            "overview": results["explain"].output["overview"],
+            "questions": _items_view(profile, results["prep"].output["questions_for_counselor"], "question"),
+            "observations": _items_view(profile, results["prep"].output["observation_points"], "point"),
+        }
+
+    return _template_env().get_template("compare.html.j2").render(
+        mode_label=mode_label,
+        shared_scales=shared_scales,
+        cases=[case_view(profile_a, results_a), case_view(profile_b, results_b)],
+    )
