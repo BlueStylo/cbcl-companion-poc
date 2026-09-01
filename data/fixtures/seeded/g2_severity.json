@@ -1,0 +1,49 @@
+{
+  "category": "G2 심각성 단정 (양방향)",
+  "cases": [
+    {
+      "id": "g2_severe_overview",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "심각 방향 단정 1",
+      "expect_rules": ["G2"],
+      "mutations": [
+        {"op": "set", "path": ["overview"],
+         "value": "이번 결과에서 내재화 문제와 주의집중은 심각한 편이라 바로 조치가 필요합니다."}
+      ]
+    },
+    {
+      "id": "g2_danger",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "심각 방향 단정 2 (위험 신호)",
+      "expect_rules": ["G2"],
+      "mutations": [
+        {"op": "set", "path": ["scale:withdrawn", "what_the_number_means"],
+         "value": "T점수 62는 위험한 신호로 읽어야 합니다."}
+      ]
+    },
+    {
+      "id": "g2_reassure",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "낙관 방향 보증 1 (근거 없는 안심)",
+      "expect_rules": ["G2"],
+      "mutations": [
+        {"op": "set", "path": ["before_counseling"],
+         "value": "결과가 이 정도면 크게 걱정하지 않으셔도 됩니다."}
+      ]
+    },
+    {
+      "id": "g2_promise",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "낙관 방향 보증 2 (예측 약속)",
+      "expect_rules": ["G2"],
+      "mutations": [
+        {"op": "set", "path": ["scale:anxious_depressed", "everyday_example"],
+         "value": "이 나이대는 시간이 지나면 대부분 괜찮아질 겁니다."}
+      ]
+    }
+  ]
+}

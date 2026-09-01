@@ -1,0 +1,55 @@
+{
+  "category": "G5 스키마 파손",
+  "cases": [
+    {
+      "id": "g5_missing_key",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "최상위 필수 키 누락 (limits)",
+      "expect_rules": ["G5"],
+      "mutations": [
+        {"op": "delete", "path": ["limits"]}
+      ]
+    },
+    {
+      "id": "g5_missing_field",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "척도 해설의 필수 필드 누락",
+      "expect_rules": ["G5"],
+      "mutations": [
+        {"op": "delete", "path": ["scale:somatic", "everyday_example"]}
+      ]
+    },
+    {
+      "id": "g5_wrong_type",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "배열이어야 할 필드가 문자열",
+      "expect_rules": ["G5"],
+      "mutations": [
+        {"op": "set", "path": ["scale_explanations"], "value": "설명은 생략합니다"}
+      ]
+    },
+    {
+      "id": "g5_too_few_questions",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "질문 수 미달 (요구 5~7, 실제 2)",
+      "expect_rules": ["G5"],
+      "mutations": [
+        {"op": "truncate", "path": ["questions_for_counselor"], "value": 2}
+      ]
+    },
+    {
+      "id": "g5_item_not_object",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "객체여야 할 항목이 문자열",
+      "expect_rules": ["G5"],
+      "mutations": [
+        {"op": "set", "path": ["observation_points", 1], "value": "그냥 문자열 항목"}
+      ]
+    }
+  ]
+}

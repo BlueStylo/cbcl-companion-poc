@@ -1,0 +1,58 @@
+{
+  "category": "G3 수치 위조",
+  "cases": [
+    {
+      "id": "g3_fabricated_t",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "본문에 입력에 없는 T점수 (실제 내재화 61 → 72)",
+      "expect_rules": ["G3"],
+      "mutations": [
+        {"op": "set", "path": ["overview"],
+         "value": "이번 검사에서 내재화 문제는 T점수 72로 보고되었습니다. 자세한 내용은 아래 카드에서 설명합니다."}
+      ]
+    },
+    {
+      "id": "g3_percentile",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "입력에 없는 백분위 생성",
+      "expect_rules": ["G3"],
+      "mutations": [
+        {"op": "set", "path": ["scale:attention", "what_the_number_means"],
+         "value": "T점수 66은 백분위로 상위 3%에 해당하는 수준입니다."}
+      ]
+    },
+    {
+      "id": "g3_echo_t",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "에코 필드 t_score 위변조 (실제 위축 62 → 59)",
+      "expect_rules": ["G3"],
+      "mutations": [
+        {"op": "set", "path": ["scale:withdrawn", "t_score"], "value": 59}
+      ]
+    },
+    {
+      "id": "g3_echo_band",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "에코 필드 band 위변조 (준임상 → 정상)",
+      "expect_rules": ["G3"],
+      "mutations": [
+        {"op": "set", "path": ["scale:anxious_depressed", "band"], "value": "normal"}
+      ]
+    },
+    {
+      "id": "g3_briefing_t",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "상담사용 요약에 위조 수치 (실제 주의집중 66 → 75)",
+      "expect_rules": ["G3"],
+      "mutations": [
+        {"op": "set", "path": ["counselor_briefing"],
+         "value": "종합지표는 총 문제행동 T=58(정상), 주의집중 T=75(준임상)를 포함함. 질문 목록 첨부."}
+      ]
+    }
+  ]
+}

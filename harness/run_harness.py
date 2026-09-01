@@ -22,8 +22,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.generator import generate_all
-from src.guardrails import (CrisisSignalDetected, check_output,
-                            detect_crisis_signals, source_coverage)
+from src.guardrails import (CrisisSignalDetected, _strip_fallback_flags,
+                            check_output, detect_crisis_signals,
+                            source_coverage)
 from src.llm_client import FIXTURES_DIR, make_client
 from src.parser import ProfileError, load_profile, parse_profile
 
@@ -151,6 +152,75 @@ def run_detection_check(agg: dict) -> tuple[int, int, list[list]]:
     return hit_total, len(seeded), rows
 
 
+# ------------------------------------------------- 5. 적대 위반 시드 전수 (B축)
+
+SEEDED_DIR = FIXTURES_DIR / "seeded"
+SEEDED_FILE_ORDER = [
+    "g1_diagnosis", "g2_severity", "g3_numbers",
+    "g4_source", "g5_schema", "g6_prescription", "bypass",
+]
+
+
+def _walk(node, seg):
+    """뮤테이션 경로 한 단계 해석. "scale:<id>"는 해당 척도 해설 항목."""
+    if isinstance(seg, str) and seg.startswith("scale:"):
+        sid = seg.split(":", 1)[1]
+        return next(i for i in node["scale_explanations"]
+                    if isinstance(i, dict) and i.get("scale_id") == sid)
+    return node[seg]
+
+
+def apply_mutations(output: dict, mutations: list[dict]) -> dict:
+    """클린 출력에 위반 뮤테이션을 가한다 (set / delete / append / truncate)."""
+    for m in mutations:
+        *parents, leaf = m["path"]
+        node = output
+        for seg in parents:
+            node = _walk(node, seg)
+        if m["op"] == "set":
+            node[leaf] = m["value"]
+        elif m["op"] == "delete":
+            del node[leaf]
+        elif m["op"] == "append":
+            node[leaf].append(m["value"])
+        elif m["op"] == "truncate":
+            node[leaf] = node[leaf][:m["value"]]
+        else:
+            raise ValueError(f"알 수 없는 op: {m['op']}")
+    return output
+
+
+def run_seeded_check() -> tuple[int, int, list[list], list[str]]:
+    """시드 30건 전수: 클린 fixture에 뮤테이션 → 가드레일 전 규칙 검사.
+
+    파이프라인과 같은 입구를 쓰기 위해 _fallback 플래그 제거(sanitize)를
+    먼저 적용한다 (우회 시도형이 이 지점을 공격한다).
+    """
+    rows, fails = [], []
+    hit_total = case_total = 0
+    for name in SEEDED_FILE_ORDER:
+        data = json.loads((SEEDED_DIR / f"{name}.json").read_text(encoding="utf-8"))
+        hit = 0
+        for case in data["cases"]:
+            case_total += 1
+            profile = load_profile(PROFILES_DIR / f"{case['profile_id']}.json")
+            fixture = json.loads(
+                (FIXTURES_DIR / f"{case['profile_id']}.json").read_text(encoding="utf-8"))
+            output = copy.deepcopy(fixture[case["task"]]["attempts"][0])
+            output = apply_mutations(output, case["mutations"])
+            detected = {v.rule_id
+                        for v in check_output(profile, case["task"],
+                                              _strip_fallback_flags(output))}
+            if set(case["expect_rules"]) <= detected:
+                hit += 1
+            else:
+                fails.append(f"{case['id']}: 기대 {case['expect_rules']}, 검출 {sorted(detected)}")
+        hit_total += hit
+        rows.append([data["category"], f"{hit}/{len(data['cases'])}",
+                     "OK" if hit == len(data["cases"]) else "MISS"])
+    return hit_total, case_total, rows, fails
+
+
 # ---------------------------------------------------------------- 6. 위기 신호 게이트
 
 class _SentinelClient:
@@ -219,16 +289,25 @@ def main() -> int:
     det_hit, det_total, rows = run_detection_check(agg)
     print_table(["규칙", "검출/시드", "판정"], rows)
 
-    print("## 4. 위기 신호 게이트 (입력 단계, LLM 미호출)\n")
+    print("## 4. 적대 위반 시드 전수 (B축 30건, LLM 미호출)\n")
+    seed_hit, seed_total, rows, seed_fails = run_seeded_check()
+    print_table(["유형", "검출/시드", "판정"], rows)
+    for line in seed_fails:
+        print(f"  미검출: {line}")
+    if seed_fails:
+        print()
+
+    print("## 5. 위기 신호 게이트 (입력 단계, LLM 미호출)\n")
     crisis_ok, rows, crisis_summary = run_crisis_check()
     print_table(["케이스", "기대", "결과", "판정"], rows)
 
     cov_pct = (100.0 * agg["cov_have"] / agg["cov_need"]) if agg["cov_need"] else 0.0
     fb_pct = 100.0 * agg["fallback"] / agg["blocks"] if agg["blocks"] else 0.0
-    print("## 5. 요약 지표\n")
+    print("## 6. 요약 지표\n")
     summary = [
         ["파서 정확도", f"{parser_pass}/{parser_total} ({100.0 * parser_pass / parser_total:.0f}%)", "요구 100%"],
-        ["가드레일 검출률", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)" if det_total else "-", "요구 100%"],
+        ["가드레일 검출률 (A1 파이프라인 시드)", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)" if det_total else "-", "요구 100%"],
+        ["가드레일 검출률 (B축 시드 30건)", f"{seed_hit}/{seed_total} ({100.0 * seed_hit / seed_total:.0f}%)" if seed_total else "-", "요구 100%"],
         ["폴백 발동률", f"{agg['fallback']}/{agg['blocks']} 블록 ({fb_pct:.1f}%)", "품질 모니터링 지표"],
         ["근거 커버리지", f"{agg['cov_have']}/{agg['cov_need']} ({cov_pct:.0f}%)", "요구 100%"],
         ["최종 출력 잔존 위반", f"{agg['residual']}건", "요구 0건"],
@@ -238,6 +317,7 @@ def main() -> int:
     print_table(["지표", "값", "기준"], summary)
 
     ok = (parser_pass == parser_total and det_hit == det_total
+          and seed_hit == seed_total
           and agg["residual"] == 0 and agg["cov_have"] == agg["cov_need"]
           and crisis_ok)
     print("결론:", "모든 요구 기준 충족" if ok else "요구 기준 미달 항목 있음 (위 표 참조)")

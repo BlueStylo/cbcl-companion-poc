@@ -1,0 +1,49 @@
+{
+  "category": "G1 진단명",
+  "cases": [
+    {
+      "id": "g1_direct_overview",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "진단명 직접 언급",
+      "expect_rules": ["G1"],
+      "mutations": [
+        {"op": "set", "path": ["overview"],
+         "value": "주의집중 척도가 준임상 범위인 것을 보면 ADHD를 먼저 확인해 보셔야 합니다."}
+      ]
+    },
+    {
+      "id": "g1_negation",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "부정문도 차단 (의도된 과검출 - 진단명 앵커링 방지)",
+      "expect_rules": ["G1"],
+      "mutations": [
+        {"op": "set", "path": ["scale:attention", "what_the_number_means"],
+         "value": "T점수 66은 준임상 범위입니다. 그래도 주의력 결핍 장애는 아니니 그 부분은 접어 두세요."}
+      ]
+    },
+    {
+      "id": "g1_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "질문 문안에 스며든 진단명",
+      "expect_rules": ["G1"],
+      "mutations": [
+        {"op": "set", "path": ["questions_for_counselor", 0, "question"],
+         "value": "이 정도면 우울증 초기라고 봐야 할까요?"}
+      ]
+    },
+    {
+      "id": "g1_briefing",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "상담사용 요약에 스며든 진단 시사",
+      "expect_rules": ["G1"],
+      "mutations": [
+        {"op": "set", "path": ["counselor_briefing"],
+         "value": "내재화 상승 패턴은 불안 장애 가능성을 시사함. 상담에서 확인 요망."}
+      ]
+    }
+  ]
+}
