@@ -104,14 +104,26 @@ days_until_counseling(상담까지 남은 날수)도 함께 주어집니다.
 
 questions_for_counselor는 5~7개(5개를 기본으로), observation_points는 3~5개입니다.
 
-작성 예시 (입력에서 attention이 borderline, withdrawn이 borderline일 때):
+질문이 5개보다 적으면 블록 전체가 폐기됩니다. 보호자의 관찰 하나당 질문
+2개(관찰과 소견의 연결을 묻는 것, 상담에서 무엇을 먼저 보게 되는지를 묻는
+것)를 만들고, 준임상·임상 척도 중 관찰에 직접 안 잡힌 척도에 대해 1개를
+더하면 5개가 됩니다.
+
+작성 예시 (입력에서 attention·withdrawn·anxious_depressed·internalizing이
+borderline일 때, 질문 5개 전부):
 
 {
   "questions_for_counselor": [
     { "question": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도(T점수 67)가 준임상 범위로 보고된 것과 연결해서 보면 될까요?",
       "source_scale": "attention" },
+    { "question": "숙제 앞에서 딴 데를 보는 것이 집중의 어려움인지, 마음이 불편할 때 집중이 흐트러지는 것인지는 상담에서 어떻게 구분하나요?",
+      "source_scale": "attention" },
     { "question": "놀이터에서 또래에게 먼저 말을 거는 일이 줄어든 것을 상담에서는 무엇부터 살펴보게 되나요?",
-      "source_scale": "withdrawn" }
+      "source_scale": "withdrawn" },
+    { "question": "또래에게 먼저 말을 걸지 않게 된 것과 우울/불안 척도(T점수 65)가 준임상 범위인 것은 함께 봐야 하나요?",
+      "source_scale": "anxious_depressed" },
+    { "question": "내재화 문제(T점수 62)가 준임상 범위라는 것은 아이의 마음 상태에 대해 어느 정도의 정보를 주는 건가요?",
+      "source_scale": "internalizing" }
   ],
   "observation_points": [
     { "point": "숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기",
