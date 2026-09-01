@@ -62,3 +62,15 @@ def test_wrong_scale_name_rejected(base_raw):
     raw["syndromes"][0]["name_ko"] = "다른이름"
     with pytest.raises(ProfileError):
         parse_profile(raw)
+
+
+def test_llm_payload_masks_alias_in_notes():
+    """LLM 입력에는 아동 이름이 필드로도, 보호자 의견 본문으로도 들어가지 않는다."""
+    from src.generator import mask_notes, profile_payload
+    profile = load_profile(ROOT / "data/profiles/p2_partial_borderline.json")
+    alias = profile.child.alias
+    notes = [f"{alias}가 요즘 숙제를 미룹니다", "놀이터에서 또래를 피합니다"]
+    assert mask_notes(notes, alias) == ["아이가 요즘 숙제를 미룹니다", "놀이터에서 또래를 피합니다"]
+    payload = profile_payload(profile)
+    assert alias not in json.dumps(payload, ensure_ascii=False)
+    assert "alias" not in payload["child"]

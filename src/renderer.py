@@ -141,19 +141,23 @@ def bell_curve_svg(
 def concept_curve_svg(width: int = 560, height: int = 200) -> str:
     """1페이지 '관찰자의 렌즈'용 개념 예시 곡선.
 
-    같은 아이를 보호자와 교사가 평가했을 때의 전형적 차이를 마커 2개로
-    보여준다. 실측값이 아닌 개념 예시임을 그림 안에 명시한다.
+    같은 아이를 두 관찰자가 평가했을 때 결과가 다를 수 있음을 마커 2개로
+    보여준다. 두 마커는 평균 50을 중심으로 대칭(45T, 55T)으로 놓아 "보호자가
+    더 높게 본다"는 방향성이 그림에 실리지 않게 한다. 실측값이 아닌 개념
+    예시임을 그림 안에 명시한다.
     """
     x, y, base = _geometry(width, height)
-    examples = (("보호자 보고 (예시)", 62, _COL["marker"]), ("교사 보고 (예시)", 55, _COL["curve"]))
+    examples = (("관찰자 A (예시)", 45, _COL["curve"], "end"),
+                ("관찰자 B (예시)", 55, _COL["marker"], "start"))
     markers = []
-    for label, t, color in examples:
+    for label, t, color, anchor in examples:
         mx, my = x(t), y(t)
+        lx = mx - 6 if anchor == "end" else mx + 6
         markers.append(
             f'<line x1="{mx:.1f}" y1="{base}" x2="{mx:.1f}" y2="{my:.1f}" '
             f'stroke="{color}" stroke-width="1.5" stroke-dasharray="2,2"/>'
             f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="4" fill="{color}"/>'
-            f'<text x="{mx + 6:.1f}" y="{my - 8:.1f}" font-size="10.5" fill="{color}">{label}</text>'
+            f'<text x="{lx:.1f}" y="{my - 8:.1f}" text-anchor="{anchor}" font-size="10.5" fill="{color}">{label}</text>'
         )
     return (
         f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" '

@@ -23,8 +23,25 @@ def load_system_prompt(task: str) -> str:
     return (PROMPTS_DIR / TASK_PROMPT_FILES[task]).read_text(encoding="utf-8")
 
 
+MASK_TOKEN = "아이"
+
+
+def mask_notes(notes: list[str], alias: str) -> list[str]:
+    """보호자 의견 안에 아동 이름이 적혀 있으면 '아이'로 바꾼다.
+
+    profile_payload는 alias 필드를 넘기지 않지만, 보호자가 문장 안에 이름을
+    쓰는 경우("민수가 요즘...")가 있어 본문도 마스킹한다. 이름 뒤 조사는 그대로
+    둔다 ("민수가" → "아이가").
+    """
+    alias = (alias or "").strip()
+    if not alias:
+        return list(notes)
+    return [n.replace(alias, MASK_TOKEN) for n in notes]
+
+
 def profile_payload(profile: CBCLProfile) -> dict:
-    """LLM에 넘기는 최소 구조화 입력. 아동 이름(alias)은 넘기지 않는다."""
+    """LLM에 넘기는 최소 구조화 입력. 아동 이름(alias)은 넘기지 않고, 보호자 의견
+    본문 안의 이름도 마스킹한다."""
     scale = lambda s: {"scale_id": s.scale_id, "name_ko": s.name_ko,
                        "t_score": s.t_score, "band": s.band}
     return {
@@ -34,7 +51,7 @@ def profile_payload(profile: CBCLProfile) -> dict:
                   "norm_group": profile.child.norm_group},
         "composites": [scale(s) for s in profile.composites],
         "syndromes": [scale(s) for s in profile.syndromes],
-        "caregiver_notes": list(profile.caregiver_notes),
+        "caregiver_notes": mask_notes(list(profile.caregiver_notes), profile.child.alias),
         "counseling_scheduled": profile.counseling_scheduled,
         "days_until_counseling": profile.days_until_counseling,
     }

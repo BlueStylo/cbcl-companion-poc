@@ -32,12 +32,16 @@ class OpenAICompatClient:
         self.base_url = base_url or os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
         self.api_key = api_key or os.environ.get("LLM_API_KEY", "ollama")
         self.model = model or os.environ.get("LLM_MODEL", "gpt-4o-mini")
+        # 호출 1건의 상한 (초). 로컬 7~8B 모델은 재생성 포함 건당 수 분이라 기본 180초.
+        # 넘기면 openai.APITimeoutError → main.py가 fail-closed로 종료한다.
+        self.timeout_s = float(os.environ.get("LLM_TIMEOUT_S", "180"))
         self.calls: list[dict] = []  # 관측성: 호출별 토큰/시간 기록
         try:
             from openai import OpenAI  # --api 모드에서만 필요 (지연 import)
         except ImportError as e:
             raise LLMError("--api 모드에는 openai 패키지가 필요합니다: pip install -r requirements.txt") from e
-        self._client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        self._client = OpenAI(base_url=self.base_url, api_key=self.api_key,
+                              timeout=self.timeout_s, max_retries=1)
 
     def _call(self, messages: list[dict], force_json: bool) -> tuple[str, dict]:
         kwargs = {"model": self.model, "messages": messages, "temperature": 0.2}
