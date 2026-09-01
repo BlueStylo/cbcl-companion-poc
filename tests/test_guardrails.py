@@ -63,6 +63,20 @@ def test_g3_echo_field_tampering(explain_out):
     assert "G3" in rules(check_output(PROFILE, "explain", explain_out))
 
 
+def test_g6_prescription_detected(explain_out):
+    """처방·치료 권고: 약물, 치료 시작, 의료기관 방문 지시 모두 차단."""
+    explain_out["limits"] = "필요하면 약물 치료를 시작해 보세요."
+    assert "G6" in rules(check_output(PROFILE, "explain", explain_out))
+    explain_out["limits"] = "가까운 병원에 방문해 진료를 받아 보세요."
+    assert "G6" in rules(check_output(PROFILE, "explain", explain_out))
+
+
+def test_g6_allowed_counsel_guidance_passes(explain_out):
+    """허용된 유일한 형태('예약된 상담에서...')는 G6에 걸리지 않는다."""
+    explain_out["limits"] = "궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요."
+    assert "G6" not in rules(check_output(PROFILE, "explain", explain_out))
+
+
 def test_g4_invalid_source_scale(prep_out):
     prep_out["questions_for_counselor"][0]["source_scale"] = "focus_ability"
     assert "G4" in rules(check_output(PROFILE, "prep", prep_out))

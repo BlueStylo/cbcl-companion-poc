@@ -1,15 +1,22 @@
 """출력 안전성 가드레일 (규칙 엔진, LLM 미사용).
 
-규칙 5종:
+출력 규칙 6종:
   G1 진단명 사전         - 진단명 등장 자체를 위반 처리 (부정문 포함, 의도된 과검출)
   G2 심각성 단정(양방향) - 심각 쪽 단정과 근거 없는 낙관 보증을 모두 차단
   G3 수치 대조           - 본문 수치를 입력 수치 집합과 대조 + 에코 필드(t_score, band) 대조
   G4 근거 링크           - scale_id / source_scale 이 입력의 실제 척도와 매칭되는지
   G5 스키마              - 출력 JSON 구조, 필수 필드, 항목 수
+  G6 처방·치료 권고      - 약물, 치료 시작, 의료기관 방문 지시 차단
+                           (허용 형태는 "예약된 상담에서 상담사와 이야기해 보세요" 하나뿐)
 
 위반 블록은 최대 2회 재생성하고, 그래도 실패하면 사전 작성 안전 문구로
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
 문장이 나가는 일도 없다.
+
+입력 게이트 1종: 위기 신호 검출 (detect_crisis_signals). 보호자 의견에
+긴급 키워드가 있으면 LLM 호출 자체를 하지 않는다 (generator가 이 함수로
+차단하고, 화면은 상담 연결 안내만 출력한다). 사전은 보수적으로 과검출을
+허용한다.
 """
 
 from __future__ import annotations
@@ -57,6 +64,17 @@ OPTIMISM_PATTERNS = [re.compile(p) for p in (
     r"문제\s*없습니다",
 )]
 
+# --- G6: 처방·치료 권고 (설계 문서 R2) ---
+PRESCRIPTION_PATTERNS = [re.compile(p) for p in (
+    r"약물",
+    r"약을\s*(?:복용|먹)",
+    r"치료(?:를|가)?\s*(?:받|필요|시작)",
+    r"치료\s*프로그램",
+    r"병원(?:에|을)?\s*(?:가|방문)",
+    r"처방",
+    r"의료\s*기관",
+)]
+
 # --- G3: 본문 수치 추출 패턴 ---
 NUMBER_PATTERNS = [re.compile(p) for p in (
     r"[Tt]\s*=\s*(\d{1,3})",
@@ -85,6 +103,51 @@ class SafeResult:
     regen_count: int = 0                       # 재생성 호출 횟수 (첫 생성 제외)
     fallback_blocks: list[str] = field(default_factory=list)
     block_count: int = 0
+
+
+# ---------------------------------------------------------------- 위기 신호 게이트 (입력 단계)
+
+# 보수적 사전: 과검출을 허용한다 (fail-closed). 미검출 1건의 비용이
+# 오검출 여러 건의 비용보다 크다.
+CRISIS_PATTERNS = [re.compile(p) for p in (
+    r"자해",
+    r"자살",
+    r"죽고\s*싶",
+    r"죽고싶",
+    r"죽어\s*버리",
+    r"죽었으면",
+    r"극단적\s*선택",
+    r"살고\s*싶지\s*않",
+    r"살기\s*싫",
+    r"사라지고\s*싶",
+    r"사라져\s*버리",
+    r"목숨",
+    r"스스로\s*(?:를\s*)?(?:해치|다치|상처)",
+    r"몸에\s*상처",
+    r"상처를\s*(?:내|냈|낸)",
+)]
+
+
+class CrisisSignalDetected(RuntimeError):
+    """입력에서 위기 신호가 검출됨. LLM 호출 없이 상담 연결 안내만 출력한다."""
+
+    def __init__(self, keywords: list[str]):
+        self.keywords = keywords
+        super().__init__(f"위기 신호 검출: {keywords}")
+
+
+def detect_crisis_signals(profile: CBCLProfile) -> list[str]:
+    """보호자 의견 텍스트에서 긴급 키워드를 찾는다 (매칭 문자열 목록 반환).
+
+    비어 있지 않으면 파이프라인은 해설 생성을 시작하지 않아야 한다.
+    """
+    found: list[str] = []
+    for note in profile.caregiver_notes:
+        for pat in CRISIS_PATTERNS:
+            m = pat.search(note)
+            if m and m.group(0) not in found:
+                found.append(m.group(0))
+    return found
 
 
 # ---------------------------------------------------------------- 블록 분해
@@ -125,6 +188,10 @@ def _check_text(block: str, text: str, profile: CBCLProfile) -> list[Violation]:
         m = pat.search(text)
         if m:
             found.append(Violation("G2", block, m.group(0)))
+    for pat in PRESCRIPTION_PATTERNS:
+        m = pat.search(text)
+        if m:
+            found.append(Violation("G6", block, m.group(0)))
     allowed = profile.allowed_numbers()
     for pat in NUMBER_PATTERNS:
         for m in pat.finditer(text):
