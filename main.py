@@ -17,9 +17,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from src.compare_html import build_compare_html
 from src.generator import generate_all
 from src.guardrails import detect_crisis_signals
-from src.llm_client import make_client
+from src.llm_client import LLMError, make_client
 from src.parser import ProfileError, load_profile
 from src.report_html import build_crisis_html, build_report_html
+
+
+def llm_failure_types() -> tuple:
+    """fail-closed로 처리할 LLM 실패 계열 예외 목록.
+
+    openai SDK가 설치된 경우 API 오류(연결 실패 포함)도 포함한다.
+    """
+    types: list[type] = [LLMError, ConnectionError, TimeoutError]
+    try:
+        import openai
+        types.append(openai.APIError)
+    except ImportError:
+        pass
+    return tuple(types)
 
 
 def load_env_file(path: Path = Path(".env")) -> None:
@@ -63,44 +77,60 @@ def main() -> int:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    def write_crisis(profile) -> Path:
-        """위기 신호 검출 시: LLM 호출 없이 상담 연결 안내만 생성."""
-        path = out_dir / f"{profile.profile_id}.html"
-        path.write_text(build_crisis_html(profile), encoding="utf-8")
-        print(f"{profile.profile_id}: 위기 신호 검출 - 해설 생성을 중단하고 상담 연결 안내만 생성")
-        print(f"위기 안내 생성: {path}")
-        return path
+    # 산출물은 모든 생성이 성공한 뒤에만 기록한다 (부분 산출물 방지, fail-closed)
+    pending: list[tuple[Path, str]] = []
+    notes: list[str] = []
 
+    def queue_crisis(profile) -> None:
+        """위기 신호 검출 시: LLM 호출 없이 상담 연결 안내만 큐에 넣는다."""
+        path = out_dir / f"{profile.profile_id}.html"
+        pending.append((path, build_crisis_html(profile)))
+        notes.append(f"{profile.profile_id}: 위기 신호 검출 - 해설 생성을 중단하고 상담 연결 안내만 생성")
+        notes.append(f"위기 안내 생성: {path}")
+
+    compare_aborted = False
     try:
         if args.profile:
             profile = load_profile(args.profile)
             if detect_crisis_signals(profile):
-                write_crisis(profile)
+                queue_crisis(profile)
             else:
                 results = generate_all(profile, client)
                 path = out_dir / f"{profile.profile_id}.html"
-                path.write_text(build_report_html(profile, results, mode_label), encoding="utf-8")
-                print(summarize(profile.profile_id, results))
-                print(f"리포트 생성: {path}")
+                pending.append((path, build_report_html(profile, results, mode_label)))
+                notes.append(summarize(profile.profile_id, results))
+                notes.append(f"리포트 생성: {path}")
 
         if args.compare:
             pa, pb = (load_profile(p) for p in args.compare)
             crisis = [p for p in (pa, pb) if detect_crisis_signals(p)]
             if crisis:
                 for p in crisis:
-                    write_crisis(p)
-                print("위기 신호가 검출된 프로파일이 있어 비교 뷰는 생성하지 않습니다.", file=sys.stderr)
-                return 1
-            ra, rb = generate_all(pa, client), generate_all(pb, client)
-            path = out_dir / f"compare_{pa.profile_id}_{pb.profile_id}.html"
-            path.write_text(build_compare_html(pa, ra, pb, rb, mode_label), encoding="utf-8")
-            print(summarize(pa.profile_id, ra))
-            print(summarize(pb.profile_id, rb))
-            print(f"비교 뷰 생성: {path}")
+                    queue_crisis(p)
+                compare_aborted = True
+            else:
+                ra, rb = generate_all(pa, client), generate_all(pb, client)
+                path = out_dir / f"compare_{pa.profile_id}_{pb.profile_id}.html"
+                pending.append((path, build_compare_html(pa, ra, pb, rb, mode_label)))
+                notes.append(summarize(pa.profile_id, ra))
+                notes.append(summarize(pb.profile_id, rb))
+                notes.append(f"비교 뷰 생성: {path}")
     except ProfileError as e:
         print("입력 프로파일 검증 실패 (리포트를 생성하지 않습니다):", file=sys.stderr)
         for msg in e.errors:
             print(f"  - {msg}", file=sys.stderr)
+        return 1
+    except llm_failure_types() as e:
+        print(f"LLM 호출 실패: {e}", file=sys.stderr)
+        print("생성이 완료되지 않아 리포트를 출력하지 않습니다.", file=sys.stderr)
+        return 1
+
+    for path, content in pending:
+        path.write_text(content, encoding="utf-8")
+    for line in notes:
+        print(line)
+    if compare_aborted:
+        print("위기 신호가 검출된 프로파일이 있어 비교 뷰는 생성하지 않습니다.", file=sys.stderr)
         return 1
     return 0
 
