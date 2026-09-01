@@ -55,7 +55,13 @@ def build_user_message(profile: CBCLProfile, attempt: int,
 
 
 def generate_safe(profile: CBCLProfile, task: str, client) -> guardrails.SafeResult:
-    """생성 1건을 가드레일 루프(재생성 2회 + 폴백)로 감싸 실행한다."""
+    """생성 1건을 가드레일 루프(재생성 2회 + 폴백)로 감싸 실행한다.
+
+    위기 신호가 검출된 입력은 LLM 호출 자체를 하지 않는다 (입력 게이트).
+    """
+    crisis = guardrails.detect_crisis_signals(profile)
+    if crisis:
+        raise guardrails.CrisisSignalDetected(crisis)
     system_prompt = load_system_prompt(task)
 
     def gen_fn(attempt: int, pending: list[str], feedback: list) -> dict:

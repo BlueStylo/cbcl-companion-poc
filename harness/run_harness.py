@@ -22,7 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.generator import generate_all
-from src.guardrails import check_output, source_coverage
+from src.guardrails import (CrisisSignalDetected, check_output,
+                            detect_crisis_signals, source_coverage)
 from src.llm_client import FIXTURES_DIR, make_client
 from src.parser import ProfileError, load_profile, parse_profile
 
@@ -72,7 +73,7 @@ def broken_variants(base_raw: dict) -> list[tuple[str, dict]]:
 
 def run_parser_check() -> tuple[int, int, list[list]]:
     rows, passed, total = [], 0, 0
-    for pid in PROFILE_ORDER:
+    for pid in PROFILE_ORDER + ["c1_crisis"]:
         total += 1
         try:
             load_profile(PROFILES_DIR / f"{pid}.json")
@@ -150,6 +151,50 @@ def run_detection_check(agg: dict) -> tuple[int, int, list[list]]:
     return hit_total, len(seeded), rows
 
 
+# ---------------------------------------------------------------- 6. 위기 신호 게이트
+
+class _SentinelClient:
+    """호출되면 안 되는 자리에서 호출 여부를 기록하는 클라이언트."""
+
+    def __init__(self):
+        self.called = False
+
+    def generate(self, *args, **kwargs):
+        self.called = True
+        return {}
+
+
+def run_crisis_check() -> tuple[bool, list[list], str]:
+    """c1은 검출·차단되고, 나머지 7종은 오검출이 없어야 한다."""
+    rows, ok = [], True
+    hits_count, fp_count = 0, 0
+    for pid in PROFILE_ORDER + ["c1_crisis"]:
+        profile = load_profile(PROFILES_DIR / f"{pid}.json")
+        hits = detect_crisis_signals(profile)
+        expect = pid == "c1_crisis"
+        good = bool(hits) == expect
+        ok &= good
+        if expect:
+            hits_count += bool(hits)
+        else:
+            fp_count += bool(hits)
+        rows.append([pid, "검출" if expect else "미검출",
+                     ", ".join(hits) if hits else "-", "OK" if good else "FAIL"])
+
+    # 검출 시 LLM 호출 자체가 없어야 한다 (fail-closed)
+    sentinel = _SentinelClient()
+    gate = False
+    try:
+        generate_all(load_profile(PROFILES_DIR / "c1_crisis.json"), sentinel)
+    except CrisisSignalDetected:
+        gate = not sentinel.called
+    ok &= gate
+    rows.append(["c1_crisis → generate_all", "차단 + LLM 미호출",
+                 "차단됨, 호출 0회" if gate else "LLM이 호출됨(!)", "OK" if gate else "FAIL"])
+    summary = f"검출 {hits_count}/1 · 오검출 {fp_count}/7 · LLM 미호출 {'확인' if gate else '실패'}"
+    return ok, rows, summary
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="미니 평가 하네스")
     mode = ap.add_mutually_exclusive_group()
@@ -161,7 +206,7 @@ def main() -> int:
 
     print(f"# cbcl-companion 미니 평가 하네스 (모드: {mode_label})\n")
 
-    print("## 1. 파서 정확도 (정상 7건 통과 + 오류 주입 5건 거부)\n")
+    print("## 1. 파서 정확도 (정상 8건 통과 + 오류 주입 5건 거부)\n")
     parser_pass, parser_total, rows = run_parser_check()
     print_table(["케이스", "기대", "결과", "판정"], rows)
 
@@ -174,21 +219,27 @@ def main() -> int:
     det_hit, det_total, rows = run_detection_check(agg)
     print_table(["규칙", "검출/시드", "판정"], rows)
 
+    print("## 4. 위기 신호 게이트 (입력 단계, LLM 미호출)\n")
+    crisis_ok, rows, crisis_summary = run_crisis_check()
+    print_table(["케이스", "기대", "결과", "판정"], rows)
+
     cov_pct = (100.0 * agg["cov_have"] / agg["cov_need"]) if agg["cov_need"] else 0.0
     fb_pct = 100.0 * agg["fallback"] / agg["blocks"] if agg["blocks"] else 0.0
-    print("## 4. 요약 지표\n")
+    print("## 5. 요약 지표\n")
     summary = [
         ["파서 정확도", f"{parser_pass}/{parser_total} ({100.0 * parser_pass / parser_total:.0f}%)", "요구 100%"],
         ["가드레일 검출률", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)" if det_total else "-", "요구 100%"],
         ["폴백 발동률", f"{agg['fallback']}/{agg['blocks']} 블록 ({fb_pct:.1f}%)", "품질 모니터링 지표"],
         ["근거 커버리지", f"{agg['cov_have']}/{agg['cov_need']} ({cov_pct:.0f}%)", "요구 100%"],
         ["최종 출력 잔존 위반", f"{agg['residual']}건", "요구 0건"],
+        ["위기 신호 게이트", crisis_summary, "fail-closed"],
         ["재생성 호출 합계", f"{agg['regen']}회", "-"],
     ]
     print_table(["지표", "값", "기준"], summary)
 
     ok = (parser_pass == parser_total and det_hit == det_total
-          and agg["residual"] == 0 and agg["cov_have"] == agg["cov_need"])
+          and agg["residual"] == 0 and agg["cov_have"] == agg["cov_need"]
+          and crisis_ok)
     print("결론:", "모든 요구 기준 충족" if ok else "요구 기준 미달 항목 있음 (위 표 참조)")
     return 0 if ok else 1
 

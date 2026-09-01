@@ -16,9 +16,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src.compare_html import build_compare_html
 from src.generator import generate_all
+from src.guardrails import detect_crisis_signals
 from src.llm_client import make_client
 from src.parser import ProfileError, load_profile
-from src.report_html import build_report_html
+from src.report_html import build_crisis_html, build_report_html
 
 
 def load_env_file(path: Path = Path(".env")) -> None:
@@ -62,17 +63,34 @@ def main() -> int:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    def write_crisis(profile) -> Path:
+        """위기 신호 검출 시: LLM 호출 없이 상담 연결 안내만 생성."""
+        path = out_dir / f"{profile.profile_id}.html"
+        path.write_text(build_crisis_html(profile), encoding="utf-8")
+        print(f"{profile.profile_id}: 위기 신호 검출 - 해설 생성을 중단하고 상담 연결 안내만 생성")
+        print(f"위기 안내 생성: {path}")
+        return path
+
     try:
         if args.profile:
             profile = load_profile(args.profile)
-            results = generate_all(profile, client)
-            path = out_dir / f"{profile.profile_id}.html"
-            path.write_text(build_report_html(profile, results, mode_label), encoding="utf-8")
-            print(summarize(profile.profile_id, results))
-            print(f"리포트 생성: {path}")
+            if detect_crisis_signals(profile):
+                write_crisis(profile)
+            else:
+                results = generate_all(profile, client)
+                path = out_dir / f"{profile.profile_id}.html"
+                path.write_text(build_report_html(profile, results, mode_label), encoding="utf-8")
+                print(summarize(profile.profile_id, results))
+                print(f"리포트 생성: {path}")
 
         if args.compare:
             pa, pb = (load_profile(p) for p in args.compare)
+            crisis = [p for p in (pa, pb) if detect_crisis_signals(p)]
+            if crisis:
+                for p in crisis:
+                    write_crisis(p)
+                print("위기 신호가 검출된 프로파일이 있어 비교 뷰는 생성하지 않습니다.", file=sys.stderr)
+                return 1
             ra, rb = generate_all(pa, client), generate_all(pb, client)
             path = out_dir / f"compare_{pa.profile_id}_{pb.profile_id}.html"
             path.write_text(build_compare_html(pa, ra, pb, rb, mode_label), encoding="utf-8")

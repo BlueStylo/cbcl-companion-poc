@@ -104,7 +104,7 @@ class CBCLProfile(BaseModel):
     profile_id: str
     profile_type: Literal[
         "all_normal", "partial_borderline", "boundary_mix",
-        "clinical", "paired_notes", "adversarial",
+        "clinical", "paired_notes", "adversarial", "crisis",
     ]
     instrument: str
     child: ChildInfo

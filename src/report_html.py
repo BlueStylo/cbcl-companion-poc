@@ -85,6 +85,21 @@ def _items_view(profile: CBCLProfile, items: list, text_key: str) -> list[dict]:
             for it in items if isinstance(it, dict)]
 
 
+def build_crisis_html(profile: CBCLProfile) -> str:
+    """위기 신호 검출 시의 전용 화면: 상담 연결 안내 + 즉시 도움 라인.
+
+    해설도 수치도 넣지 않는다. 검출된 키워드도 다시 보여주지 않는다
+    (화면의 역할은 해설이 아니라 연결이다).
+    """
+    return _template_env().get_template("crisis.html.j2").render(
+        alias=profile.child.alias,
+        instrument=profile.instrument,
+        test_date=profile.test_date,
+        counseling_scheduled=profile.counseling_scheduled,
+        days=profile.days_until_counseling,
+    )
+
+
 def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mock") -> str:
     """SafeResult 2건({"explain","prep"})을 받아 완성 HTML 문자열을 만든다."""
     explain, prep = results["explain"], results["prep"]
