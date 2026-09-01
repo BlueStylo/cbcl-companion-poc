@@ -49,7 +49,7 @@ src/parser.py     입력 검증 + 밴드 라벨 재계산 대조 (fail-closed 1�
 src/renderer.py   종형곡선 SVG (마커, SEM 밴드, 구간 배경) - 순수 문자열 생성
 src/llm_client.py OpenAI 호환 클라이언트 + MockLLMClient
 src/generator.py  해설/질문 생성 (구조화 JSON 출력)
-src/guardrails.py 규칙 5종 + 블록 단위 재생성 + 안전 문구 폴백
+src/guardrails.py 규칙 6종 + 블록 단위 재생성 + 안전 문구 폴백
 src/report_html.py  2페이지 정적 리포트 (1p 관찰자의 렌즈 / 2p 우리 아이 결과)
 src/compare_html.py 동점-상이의견 비교 뷰
 harness/          미니 평가 하네스
@@ -89,11 +89,9 @@ LLM 호출 자체를 하지 않고, 상담 연결 안내와 즉시 도움 라인
 
 | 변수 | 값 |
 |---|---|
-| LLM_BASE_URL | TODO (기본 https://api.openai.com/v1, 로컬 http://localhost:11434/v1) |
-| LLM_MODEL | TODO (후보: gpt-4o-mini / qwen3:8b) |
-| LLM_API_KEY | .env로만 주입 |
-
-<!-- TODO: 실측 후 사용 모델 확정 기재 -->
+| LLM_BASE_URL | 기본 https://api.openai.com/v1 · 로컬 http://localhost:11434/v1 |
+| LLM_MODEL | API 기본 **gpt-4o-mini** · 로컬 기본 **exaone3.5:7.8b** (Ollama에 받아둔 모델) |
+| LLM_API_KEY | .env로만 주입 (.env는 gitignore) |
 
 ## 평가 결과
 
@@ -104,16 +102,45 @@ LLM 호출 자체를 하지 않고, 상담 연결 안내와 즉시 도움 라인
 | 파서 정확도 | 13/13 (100%) — 정상 8건 통과 + 오류 주입 5건 거부 | 요구 100% |
 | 가드레일 검출률 (A1 파이프라인 시드) | 10/10 (100%) — G1~G6 규칙별 전부 검출 | 요구 100% |
 | 가드레일 검출률 (B축 시드 30건) | 30/30 (100%) — 규칙별 4~5건 + 우회 시도형 4건 전수 | 요구 100% |
+| 오검출률 (FP, 클린 프로파일) | 0/102 블록 (0.0%) — 위반 시드 없는 P1~P5에서 오탐 없음 | 요구 0% |
 | 폴백 발동률 | 1/119 블록 (0.8%) — A1 attention 블록 (재생성 2회 소진) | 품질 모니터링 지표 |
-| 근거 커버리지 | 139/139 (100%) | 요구 100% |
+| 근거 커버리지 (원시 attempt 0) | 139/140 (99.3%) — 가드레일 이전 첫 생성 기준 | 생성 품질 지표 |
+| 근거 커버리지 (최종 출력) | 139/139 (100%) | fail-closed 조립 검증 (구조상 100%) |
 | 최종 출력 잔존 위반 | 0건 | 요구 0건 |
 | 위기 신호 게이트 | 검출 1/1 · 오검출 0/7 · LLM 미호출 확인 | fail-closed |
 
 <!-- TODO: --api 모드 실측 (모델별 스키마 준수율 / 폴백률 비교) -->
 
-## 예상 비용
+## 예상 비용 (실측 전 추정)
 
-<!-- TODO: 토큰 실측 후 3열 비교표 (gpt-4o-mini / Claude Haiku / 로컬 Ollama), 단가 출처 링크 -->
+아직 `--api` 실측 전이며, 아래는 설계 단계 추정치입니다. 토큰 실측 후 갱신합니다.
+
+**보고서 1건 토큰 추정 근거**
+
+- 입력: 시스템 프롬프트(계약 전문) 약 2,200 + 프로파일 JSON 약 1,200 + 지시 200 토큰.
+  한국어는 토크나이저 효율이 영어보다 낮아 보수적으로 잡았습니다.
+  호출 2회(해설 + 상담 준비)로 입력 합계 약 7,000 토큰
+- 출력: 해설 JSON 약 1,500 + 상담 준비 약 900 = 약 2,400 토큰
+- 가드레일 재생성 마진 20% → 계산 기준 **입력 8,400 / 출력 2,900 토큰**
+
+**3열 비교 (2026-09-01 조회 단가 기준, 환율 1,350원/$ 가정)**
+
+| 항목 | gpt-4o-mini | Claude Haiku 4.5 | 로컬 (Ollama, 7~8B) |
+|---|---|---|---|
+| 단가 (input/output, $/1M) | 0.15 / 0.60 | 1.00 / 5.00 | 0 (하드웨어와 전기) |
+| 보고서 1건 | 약 $0.003 (약 4원) | 약 $0.023 (약 31원) | API 비용 0 |
+| 월 1,000건 | 약 $3.0 | 약 $23.2 | 0 |
+| 월 10,000건 | 약 $30 | 약 $232 | 0, 단 처리량 한계 |
+| 지연 시간 | 수 초 | 수 초 | RTX 4090급 기준 건당 30초~1분 |
+| 강점 | 최저 비용, JSON 모드 안정 | 한국어 서술 품질, 안전성 튜닝 | 데이터 외부 반출 없음 |
+
+단가 출처: [OpenAI API Pricing](https://developers.openai.com/api/docs/pricing)
+(gpt-4o-mini $0.15/$0.60, [devtk.ai 2026-08 확인](https://devtk.ai/en/models/gpt-4o-mini/)),
+[Anthropic Claude Haiku 4.5 공식 페이지](https://www.anthropic.com/claude/haiku)
+(Haiku 4.5 $1/$5, [OpenRouter 확인](https://openrouter.ai/anthropic/claude-haiku-4.5)).
+
+추가 절감 여지(README 명시만): 시스템 프롬프트 캐싱(gpt-4o-mini 캐시 입력
+$0.075/1M), 야간 배치 처리(양사 배치 API 50% 할인).
 
 ## 알려진 한계
 
