@@ -64,7 +64,7 @@ OPTIMISM_PATTERNS = [re.compile(p) for p in (
     r"문제\s*없습니다",
 )]
 
-# --- G6: 처방·치료 권고 (설계 문서 R2) ---
+# --- G6: 처방·치료 권고 ---
 PRESCRIPTION_PATTERNS = [re.compile(p) for p in (
     r"약물",
     r"약을\s*(?:복용|먹)",
