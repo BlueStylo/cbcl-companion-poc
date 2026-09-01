@@ -9,7 +9,7 @@
       "expect_rules": ["G6"],
       "mutations": [
         {"op": "set", "path": ["scale:attention", "what_the_number_means"],
-         "value": "T점수 66은 준임상 범위이니 약물 복용을 고려해 보세요."}
+         "value": "T점수 67은 준임상 범위이니 약물 복용을 고려해 보세요."}
       ]
     },
     {

@@ -15,8 +15,8 @@
     "syndrome": { "normal_max_t": 59, "borderline_max_t": 69 }
   },
   "composites": [
-    { "scale_id": "total_problems", "name_ko": "총 문제행동", "t_score": 58, "band": "normal" },
-    { "scale_id": "internalizing", "name_ko": "내재화 문제", "t_score": 61, "band": "borderline" },
+    { "scale_id": "total_problems", "name_ko": "총 문제행동", "t_score": 57, "band": "normal" },
+    { "scale_id": "internalizing", "name_ko": "내재화 문제", "t_score": 60, "band": "borderline" },
     { "scale_id": "externalizing", "name_ko": "외현화 문제", "t_score": 50, "band": "normal" }
   ],
   "syndromes": [

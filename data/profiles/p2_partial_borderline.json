@@ -24,13 +24,13 @@
     {
       "scale_id": "total_problems",
       "name_ko": "총 문제행동",
-      "t_score": 58,
+      "t_score": 57,
       "band": "normal"
     },
     {
       "scale_id": "internalizing",
       "name_ko": "내재화 문제",
-      "t_score": 61,
+      "t_score": 62,
       "band": "borderline"
     },
     {
@@ -74,7 +74,7 @@
     {
       "scale_id": "attention",
       "name_ko": "주의집중",
-      "t_score": 66,
+      "t_score": 67,
       "band": "borderline"
     },
     {

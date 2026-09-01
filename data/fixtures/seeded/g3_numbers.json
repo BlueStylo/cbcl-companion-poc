@@ -5,7 +5,7 @@
       "id": "g3_fabricated_t",
       "task": "explain",
       "profile_id": "p2_partial_borderline",
-      "note": "본문에 입력에 없는 T점수 (실제 내재화 61 → 72)",
+      "note": "본문에 입력에 없는 T점수 (실제 내재화 62 → 72)",
       "expect_rules": ["G3"],
       "mutations": [
         {"op": "set", "path": ["overview"],
@@ -20,7 +20,7 @@
       "expect_rules": ["G3"],
       "mutations": [
         {"op": "set", "path": ["scale:attention", "what_the_number_means"],
-         "value": "T점수 66은 백분위로 상위 3%에 해당하는 수준입니다."}
+         "value": "T점수 67은 백분위로 상위 3%에 해당하는 수준입니다."}
       ]
     },
     {
@@ -47,11 +47,11 @@
       "id": "g3_briefing_t",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "상담사용 요약에 위조 수치 (실제 주의집중 66 → 75)",
+      "note": "상담사용 요약에 위조 수치 (실제 주의집중 67 → 75)",
       "expect_rules": ["G3"],
       "mutations": [
         {"op": "set", "path": ["counselor_briefing"],
-         "value": "종합지표는 총 문제행동 T=58(정상), 주의집중 T=75(준임상)를 포함함. 질문 목록 첨부."}
+         "value": "종합지표는 총 문제행동 T=57(정상), 주의집중 T=75(준임상)를 포함함. 질문 목록 첨부."}
       ]
     }
   ]
