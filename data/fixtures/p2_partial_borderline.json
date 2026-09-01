@@ -1,0 +1,152 @@
+{
+  "explain": {
+    "attempts": [
+      {
+        "overview": "이번 검사에서 종합지표는 총 문제행동 T점수 58(정상), 내재화 문제 T점수 61(준임상), 외현화 문제 T점수 52(정상)으로 보고되었습니다. 개별 척도 중 위축(T점수 62), 우울/불안(T점수 65), 주의집중(T점수 66)이 준임상 범위로 보고되었습니다. 결과는 총 문제행동부터 읽는 것이 순서이며, 각 척도의 의미는 아래 카드에서 하나씩 설명합니다.",
+        "scale_explanations": [
+          {
+            "scale_id": "total_problems",
+            "t_score": 58,
+            "band": "normal",
+            "what_it_measures": "문제행동 문항 전체를 합산한 종합 점수로, 결과를 읽는 출발점입니다.",
+            "what_the_number_means": "T점수 58는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 학교 갈 준비, 친구와 놀기, 숙제처럼 하루의 여러 장면이 문항에 골고루 반영됩니다."
+          },
+          {
+            "scale_id": "internalizing",
+            "t_score": 61,
+            "band": "borderline",
+            "what_it_measures": "위축, 신체증상, 우울/불안처럼 안으로 향하는 어려움을 묶은 종합지표입니다.",
+            "what_the_number_means": "T점수 61는 준임상 범위에 해당합니다. 이 영역의 행동이 또래보다 조금 더 자주 보고되었다는 뜻이며, 그 의미는 예약된 상담에서 상담사와 이야기해 보세요.",
+            "everyday_example": "예를 들어 속상한 마음을 겉으로 잘 드러내지 않는 모습은 이 지표 쪽 문항에 반영됩니다."
+          },
+          {
+            "scale_id": "externalizing",
+            "t_score": 52,
+            "band": "normal",
+            "what_it_measures": "비행, 공격성처럼 밖으로 드러나는 행동을 묶은 종합지표입니다.",
+            "what_the_number_means": "T점수 52는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 뜻대로 되지 않을 때 크게 화를 내는 모습은 이 지표 쪽 문항에 반영됩니다."
+          },
+          {
+            "scale_id": "withdrawn",
+            "t_score": 62,
+            "band": "borderline",
+            "what_it_measures": "혼자 있으려 하거나 또래와의 접촉을 피하는 모습이 얼마나 자주 보고되었는지를 봅니다.",
+            "what_the_number_means": "T점수 62는 준임상 범위에 해당합니다. 이 영역의 행동이 또래보다 조금 더 자주 보고되었다는 뜻이며, 그 의미는 예약된 상담에서 상담사와 이야기해 보세요.",
+            "everyday_example": "예를 들어 새 모둠 활동에서 한동안 지켜보다가 끼어드는 모습은 아이들마다 정도 차이가 큰 행동입니다."
+          },
+          {
+            "scale_id": "somatic",
+            "t_score": 51,
+            "band": "normal",
+            "what_it_measures": "뚜렷한 의학적 원인 없이 보고되는 몸의 불편감(두통, 복통 등)을 봅니다.",
+            "what_the_number_means": "T점수 51는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 시험날 아침에 배가 아프다고 하는 것은 많은 아이들이 한 번쯤 보이는 모습입니다."
+          },
+          {
+            "scale_id": "anxious_depressed",
+            "t_score": 65,
+            "band": "borderline",
+            "what_it_measures": "걱정이 많아 보이거나 기분이 가라앉아 보이는 모습이 얼마나 보고되었는지를 봅니다.",
+            "what_the_number_means": "T점수 65는 준임상 범위에 해당합니다. 이 영역의 행동이 또래보다 조금 더 자주 보고되었다는 뜻이며, 그 의미는 예약된 상담에서 상담사와 이야기해 보세요.",
+            "everyday_example": "예를 들어 잠들기 전에 내일 일을 미리 묻고 확인하는 모습이 이 영역과 관련됩니다."
+          },
+          {
+            "scale_id": "social_immaturity",
+            "t_score": 57,
+            "band": "normal",
+            "what_it_measures": "나이에 비해 어리게 행동하거나 또래 관계에서 서툰 모습을 봅니다.",
+            "what_the_number_means": "T점수 57는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 자기보다 어린 동생들과 노는 것을 더 편하게 느끼는 모습이 이 영역과 관련됩니다."
+          },
+          {
+            "scale_id": "thought_problems",
+            "t_score": 50,
+            "band": "normal",
+            "what_it_measures": "반복 행동이나 주변이 이해하기 어려운 생각 표현이 보고되었는지를 봅니다.",
+            "what_the_number_means": "T점수 50는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 같은 순서로 물건을 정리해야 마음이 놓이는 모습이 이 영역의 문항에 들어 있습니다."
+          },
+          {
+            "scale_id": "attention",
+            "t_score": 66,
+            "band": "borderline",
+            "what_it_measures": "집중을 유지하기 어렵거나 가만히 있기 어려운 모습이 얼마나 보고되었는지를 봅니다.",
+            "what_the_number_means": "T점수 66는 준임상 범위에 해당합니다. 이 영역의 행동이 또래보다 조금 더 자주 보고되었다는 뜻이며, 그 의미는 예약된 상담에서 상담사와 이야기해 보세요.",
+            "everyday_example": "예를 들어 숙제를 하다가 다른 물건에 눈길이 옮겨 가는 것은 아이들마다 정도 차이가 큰 행동입니다."
+          },
+          {
+            "scale_id": "delinquent",
+            "t_score": 47,
+            "band": "normal",
+            "what_it_measures": "규칙을 어기는 행동이 얼마나 보고되었는지를 봅니다.",
+            "what_the_number_means": "T점수 47는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 정해진 귀가 시간을 어기는 일이 이 영역의 문항에 들어 있습니다."
+          },
+          {
+            "scale_id": "aggressive",
+            "t_score": 53,
+            "band": "normal",
+            "what_it_measures": "말다툼, 떼쓰기, 공격적인 행동이 얼마나 보고되었는지를 봅니다.",
+            "what_the_number_means": "T점수 53는 정상 범위에 해당합니다. 또래 보호자들의 보고와 비교했을 때 특별히 높지 않은 수준이라는 뜻입니다.",
+            "everyday_example": "예를 들어 보드게임에서 진 뒤 화를 내는 것은 많은 아이들이 보이는 모습이고, 얼마나 자주 그러는지를 봅니다."
+          }
+        ],
+        "limits": "이 검사는 보호자의 보고를 바탕으로 한 선별 도구입니다. 단일 검사만으로는 어떤 것도 확정되지 않으며, 관찰자가 다르면 결과가 다르게 나오는 것이 자연스럽습니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요.",
+        "before_counseling": "결과를 보며 떠오른 궁금증을 그대로 메모해 두시면 상담에서 가장 좋은 재료가 됩니다. 정리된 질문은 예약된 상담에서 상담사와 이야기해 보세요."
+      }
+    ]
+  },
+  "prep": {
+    "attempts": [
+      {
+        "questions_for_counselor": [
+          {
+            "question": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습과 주의집중 척도(T점수 66)가 준임상 범위로 보고된 것을 어떻게 연결해서 보면 될까요?",
+            "source_scale": "attention"
+          },
+          {
+            "question": "또래에게 먼저 말을 거는 일이 줄어든 것과 위축 척도(T점수 62)의 결과를 함께 보면, 상담에서 무엇을 먼저 살펴보게 되나요?",
+            "source_scale": "withdrawn"
+          },
+          {
+            "question": "내재화 문제(T점수 61)는 준임상 범위인데 총 문제행동(T점수 58)은 정상 범위입니다. 두 결과를 함께 읽는 방법을 알려 주세요.",
+            "source_scale": "internalizing"
+          },
+          {
+            "question": "우울/불안 척도(T점수 65)에 대해 가정에서 관찰해 두면 도움이 되는 상황이 있을까요?",
+            "source_scale": "anxious_depressed"
+          },
+          {
+            "question": "준임상이라는 라벨은 다음 단계로 무엇을 하는 구간인지, 이 아이의 경우에 맞춰 듣고 싶습니다.",
+            "source_scale": "internalizing"
+          },
+          {
+            "question": "교사처럼 다른 관찰자의 보고를 받아 보는 것이 이 결과에 도움이 될까요?",
+            "source_scale": "total_problems"
+          }
+        ],
+        "observation_points": [
+          {
+            "point": "숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기",
+            "source_scale": "attention"
+          },
+          {
+            "point": "놀이터나 학원에서 또래와의 대화를 누가 먼저 시작했는지 기록하기",
+            "source_scale": "withdrawn"
+          },
+          {
+            "point": "잠들기 전 아이가 걱정거리를 이야기하면 주제만 메모해 두기",
+            "source_scale": "anxious_depressed"
+          },
+          {
+            "point": "상담까지 남은 5일 동안 하루 한 번, 집중이 오래 유지된 활동을 적기",
+            "source_scale": "attention"
+          }
+        ],
+        "counselor_briefing": "종합지표: 총 문제행동 T=58(정상), 내재화 문제 T=61(준임상), 외현화 문제 T=52(정상). 개별 척도 중 위축 T=62(준임상), 우울/불안 T=65(준임상), 주의집중 T=66(준임상). 보호자 관찰 요지: 학원 숙제를 앞에 두면 딴 데를 자주 봅니다 / 놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다. 상담까지 5일 남은 시점의 요약이며, 보호자가 고른 질문 목록과 대기 기간 관찰 기록이 첨부됩니다."
+      }
+    ]
+  }
+}
