@@ -205,6 +205,22 @@ def _check_text(block: str, text: str, profile: CBCLProfile) -> list[Violation]:
     return found
 
 
+def _canonical_t(value):
+    """에코 t_score의 수치 동치 정의: 정수이거나, 정수로만 이뤄진 문자열.
+
+    '57'과 57은 같은 수치다. 유사도 허용이 아니라 동치 정의의 정확화이며,
+    값 비교 자체는 그대로 정확 일치다 (로컬 모델이 수치를 문자열로 에코하는
+    결함이 값 위조로 오판되지 않게 한다).
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and re.fullmatch(r"\d{1,3}", value.strip()):
+        return int(value.strip())
+    return None
+
+
 def _require_str(block: str, value, name: str) -> list[Violation]:
     if not isinstance(value, str) or not value.strip():
         return [Violation("G5", block, f"{name}: 문자열 필수")]
@@ -234,8 +250,8 @@ def _check_scale_block(profile: CBCLProfile, block: str, item) -> list[Violation
     scale = profile.scale_map().get(sid)
     if scale is None:
         return [Violation("G4", block, f"입력에 없는 scale_id: {sid!r}")]
-    # 에코 필드 대조 (수치·판정 위변조 검출)
-    if item.get("t_score") != scale.t_score:
+    # 에코 필드 대조 (수치·판정 위변조 검출, 값은 정확 일치)
+    if _canonical_t(item.get("t_score")) != scale.t_score:
         found.append(Violation("G3", block, f"t_score 에코 불일치: {item.get('t_score')!r} != {scale.t_score}"))
     if item.get("band") != scale.band:
         found.append(Violation("G3", block, f"band 에코 불일치: {item.get('band')!r} != {scale.band}"))

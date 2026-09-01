@@ -63,6 +63,18 @@ def test_g3_echo_field_tampering(explain_out):
     assert "G3" in rules(check_output(PROFILE, "explain", explain_out))
 
 
+def test_g3_echo_digit_string_is_same_value(explain_out):
+    """에코 동치 정의: 문자열 '57'은 정수 57과 같은 수치 (타입 결함 != 값 위조).
+
+    단, 값이 다르면 문자열이어도 여전히 위반이다.
+    """
+    item = explain_out["scale_explanations"][0]
+    item["t_score"] = str(item["t_score"])
+    assert "G3" not in rules(check_output(PROFILE, "explain", explain_out))
+    item["t_score"] = str(int(item["t_score"]) + 1)
+    assert "G3" in rules(check_output(PROFILE, "explain", explain_out))
+
+
 def test_g6_prescription_detected(explain_out):
     """처방·치료 권고: 약물, 치료 시작, 의료기관 방문 지시 모두 차단."""
     explain_out["limits"] = "필요하면 약물 치료를 시작해 보세요."
