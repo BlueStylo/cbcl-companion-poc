@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보고서 동반 가이드 · 이가상</title>
+<style>
+  :root {
+    --ink: #2f3437; --sub: #6b7280; --line: #e5e2dc; --bg: #f7f6f3;
+    --card: #ffffff; --accent: #4a6fa5; --warm: #b0552e;
+    --chip-normal: #eef2ec; --chip-normal-ink: #4f6b52;
+    --chip-borderline: #f8ecd9; --chip-borderline-ink: #8a6425;
+    --chip-clinical: #f6e0d8; --chip-clinical-ink: #97462a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+         line-height: 1.6; font-size: 15px; }
+  main { max-width: 840px; margin: 0 auto; padding: 24px 16px 56px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+  h3 { font-size: 15px; margin: 0 0 8px; }
+  p { margin: 0 0 10px; }
+  details.meta { color: var(--sub); font-size: 12.5px; margin-bottom: 14px; }
+  details.meta summary { cursor: pointer; list-style: none; }
+  details.meta summary::-webkit-details-marker { display: none; }
+  .badge { display: inline-block; background: var(--chip-borderline); color: var(--chip-borderline-ink);
+           border-radius: 20px; padding: 1px 10px; font-weight: 600; margin-right: 6px; }
+  .jump { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 700;
+          border-radius: 8px; padding: 10px 16px; margin: 4px 0 18px; font-size: 14.5px; }
+  .jump small { font-weight: 400; opacity: .85; margin-left: 6px; }
+  section.page { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+                 padding: 22px 20px 18px; margin-bottom: 18px; }
+  blockquote.lens { margin: 0 0 14px; padding: 12px 16px; border-left: 4px solid var(--accent);
+                    background: #f2f5f9; border-radius: 0 8px 8px 0; font-size: 15px; }
+  figure { margin: 0 0 12px; }
+  figcaption { color: var(--sub); font-size: 12.5px; margin-top: 2px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+  .box.gen { background: #fbfaf7; }
+  .box p:last-child { margin-bottom: 0; }
+  .tag { display: inline-block; font-size: 11px; color: var(--sub); border: 1px solid var(--line);
+         border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; font-weight: 400; }
+  .tag.fb { background: #eee; }
+  details.fold { color: var(--sub); font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+  details.fold summary { cursor: pointer; }
+  details.fold ol { margin: 6px 0 0; padding-left: 18px; }
+  .hier-note { color: var(--sub); font-size: 13px; margin: 0 0 12px; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 20px; padding: 1px 10px; }
+  .chip.normal { background: var(--chip-normal); color: var(--chip-normal-ink); }
+  .chip.borderline { background: var(--chip-borderline); color: var(--chip-borderline-ink); }
+  .chip.clinical { background: var(--chip-clinical); color: var(--chip-clinical-ink); }
+  .row { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 8px; margin-bottom: 8px; }
+  .row .head, .card .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .tval { color: var(--sub); font-size: 13px; }
+  .one { color: var(--sub); font-size: 13px; margin: 2px 0 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 8px; margin-bottom: 10px; }
+  .card.open { border-color: var(--chip-borderline-ink); }
+  details.card summary { cursor: pointer; list-style: none; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary .head::after { content: "펼치기"; color: var(--accent); font-size: 12px; margin-left: auto; }
+  details.card[open] summary .head::after { content: "접기"; }
+  .card .text { margin: 8px 0 6px; }
+  .psyedu { color: var(--sub); font-size: 12.5px; background: #fbfaf7; border: 1px dashed var(--line);
+            border-radius: 8px; padding: 6px 10px; margin: 6px 0; }
+  .caution { border: 1px solid var(--chip-clinical-ink); border-radius: 8px; padding: 10px 14px;
+             margin: 14px 0 8px; font-size: 14px; }
+  ul.qlist { list-style: none; margin: 0; padding: 0; }
+  ul.qlist li { display: flex; gap: 10px; align-items: flex-start; border-bottom: 1px dashed var(--line);
+                padding: 8px 2px; }
+  ul.qlist input { margin-top: 5px; }
+  .src-badge { font-size: 11.5px; color: var(--accent); white-space: nowrap; margin-left: auto; padding-left: 10px; }
+  details.brief { margin-top: 14px; }
+  details.brief summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+  details.brief .box { margin-top: 8px; }
+  footer { color: var(--sub); font-size: 12.5px; text-align: center; margin-top: 8px; }
+  footer summary { cursor: pointer; }
+  @media print { section.page { break-after: page; border: none; } details { open: true; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>보고서 동반 가이드</h1>
+    <details class="meta">
+      <summary><span class="badge">자작 가상 데이터</span>이가상 (가상 아동) · 검사일 2026-08-20 · 자세히</summary>
+      K-CBCL 6-18 (보호자 보고형) · 생성 모드 mock · 모델 mock
+      · 가드레일 재생성 0회 · 안전 문구 대체 0건
+    </details>
+    <a class="jump" href="#prep">상담사에게 물어볼 질문 보기 <small>↓ 6개 · 상담까지 5일</small></a>
+  </header>
+
+  <section class="page" id="page1">
+    <h2>1페이지 · 결과를 읽기 전에: 관찰자의 렌즈</h2>
+    <blockquote class="lens">이 결과는 보호자의 눈으로 본 아이입니다. 관찰자가 다르면(선생님, 아이 자신) 결과가 다르게 나오는 것이 정상이고, 그 차이 자체가 중요한 정보입니다. 그래서 상담사와의 대화에서 그림이 완성됩니다.</blockquote>
+    <figure>
+      <svg viewBox="0 0 560 200" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><path d="M14.0,154.0 L22.9,152.4 L31.7,150.3 L40.6,147.9 L49.5,145.0 L58.3,141.6 L67.2,137.6 L76.1,133.1 L84.9,127.9 L93.8,122.2 L102.7,115.8 L111.5,109.0 L120.4,101.6 L129.3,93.8 L138.1,85.7 L147.0,77.5 L155.9,69.3 L164.7,61.2 L173.6,53.6 L182.5,46.4 L191.3,40.0 L200.2,34.5 L209.1,30.0 L217.9,26.7 L226.8,24.7 L235.7,24.0 L244.5,24.7 L253.4,26.7 L262.3,30.0 L271.1,34.5 L280.0,40.0 L288.9,46.4 L297.7,53.6 L306.6,61.2 L315.5,69.3 L324.3,77.5 L333.2,85.7 L342.1,93.8 L350.9,101.6 L359.8,109.0 L368.7,115.8 L377.5,122.2 L386.4,127.9 L395.3,133.1 L404.1,137.6 L413.0,141.6 L421.9,145.0 L430.7,147.9 L439.6,150.3 L448.5,152.4 L457.3,154.0 L466.2,155.4 L475.1,156.4 L483.9,157.3 L492.8,158.0 L501.7,158.5 L510.5,158.9 L519.4,159.2 L528.3,159.4 L537.1,159.6 L546.0,159.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="160" x2="546.0" y2="160" stroke="#8a94a3" stroke-width="1"/><line x1="191.3" y1="160" x2="191.3" y2="40.0" stroke="#4a6fa5" stroke-width="1.5" stroke-dasharray="2,2"/><circle cx="191.3" cy="40.0" r="4" fill="#4a6fa5"/><text x="185.3" y="32.0" text-anchor="end" font-size="10.5" fill="#4a6fa5">관찰자 A (예시)</text><line x1="280.0" y1="160" x2="280.0" y2="40.0" stroke="#b0552e" stroke-width="1.5" stroke-dasharray="2,2"/><circle cx="280.0" cy="40.0" r="4" fill="#b0552e"/><text x="286.0" y="32.0" text-anchor="start" font-size="10.5" fill="#b0552e">관찰자 B (예시)</text><line x1="58.3" y1="160" x2="58.3" y2="164" stroke="#8a94a3" stroke-width="1"/><text x="58.3" y="175" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="147.0" y1="160" x2="147.0" y2="164" stroke="#8a94a3" stroke-width="1"/><text x="147.0" y="175" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="235.7" y1="160" x2="235.7" y2="164" stroke="#8a94a3" stroke-width="1"/><text x="235.7" y="175" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="324.3" y1="160" x2="324.3" y2="164" stroke="#8a94a3" stroke-width="1"/><text x="324.3" y="175" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="413.0" y1="160" x2="413.0" y2="164" stroke="#8a94a3" stroke-width="1"/><text x="413.0" y="175" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="501.7" y1="160" x2="501.7" y2="164" stroke="#8a94a3" stroke-width="1"/><text x="501.7" y="175" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><text x="235.7" y="16" text-anchor="middle" font-size="10.5" fill="#6b7280">평균 50T · 또래 대부분은 40~60T 사이</text><text x="550" y="28" text-anchor="end" font-size="10" fill="#6b7280">특정 아동의 실측값이 아닌 개념 예시입니다</text><text x="280" y="194" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <figcaption>같은 아이라도 관찰자(보호자, 교사)에 따라 결과가 다르게 나타나는 전형적인 모습 — 개념 예시입니다.</figcaption>
+    </figure>
+    <div class="box">
+      <h3>T점수란 <span class="tag">고정 문구</span></h3>
+      <p>T점수는 또래 평균을 50, 표준편차를 10으로 맞춘 점수입니다. 또래 100명을 줄 세우면 50은 한가운데, 60은 위에서 16번째쯤, 70은 위에서 2~3번째쯤입니다. 점수는 점이 아니라 구간으로 읽는 것이 정확하며, 아래 곡선의 밴드가 그 구간입니다.</p>
+    </div>
+    <details class="fold">
+      <summary>보호자와 교사의 평가 상관은 평균 r=.28 (메타분석 2건) - 불일치는 오류가 아니라 정보입니다. 근거 보기</summary>
+      <ol>
+        <li>서로 다른 위치의 관찰자(부모·교사)가 같은 아동을 평가할 때 상관은 평균 r=.28입니다. 119개 연구 메타분석의 수치이고(Achenbach, McConaughy &amp; Howell, 1987), 341개 연구를 다시 모은 후속 메타분석에서도 전체 평균 r=.28로 재확인되었습니다(De Los Reyes et al., 2015).</li><li>한국 임상 표본(6~12세 임상의뢰 아동 165명)에서도 K-CBCL 부모-교사 평정의 내재화 상관은 .18이었고, 우울/불안 척도는 유의한 상관이 없었습니다(김흥규·안정숙·김민혁, 2012).</li><li>이 불일치는 측정 오류가 아니라 정보입니다. 아동의 행동이 집과 학교에서 실제로 다르고 관찰자마다 보이는 부분이 다르기 때문이며, 맥락 차이를 임상적으로 의미 있는 정보로 받아들이라는 것이 현대 임상 문헌의 권고입니다(De Los Reyes &amp; Kazdin, 2005; Dirks et al., 2012).</li>
+      </ol>
+    </details>
+  </section>
+
+  <section class="page" id="page2">
+    <h2>2페이지 · 우리 아이 결과</h2>
+    <p class="hier-note">읽는 순서: ① 총 문제행동 → ② 내재화/외현화 → ③ 개별 척도.
+      상담에서 함께 살펴볼 영역: 내재화 문제, 위축, 우울/불안, 주의집중.</p>
+
+    <div class="box gen">
+      <h3>보호자의 관찰과 검사 소견<span class="tag">생성 문구 · 검증 통과</span></h3>
+      <p>학원 숙제를 앞에 두면 딴 데를 자주 본다고 적어 주셨는데, 검사에서도 주의집중 척도(T점수 67)가 준임상 범위로 보고되었습니다. 놀이터에서 또래에게 먼저 말을 거는 일이 줄었다는 관찰은 위축 척도(T점수 62, 준임상)와 나란히 놓이고, 우울/불안 척도(T점수 65)와 이를 묶은 내재화 문제(T점수 62)도 준임상 범위입니다. 총 문제행동은 정상 범위(T점수 57)입니다. 준임상은 또래보다 조금 더 자주 보고되었다는 뜻이며, 두 관찰이 어떤 의미인지는 예약된 상담에서 상담사와 이야기해 보세요.</p>
+    </div>
+
+    <h3>종합지표</h3>
+    
+    <div class="row">
+      <div class="head">
+        <strong>1. 총 문제행동</strong>
+        <span class="chip normal">정상</span>
+        <span class="tval">T점수 57</span>
+      </div>
+      <p class="one">총 문제행동 · 정상 · 또래와 비슷한 정도로 보고됨</p>
+    </div>
+    
+    <div class="row">
+      <div class="head">
+        <strong>2. 내재화 문제</strong>
+        <span class="chip borderline">준임상</span>
+        <span class="tval">T점수 62</span>
+      </div>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="21.6" height="121" fill="#f6e8d4"/><rect x="287.6" y="24" width="158.4" height="121" fill="#f3dbd2"/><rect x="251.6" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="287.6" y1="24" x2="287.6" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="290.6" y="34" font-size="9.5" fill="#6b7280">임상 기준 63T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="280.4" y1="145" x2="280.4" y2="86.1" stroke="#b0552e" stroke-width="1.5"/><circle cx="280.4" cy="86.1" r="4" fill="#b0552e"/><text x="286.4" y="78.1" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 62T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg><p class="text" style="margin:6px 0 4px">안으로 향하는 어려움(움츠러듦, 몸의 불편감, 가라앉는 기분)이 또래보다 조금 더 자주 보고되어 준임상 범위입니다. 겉으로 드러나지 않아 보는 사람마다 정도가 다르게 느껴지는 영역이라, 어떤 장면에서 그렇게 느꼈는지를 상담에서 함께 살펴보게 됩니다.</p>
+    </div>
+    
+    <div class="row">
+      <div class="head">
+        <strong>3. 외현화 문제</strong>
+        <span class="chip normal">정상</span>
+        <span class="tval">T점수 52</span>
+      </div>
+      <p class="one">외현화 문제 · 정상 · 또래와 비슷한 정도로 보고됨</p>
+    </div>
+    
+
+    <h3 style="margin-top:16px">개별 척도</h3>
+    
+    <details class="card open" open>
+      <summary>
+        <div class="head">
+          <strong>위축</strong>
+          <span class="chip borderline">준임상</span>
+          <span class="tval">T점수 62</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="251.6" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="280.4" y1="145" x2="280.4" y2="86.1" stroke="#b0552e" stroke-width="1.5"/><circle cx="280.4" cy="86.1" r="4" fill="#b0552e"/><text x="286.4" y="78.1" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 62T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">혼자 있으려 하거나 또래를 피하는 모습이 또래보다 조금 더 자주 보고되어 준임상 범위입니다. 새 모둠이나 놀이터처럼 또래와 만나는 장면에서 아이가 어떻게 시작하는지가 상담에서 다룰 재료가 됩니다. <span class="tag">고정 문구</span></p>
+      <div class="psyedu">준임상 구간은 확정된 상태가 아니라 관찰과 개입의 여지가 있는 구간입니다. 해석 유의사항은 재검사와 다중 정보원(교사 보고, 자기 보고) 병행을 권고합니다.</div>
+    </details>
+    
+    <details class="card">
+      <summary>
+        <div class="head">
+          <strong>신체증상</strong>
+          <span class="chip normal">정상</span>
+          <span class="tval">T점수 51</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="172.4" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="201.2" y1="145" x2="201.2" y2="24.6" stroke="#b0552e" stroke-width="1.5"/><circle cx="201.2" cy="24.6" r="4" fill="#b0552e"/><text x="207.2" y="16.6" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 51T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">뚜렷한 원인 없이 보고되는 몸의 불편감(두통, 복통 등)이 또래와 비슷한 정도라 정상 범위입니다. 시험날 아침에 배가 아프다고 하는 정도는 많은 아이가 한 번쯤 보이는 모습입니다. <span class="tag">고정 문구</span></p>
+      
+    </details>
+    
+    <details class="card open" open>
+      <summary>
+        <div class="head">
+          <strong>우울/불안</strong>
+          <span class="chip borderline">준임상</span>
+          <span class="tval">T점수 65</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="273.2" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="302.0" y1="145" x2="302.0" y2="105.7" stroke="#b0552e" stroke-width="1.5"/><circle cx="302.0" cy="105.7" r="4" fill="#b0552e"/><text x="308.0" y="97.7" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 65T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">걱정이 많아 보이거나 기분이 가라앉아 보이는 모습이 또래보다 조금 더 자주 보고되어 준임상 범위입니다. 아이가 무엇을 걱정하는지 주제만 적어 두어도 상담에서 쓸 수 있습니다. <span class="tag">고정 문구</span></p>
+      <div class="psyedu">준임상 구간은 확정된 상태가 아니라 관찰과 개입의 여지가 있는 구간입니다. 해석 유의사항은 재검사와 다중 정보원(교사 보고, 자기 보고) 병행을 권고합니다.</div>
+    </details>
+    
+    <details class="card">
+      <summary>
+        <div class="head">
+          <strong>사회적 미성숙</strong>
+          <span class="chip normal">정상</span>
+          <span class="tval">T점수 57</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="215.6" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="244.4" y1="145" x2="244.4" y2="50.3" stroke="#b0552e" stroke-width="1.5"/><circle cx="244.4" cy="50.3" r="4" fill="#b0552e"/><text x="250.4" y="42.3" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 57T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">나이에 비해 어리게 행동하거나 또래 관계에서 서툰 모습이 또래와 비슷한 정도로 보고되어 정상 범위입니다. 자기보다 어린 동생들과 노는 것을 더 편하게 느끼는 모습은 흔합니다. <span class="tag">고정 문구</span></p>
+      
+    </details>
+    
+    <details class="card">
+      <summary>
+        <div class="head">
+          <strong>사고의 문제</strong>
+          <span class="chip normal">정상</span>
+          <span class="tval">T점수 50</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="165.2" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="194.0" y1="145" x2="194.0" y2="24.0" stroke="#b0552e" stroke-width="1.5"/><circle cx="194.0" cy="24.0" r="4" fill="#b0552e"/><text x="200.0" y="16.0" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 50T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">반복 행동이나 주변이 이해하기 어려운 생각 표현이 또래와 비슷한 정도로 보고되어 정상 범위입니다. 같은 순서로 물건을 정리해야 마음이 놓이는 정도의 습관은 많은 아이에게 있습니다. <span class="tag">고정 문구</span></p>
+      
+    </details>
+    
+    <details class="card open" open>
+      <summary>
+        <div class="head">
+          <strong>주의집중</strong>
+          <span class="chip borderline">준임상</span>
+          <span class="tval">T점수 67</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="287.6" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="316.4" y1="145" x2="316.4" y2="116.5" stroke="#b0552e" stroke-width="1.5"/><circle cx="316.4" cy="116.5" r="4" fill="#b0552e"/><text x="322.4" y="108.5" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 67T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">집중을 유지하기 어렵거나 가만히 있기 어려운 모습이 또래보다 조금 더 자주 보고되어 준임상 범위입니다. 어떤 활동에서는 집중이 오래 가고 어떤 활동에서 끊기는지를 함께 보면 상담에서 쓸 수 있습니다. <span class="tag">고정 문구</span></p>
+      <div class="psyedu">준임상 구간은 확정된 상태가 아니라 관찰과 개입의 여지가 있는 구간입니다. 해석 유의사항은 재검사와 다중 정보원(교사 보고, 자기 보고) 병행을 권고합니다.</div>
+    </details>
+    
+    <details class="card">
+      <summary>
+        <div class="head">
+          <strong>비행</strong>
+          <span class="chip normal">정상</span>
+          <span class="tval">T점수 47</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="143.6" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="172.4" y1="145" x2="172.4" y2="29.3" stroke="#b0552e" stroke-width="1.5"/><circle cx="172.4" cy="29.3" r="4" fill="#b0552e"/><text x="178.4" y="21.3" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 47T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">규칙을 어기는 행동이 또래와 비슷한 정도로 보고되어 정상 범위입니다. 정해진 귀가 시간을 가끔 어기는 정도는 흔한 모습입니다. <span class="tag">고정 문구</span></p>
+      
+    </details>
+    
+    <details class="card">
+      <summary>
+        <div class="head">
+          <strong>공격성</strong>
+          <span class="chip normal">정상</span>
+          <span class="tval">T점수 53</span>
+        </div>
+      </summary>
+      <svg viewBox="0 0 460 185" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect x="266.0" y="24" width="72.0" height="121" fill="#f6e8d4"/><rect x="338.0" y="24" width="108.0" height="121" fill="#f3dbd2"/><rect x="186.8" y="24" width="57.6" height="121" fill="#aac4e2" fill-opacity="0.35"/><path d="M14.0,139.7 L21.2,138.2 L28.4,136.4 L35.6,134.2 L42.8,131.7 L50.0,128.6 L57.2,125.1 L64.4,121.1 L71.6,116.5 L78.8,111.4 L86.0,105.7 L93.2,99.6 L100.4,93.0 L107.6,86.1 L114.8,78.9 L122.0,71.6 L129.2,64.3 L136.4,57.1 L143.6,50.3 L150.8,43.9 L158.0,38.2 L165.2,33.3 L172.4,29.3 L179.6,26.4 L186.8,24.6 L194.0,24.0 L201.2,24.6 L208.4,26.4 L215.6,29.3 L222.8,33.3 L230.0,38.2 L237.2,43.9 L244.4,50.3 L251.6,57.1 L258.8,64.3 L266.0,71.6 L273.2,78.9 L280.4,86.1 L287.6,93.0 L294.8,99.6 L302.0,105.7 L309.2,111.4 L316.4,116.5 L323.6,121.1 L330.8,125.1 L338.0,128.6 L345.2,131.7 L352.4,134.2 L359.6,136.4 L366.8,138.2 L374.0,139.7 L381.2,140.9 L388.4,141.8 L395.6,142.6 L402.8,143.2 L410.0,143.7 L417.2,144.0 L424.4,144.3 L431.6,144.5 L438.8,144.6 L446.0,144.7" fill="none" stroke="#4a6fa5" stroke-width="2"/><line x1="14.0" y1="145" x2="446.0" y2="145" stroke="#8a94a3" stroke-width="1"/><line x1="266.0" y1="24" x2="266.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="269.0" y="34" font-size="9.5" fill="#6b7280">준임상 기준 60T</text><line x1="338.0" y1="24" x2="338.0" y2="145" stroke="#c2ae92" stroke-width="1" stroke-dasharray="3,3"/><text x="341.0" y="34" font-size="9.5" fill="#6b7280">임상 기준 70T</text><line x1="50.0" y1="145" x2="50.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="50.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">30T</text><line x1="122.0" y1="145" x2="122.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="122.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">40T</text><line x1="194.0" y1="145" x2="194.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="194.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">50T</text><line x1="266.0" y1="145" x2="266.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="266.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">60T</text><line x1="338.0" y1="145" x2="338.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="338.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">70T</text><line x1="410.0" y1="145" x2="410.0" y2="149" stroke="#8a94a3" stroke-width="1"/><text x="410.0" y="160" text-anchor="middle" font-size="10" fill="#6b7280">80T</text><line x1="215.6" y1="145" x2="215.6" y2="29.3" stroke="#b0552e" stroke-width="1.5"/><circle cx="215.6" cy="29.3" r="4" fill="#b0552e"/><text x="221.6" y="21.3" text-anchor="start" font-size="11" font-weight="600" fill="#b0552e">우리 아이 53T</text><text x="230" y="179" text-anchor="middle" font-size="11" fill="#4b5563">오른쪽일수록 해당 행동이 또래보다 많이 보고됨 →</text></svg>
+      <p class="text">말다툼, 떼쓰기, 공격적인 행동이 또래와 비슷한 정도로 보고되어 정상 범위입니다. 보드게임에서 진 뒤 화를 내는 것은 많은 아이가 보이는 모습이고, 이 척도는 얼마나 자주인지를 봅니다. <span class="tag">고정 문구</span></p>
+      
+    </details>
+    
+
+    <details class="fold">
+      <summary>곡선의 밴드와 기준선은 무엇인가요</summary>
+      <p style="margin-top:6px">마커 주변의 밴드는 측정의 표준오차(SEM)로 계산한 대칭 구간입니다. 신뢰도 예시값 0.84 기준 SEM 4.0T이며, 반복 측정 시 점수가 이 범위에 들어올 확률은 약 68%입니다. 실제 서비스는 검사 매뉴얼의 척도별 신뢰도 계수를 씁니다.</p>
+    </details>
+
+    <div class="caution">이 보고서는 선별 도구이며 진단이 아닙니다. 검사 한 번의 결과는 아이를 이해하는 출발점일 뿐, 그 자체로 어떤 판정도 확정하지 않습니다.</div>
+    <details class="fold">
+      <summary>이 자료의 한계 (고정 문구)</summary>
+      <p style="margin-top:6px">이 검사는 보호자의 보고를 바탕으로 한 선별 도구이며, 단일 검사만으로는 어떤 것도 확정되지 않습니다. 관찰자가 다르면 결과가 다르게 나오는 것이 자연스럽습니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요.</p>
+    </details>
+  </section>
+
+  <section class="page" id="prep">
+    <h2>상담 준비 도우미</h2>
+    <p>결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다. 숙제 앞에서, 놀이터에서 본 장면을 그대로 메모해 두시면 예약된 상담에서 상담사와 이야기할 가장 좋은 재료가 됩니다.<span class="tag">생성 문구 · 검증 통과</span></p>
+
+    <h3>상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
+    <ul class="qlist">
+      
+      <li><input type="checkbox" checked> <span>학원 숙제를 앞에 두면 딴 데를 자주 보는 모습과 주의집중 척도(T점수 67)가 준임상 범위로 보고된 것을 어떻게 연결해서 보면 될까요?</span>
+          <span class="src-badge">근거: 주의집중</span></li>
+      
+      <li><input type="checkbox" checked> <span>또래에게 먼저 말을 거는 일이 줄어든 것과 위축 척도(T점수 62)의 결과를 함께 보면, 상담에서 무엇을 먼저 살펴보게 되나요?</span>
+          <span class="src-badge">근거: 위축</span></li>
+      
+      <li><input type="checkbox" checked> <span>내재화 문제(T점수 62)는 준임상 범위인데 총 문제행동(T점수 57)은 정상 범위입니다. 두 결과를 함께 읽는 방법을 알려 주세요.</span>
+          <span class="src-badge">근거: 내재화 문제</span></li>
+      
+      <li><input type="checkbox" checked> <span>우울/불안 척도(T점수 65)에 대해 가정에서 관찰해 두면 도움이 되는 상황이 있을까요?</span>
+          <span class="src-badge">근거: 우울/불안</span></li>
+      
+      <li><input type="checkbox" checked> <span>준임상이라는 라벨은 다음 단계로 무엇을 하는 구간인지, 이 아이의 경우에 맞춰 듣고 싶습니다.</span>
+          <span class="src-badge">근거: 내재화 문제</span></li>
+      
+      <li><input type="checkbox" checked> <span>내재화 문제(T점수 62)처럼 안으로 향하는 어려움은 집에서는 잘 안 보일 수 있다고 들었는데, 교사처럼 다른 관찰자의 보고를 함께 받아 보는 것이 도움이 될까요?</span>
+          <span class="src-badge">근거: 내재화 문제</span></li>
+      
+    </ul>
+
+    <h3 style="margin-top:16px">상담까지 남은 5일, 가정 관찰 포인트</h3>
+    <ul class="qlist">
+      
+      <li><span>·</span> <span>숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기</span>
+          <span class="src-badge">근거: 주의집중</span></li>
+      
+      <li><span>·</span> <span>놀이터나 학원에서 또래와의 대화를 누가 먼저 시작했는지 기록하기</span>
+          <span class="src-badge">근거: 위축</span></li>
+      
+      <li><span>·</span> <span>잠들기 전 아이가 걱정거리를 이야기하면 주제만 메모해 두기</span>
+          <span class="src-badge">근거: 우울/불안</span></li>
+      
+      <li><span>·</span> <span>상담까지 남은 5일 동안 하루 한 번, 집중이 오래 유지된 활동을 적기</span>
+          <span class="src-badge">근거: 주의집중</span></li>
+      
+    </ul>
+
+    <details class="brief">
+      <summary>상담사용 사전 요약 (보호자 화면에는 표시되지 않는 별도 전달용)</summary>
+      <div class="box gen">종합지표: 총 문제행동 T=57(정상), 내재화 문제 T=62(준임상), 외현화 문제 T=52(정상). 개별 척도 중 위축 T=62(준임상), 우울/불안 T=65(준임상), 주의집중 T=67(준임상). 보호자 관찰 요지: 학원 숙제를 앞에 두면 딴 데를 자주 봅니다 / 놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다. 상담까지 5일 남은 시점의 요약이며, 보호자가 고른 질문 목록과 대기 기간 관찰 기록이 첨부됩니다.</div>
+    </details>
+  </section>
+
+  <footer>
+    <details>
+      <summary>생성 정보</summary>
+      가드레일 재생성 0회 · 안전 문구 대체 0건 ·
+      수치와 그림은 결정론 코드가, 연결 문단·질문은 LLM이, 척도 해설은 고정 문구가, 임상 판단은 상담사가 담당합니다.
+    </details>
+  </footer>
+</main>
+</body>
+</html>

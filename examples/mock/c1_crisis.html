@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상담 연결 안내</title>
+<style>
+  :root { --ink: #2f3437; --sub: #6b7280; --line: #e5e2dc; --bg: #f7f6f3;
+          --card: #fff; --accent: #4a6fa5; --warm-ink: #97462a; --warm-bg: #f6e0d8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.7; font-size: 15.5px;
+         font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 20px 64px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .meta { color: var(--sub); font-size: 13px; margin-bottom: 24px; }
+  .badge { display: inline-block; background: #f8ecd9; color: #8a6425; border-radius: 20px;
+           padding: 1px 10px; font-weight: 600; margin-right: 6px; font-size: 12px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+           padding: 26px 28px; margin-bottom: 18px; }
+  .lead { border-left: 4px solid var(--accent); background: #f2f5f9; border-radius: 0 8px 8px 0;
+          padding: 14px 18px; margin: 0 0 16px; }
+  .help { border: 1px solid var(--warm-ink); border-radius: 12px; background: var(--card);
+          padding: 22px 28px; }
+  .help h2 { font-size: 16px; margin: 0 0 10px; color: var(--warm-ink); }
+  .help ul { margin: 0; padding-left: 4px; list-style: none; }
+  .help li { padding: 7px 0; border-bottom: 1px dashed var(--line); display: flex; gap: 12px;
+             align-items: baseline; }
+  .help li:last-child { border-bottom: none; }
+  .num { font-weight: 800; font-size: 17px; color: var(--warm-ink); min-width: 92px; }
+  footer { color: var(--sub); font-size: 12.5px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>상담 연결 안내</h1>
+  <p class="meta"><span class="badge">자작 가상 데이터</span>서가상 (가상 아동) · K-CBCL 6-18 (보호자 보고형) · 검사일 2026-08-28</p>
+
+  <div class="panel">
+    <p class="lead">작성해 주신 관찰 내용 중에, 자동 해설보다 상담사가 직접 그리고 빨리
+    살펴봐야 하는 내용이 있습니다. 그래서 이 화면에서는 자동 해설을 만들지 않았습니다.</p>
+    <p>검사 결과에 대한 설명은 예약된 상담에서 상담사가 직접 드립니다.
+    예약된 상담(약 2일 후)을 기다리지 마시고,
+    상담 기관에 지금 연락해 일정을 앞당길 수 있는지 문의해 주세요.</p>
+  </div>
+
+  <div class="help">
+    <h2>지금 바로 도움을 받을 수 있는 곳 (24시간)</h2>
+    <ul>
+      <li><span class="num">109</span><span>자살예방 상담전화</span></li>
+      <li><span class="num">1577-0199</span><span>정신건강 위기상담 전화</span></li>
+      <li><span class="num">1388</span><span>청소년 전화 (문자 #1388)</span></li>
+      <li><span class="num">112 / 119</span><span>위급한 상황이라면 즉시</span></li>
+    </ul>
+  </div>
+
+  <footer>이 안내는 자동 규칙(긴급 키워드 검출)에 따라 표시되었습니다. 규칙은 일부러
+  과도하게 조심하는 방향으로 설계되어 있으며, 실제 상황 판단은 상담사가 합니다.</footer>
+</main>
+</body>
+</html>
