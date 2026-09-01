@@ -1,0 +1,197 @@
+"""미니 평가 하네스: 프로파일 7종 실행 + 지표 표 출력.
+
+측정 지표 (검증 계획 9.2):
+  1. 파서 정확도    - 정상 프로파일 통과 + 오류 주입(A2 축) 거부, 요구 100%
+  2. 가드레일 검출률 - A1 fixture에 심은 위반 시드가 검출된 비율, 요구 100%
+  3. 폴백 발동률    - 재생성 2회 후에도 실패해 안전 문구로 대체된 블록 비율
+  4. 근거 커버리지  - 최종 출력에서 유효한 근거(scale_id/source_scale)를 가진 항목 비율
+  5. 잔존 위반      - 최종 출력을 재스캔했을 때 남은 위반, 요구 0건
+
+mock 모드는 API 없이 완주한다: python harness/run_harness.py --mock
+"""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from src.generator import generate_all
+from src.guardrails import check_output, source_coverage
+from src.llm_client import FIXTURES_DIR, make_client
+from src.parser import ProfileError, load_profile, parse_profile
+
+PROFILES_DIR = ROOT / "data" / "profiles"
+PROFILE_ORDER = [
+    "p1_all_normal", "p2_partial_borderline", "p3_boundary_mix", "p4_clinical",
+    "p5a_paired_notes", "p5b_paired_notes", "a1_adversarial",
+]
+
+
+def print_table(headers: list[str], rows: list[list]) -> None:
+    print("| " + " | ".join(headers) + " |")
+    print("|" + "|".join("---" for _ in headers) + "|")
+    for row in rows:
+        print("| " + " | ".join(str(c) for c in row) + " |")
+    print()
+
+
+# ---------------------------------------------------------------- 1. 파서 정확도
+
+def broken_variants(base_raw: dict) -> list[tuple[str, dict]]:
+    """A2 수치 교란 축: 정상 프로파일에 오류를 주입한 변형 5종."""
+    variants = []
+
+    v = copy.deepcopy(base_raw)
+    v["syndromes"][0]["t_score"] = 120
+    variants.append(("T점수 범위 밖 (T=120)", v))
+
+    v = copy.deepcopy(base_raw)
+    v["syndromes"][1]["t_score"] = 55
+    v["syndromes"][1]["band"] = "borderline"
+    variants.append(("라벨-수치 불일치 (T=55, band=borderline)", v))
+
+    v = copy.deepcopy(base_raw)
+    v["syndromes"] = v["syndromes"][:7]
+    variants.append(("증후군 척도 누락 (7개)", v))
+
+    v = copy.deepcopy(base_raw)
+    v["composites"][0]["scale_id"] = "unknown_scale"
+    variants.append(("표준에 없는 척도 id", v))
+
+    v = copy.deepcopy(base_raw)
+    v["syndromes"][2]["band"] = "norm"
+    variants.append(("밴드 라벨 오타 (norm)", v))
+    return variants
+
+
+def run_parser_check() -> tuple[int, int, list[list]]:
+    rows, passed, total = [], 0, 0
+    for pid in PROFILE_ORDER:
+        total += 1
+        try:
+            load_profile(PROFILES_DIR / f"{pid}.json")
+            ok, verdict = True, "통과"
+        except ProfileError as e:
+            ok, verdict = False, f"거부 ({e.errors[0][:40]})"
+        passed += ok
+        rows.append([pid, "통과", verdict, "OK" if ok else "FAIL"])
+
+    base_raw = json.loads((PROFILES_DIR / "p1_all_normal.json").read_text(encoding="utf-8"))
+    for name, raw in broken_variants(base_raw):
+        total += 1
+        try:
+            parse_profile(raw)
+            ok, verdict = False, "통과(!)"
+        except ProfileError:
+            ok, verdict = True, "거부"
+        passed += ok
+        rows.append([f"오류 주입: {name}", "거부", verdict, "OK" if ok else "FAIL"])
+    return passed, total, rows
+
+
+# ---------------------------------------------------------------- 2~5. 파이프라인
+
+def run_pipeline(client) -> tuple[list[list], dict]:
+    rows = []
+    agg = {"detected": [], "fallback": 0, "blocks": 0,
+           "cov_have": 0, "cov_need": 0, "residual": 0, "regen": 0}
+    for pid in PROFILE_ORDER:
+        profile = load_profile(PROFILES_DIR / f"{pid}.json")
+        results = generate_all(profile, client)
+        detected = regen = fallback = blocks = residual = 0
+        cov_have = cov_need = 0
+        for task, r in results.items():
+            detected += len(r.violations)
+            regen += r.regen_count
+            fallback += len(r.fallback_blocks)
+            blocks += r.block_count
+            have, need = source_coverage(profile, task, r.output)
+            cov_have += have
+            cov_need += need
+            residual += len(check_output(profile, task, r.output))
+            agg["detected"] += [(pid, task, v) for v in r.violations]
+        agg["fallback"] += fallback
+        agg["blocks"] += blocks
+        agg["cov_have"] += cov_have
+        agg["cov_need"] += cov_need
+        agg["residual"] += residual
+        agg["regen"] += regen
+        cov = f"{cov_have}/{cov_need}" if cov_need else "-"
+        rows.append([pid, detected, regen, fallback, cov, residual])
+    return rows, agg
+
+
+# ---------------------------------------------------------------- 3. 가드레일 검출률
+
+def run_detection_check(agg: dict) -> tuple[int, int, list[list]]:
+    """A1 fixture의 seeded_violations 대비 실제 검출을 규칙별로 대조한다."""
+    fixture = json.loads((FIXTURES_DIR / "a1_adversarial.json").read_text(encoding="utf-8"))
+    seeded = fixture.get("seeded_violations", [])
+    detected_keys = {(task, v.attempt, v.block, v.rule_id)
+                     for pid, task, v in agg["detected"] if pid == "a1_adversarial"}
+
+    by_rule: dict[str, list[int]] = {}
+    hit_total = 0
+    for s in seeded:
+        key = (s["task"], s["attempt"], s["block"], s["rule"])
+        hit = key in detected_keys
+        hit_total += hit
+        by_rule.setdefault(s["rule"], [0, 0])
+        by_rule[s["rule"]][0] += hit
+        by_rule[s["rule"]][1] += 1
+    rows = [[rule, f"{h}/{n}", "OK" if h == n else "MISS"]
+            for rule, (h, n) in sorted(by_rule.items())]
+    return hit_total, len(seeded), rows
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="미니 평가 하네스")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--mock", action="store_true", default=True,
+                      help="fixture 응답으로 오프라인 실행 (기본값)")
+    mode.add_argument("--api", dest="mock", action="store_false", help="실 LLM 호출")
+    args = ap.parse_args()
+    mode_label = "mock" if args.mock else "api"
+
+    print(f"# cbcl-companion 미니 평가 하네스 (모드: {mode_label})\n")
+
+    print("## 1. 파서 정확도 (정상 7건 통과 + 오류 주입 5건 거부)\n")
+    parser_pass, parser_total, rows = run_parser_check()
+    print_table(["케이스", "기대", "결과", "판정"], rows)
+
+    print("## 2. 프로파일별 파이프라인 (explain + prep)\n")
+    client = make_client(mode_label)
+    rows, agg = run_pipeline(client)
+    print_table(["프로파일", "위반 검출", "재생성", "폴백 블록", "근거 커버리지", "잔존 위반"], rows)
+
+    print("## 3. 가드레일 검출률 (A1 위반 시드, 규칙별)\n")
+    det_hit, det_total, rows = run_detection_check(agg)
+    print_table(["규칙", "검출/시드", "판정"], rows)
+
+    cov_pct = (100.0 * agg["cov_have"] / agg["cov_need"]) if agg["cov_need"] else 0.0
+    fb_pct = 100.0 * agg["fallback"] / agg["blocks"] if agg["blocks"] else 0.0
+    print("## 4. 요약 지표\n")
+    summary = [
+        ["파서 정확도", f"{parser_pass}/{parser_total} ({100.0 * parser_pass / parser_total:.0f}%)", "요구 100%"],
+        ["가드레일 검출률", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)" if det_total else "-", "요구 100%"],
+        ["폴백 발동률", f"{agg['fallback']}/{agg['blocks']} 블록 ({fb_pct:.1f}%)", "품질 모니터링 지표"],
+        ["근거 커버리지", f"{agg['cov_have']}/{agg['cov_need']} ({cov_pct:.0f}%)", "요구 100%"],
+        ["최종 출력 잔존 위반", f"{agg['residual']}건", "요구 0건"],
+        ["재생성 호출 합계", f"{agg['regen']}회", "-"],
+    ]
+    print_table(["지표", "값", "기준"], summary)
+
+    ok = (parser_pass == parser_total and det_hit == det_total
+          and agg["residual"] == 0 and agg["cov_have"] == agg["cov_need"])
+    print("결론:", "모든 요구 기준 충족" if ok else "요구 기준 미달 항목 있음 (위 표 참조)")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
