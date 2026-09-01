@@ -74,7 +74,7 @@ def test_raw_vs_final_coverage_are_different_metrics():
 
 
 def test_seed_inventory_matches_gate_constants():
-    """시드 파일 재고: B축 30건, 파이프라인 10건, expect_rules 공백 없음."""
+    """시드 파일 재고: B축 39건(G1~G9 + 우회), 파이프라인 10건, expect_rules 공백 없음."""
     total = 0
     for name in rh.SEEDED_FILE_ORDER:
         data = json.loads(
@@ -82,8 +82,16 @@ def test_seed_inventory_matches_gate_constants():
         for case in data["cases"]:
             assert case["expect_rules"], f"{case['id']}: expect_rules 비어 있음"
         total += len(data["cases"])
-    assert total == rh.EXPECTED_B_SEEDS == 30
+    assert total == rh.EXPECTED_B_SEEDS == 39
 
     manifest = json.loads(
         (rh.FIXTURES_DIR / "a1_adversarial.json").read_text(encoding="utf-8"))
     assert len(manifest["seeded_violations"]) == rh.EXPECTED_PIPELINE_SEEDS == 10
+
+
+def test_all_seeds_detected():
+    """B축 시드 전수가 검출된다 (규칙별 파일 10종)."""
+    hit, total, rows, fails = rh.run_seeded_check()
+    assert fails == []
+    assert hit == total == rh.EXPECTED_B_SEEDS
+    assert len(rows) == len(rh.SEEDED_FILE_ORDER) == 10

@@ -1,6 +1,6 @@
 """출력 안전성 가드레일 (규칙 엔진, LLM 미사용).
 
-출력 규칙 6종:
+출력 규칙 9종:
   G1 진단명 사전         - 진단명 등장 자체를 위반 처리 (부정문 포함, 의도된 과검출)
   G2 심각성 단정(양방향) - 심각 쪽 단정과 근거 없는 낙관 보증을 모두 차단
   G3 수치 대조           - 본문 수치를 입력 수치 집합과 대조 + 에코 필드(t_score, band) 대조
@@ -8,6 +8,14 @@
   G5 스키마              - 출력 JSON 구조, 필수 필드, 항목 수
   G6 처방·치료 권고      - 약물, 치료 시작, 의료기관 방문 지시 차단
                            (허용 형태는 "예약된 상담에서 상담사와 이야기해 보세요" 하나뿐)
+  G7 형식 누출           - 보호자 노출 텍스트에 scale_id 값, 영문 소문자 식별자, "scale_id",
+                           괄호 안 영문 코드가 새면 위반 (상담사용 사전 요약은 대상 아님)
+  G8 밴드 라벨 정합      - 밴드 어휘는 보고서 라벨(정상/준임상/임상)만 허용하고, 언급된
+                           척도(척도명 사전으로 매핑)의 실제 band와 일치해야 함.
+                           "경계 수준", "경계성", "borderline", "위험군", "높은 편" 등은 위반
+  G9 정상 척도 근거 금지 - 질문·관찰 포인트의 source_scale band가 normal이면 위반
+                           (종합지표 포함). 정상 척도는 해설 카드에서만 다룬다.
+                           전 척도 정상 프로파일은 앵커가 없으므로 적용하지 않는다.
 
 위반 블록은 최대 2회 재생성하고, 그래도 실패하면 사전 작성 안전 문구로
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
@@ -24,8 +32,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from .parser import (BAND_KO, COMPOSITE_IDS, SCALE_DEFINITIONS, SYNDROME_IDS,
-                     CBCLProfile)
+from .parser import (BAND_KO, COMPOSITE_IDS, SCALE_DEFINITIONS, SCALE_NAMES,
+                     SYNDROME_IDS, CBCLProfile)
 
 MAX_REGEN = 2  # 첫 생성 이후 블록 단위 재생성 횟수
 
@@ -90,10 +98,55 @@ NUMBER_PATTERNS = [re.compile(p) for p in (
     r"(\d{1,3})\s*%",
 )]
 
+# --- G7: 형식 누출 (보호자 노출 텍스트에 코드·식별자가 새는 경우) ---
+# 한국어 본문에 영문 소문자 식별자가 나타날 정당한 이유는 없다. 대문자 약어
+# (T점수, K-CBCL, SEM, TRF)는 대상이 아니다. 한글 바로 옆에 붙은 경우도 잡도록
+# \b 대신 영숫자 lookaround를 쓴다.
+_SCALE_ID_ALT = "|".join(sorted(SCALE_NAMES, key=len, reverse=True))
+FORMAT_LEAK_PATTERNS = [re.compile(p) for p in (
+    r"scale_id",
+    rf"(?<![A-Za-z0-9_])(?:{_SCALE_ID_ALT})(?![A-Za-z0-9_])",
+    r"(?<![A-Za-z0-9_])[a-z][a-z0-9_]{2,}(?![A-Za-z0-9_])",
+    r"\([^()]*[a-z_]{2,}[^()]*\)",
+)]
+
+# --- G8: 밴드 라벨 정합 ---
+# 허용 어휘는 보고서 라벨 그대로(정상/준임상/임상)뿐이다. "임상적", "임상 판단",
+# "비정상", "정상적"처럼 라벨이 아닌 일반어 용법은 매칭에서 제외한다.
+BAND_WORD_PATTERN = re.compile(
+    r"준임상|(?<!준)임상(?!적|가|\s*(?:심리|판단|해석|전문))|(?<!비)정상(?!적|화)")
+BAND_OF_WORD = {"정상": "normal", "준임상": "borderline", "임상": "clinical"}
+NONSTANDARD_BAND_PATTERNS = [re.compile(p) for p in (
+    r"경계\s*(?:수준|선|성|범위|구간|영역|점수|단계|상태)",
+    r"경계(?:에|로)\s*(?:해당|위치|속|있|가깝|걸)",
+    r"준\s*임계",                       # "준임상"의 오기 (실측에서 관찰)
+    r"임계\s*(?:범위|수준|구간)",
+    r"위험군",
+    r"높은\s*편",
+    r"낮은\s*편",
+    r"(?<![A-Za-z])(?:borderline|clinical|normal)(?![A-Za-z])",
+)]
+# 본문에 언급된 척도를 scale_id로 매핑하는 한국어 척도명 사전 (표기 변형 포함)
+SCALE_NAME_ALIASES: dict[str, tuple[str, ...]] = {
+    "total_problems": ("총 문제행동", "총문제행동", "총 문제 행동"),
+    "internalizing": ("내재화",),
+    "externalizing": ("외현화",),
+    "withdrawn": ("위축",),
+    "somatic": ("신체증상", "신체 증상"),
+    "anxious_depressed": ("우울/불안", "우울·불안", "우울-불안", "우울불안",
+                          "우울 및 불안", "불안/우울"),
+    "social_immaturity": ("사회적 미성숙", "사회적미성숙", "사회 미성숙"),
+    "thought_problems": ("사고의 문제", "사고 문제", "사고문제"),
+    "attention": ("주의집중", "주의 집중"),
+    "delinquent": ("비행",),
+    "aggressive": ("공격성",),
+}
+_SENTENCE_END = re.compile(r"[.!?\n]")
+
 
 @dataclass
 class Violation:
-    rule_id: str          # "G1".."G5"
+    rule_id: str          # "G1".."G9"
     block: str            # 위반이 발견된 블록 id (예: "scale:attention")
     matched: str          # 매칭된 문자열 또는 불일치 값 쌍
     attempt: int = -1     # 몇 번째 생성에서 발견됐는지 (run_with_guardrails가 기록)
@@ -183,8 +236,79 @@ def split_blocks(profile: CBCLProfile, task: str, raw: dict) -> dict[str, object
 
 # ---------------------------------------------------------------- 검사기
 
-def _check_text(block: str, text: str, profile: CBCLProfile) -> list[Violation]:
-    """텍스트 1개에 대한 G1/G2/G3 검사."""
+def _check_format_leak(block: str, text: str) -> list[Violation]:
+    """G7: 보호자 노출 텍스트의 코드 누출. 첫 매칭 1건만 보고한다 (피드백 간결성)."""
+    for pat in FORMAT_LEAK_PATTERNS:
+        m = pat.search(text)
+        if m:
+            return [Violation("G7", block, f"보호자용 본문에 영문 코드 노출: {m.group(0)!r}")]
+    return []
+
+
+def scale_mentions(text: str) -> list[tuple[int, str]]:
+    """본문에 언급된 척도를 (위치, scale_id)로 나열한다 (한국어 척도명 사전 기준)."""
+    found: list[tuple[int, str]] = []
+    for sid, aliases in SCALE_NAME_ALIASES.items():
+        for alias in aliases:
+            start = text.find(alias)
+            while start != -1:
+                found.append((start, sid))
+                start = text.find(alias, start + 1)
+    return sorted(found)
+
+
+def _check_band_labels(block: str, text: str, profile: CBCLProfile,
+                       own_scale: str | None = None,
+                       own_dominates: bool = False) -> list[Violation]:
+    """G8: 밴드 어휘 정합.
+
+    비표준 밴드 표현은 그 자체로 위반. 표준 어휘(정상/준임상/임상)는 직전
+    밴드 어휘 이후 같은 구간에 언급된 척도(없으면 같은 문장 뒤쪽의 척도,
+    그래도 없으면 블록의 own_scale)의 실제 band와 대조한다.
+    own_dominates는 척도 해설 블록용: 구간에 자기 척도가 언급되면 자기
+    척도만 대조한다 (종합지표 해설이 하위 척도를 나열하는 문장 보호).
+    귀속할 척도를 못 찾으면 대조하지 않는다 (규칙 한계, README 명시).
+    """
+    found: list[Violation] = []
+    for pat in NONSTANDARD_BAND_PATTERNS:
+        m = pat.search(text)
+        if m:
+            found.append(Violation(
+                "G8", block, f"허용되지 않는 밴드 표현 {m.group(0)!r} (정상/준임상/임상만 사용)"))
+            break
+    mentions = scale_mentions(text)
+    scale_map = profile.scale_map()
+    prev_end = 0
+    for m in BAND_WORD_PATTERN.finditer(text):
+        word, claimed = m.group(0), BAND_OF_WORD[m.group(0)]
+        targets = [sid for pos, sid in mentions if prev_end <= pos < m.start()]
+        if not targets:
+            tail = _SENTENCE_END.search(text, m.end())
+            sent_end = tail.start() if tail else len(text)
+            nxt = BAND_WORD_PATTERN.search(text, m.end())
+            if nxt:
+                sent_end = min(sent_end, nxt.start())
+            targets = [sid for pos, sid in mentions if m.end() <= pos < sent_end]
+        if own_scale and (not targets or (own_dominates and own_scale in targets)):
+            targets = [own_scale]
+        for sid in dict.fromkeys(targets):
+            actual = scale_map[sid].band
+            if actual != claimed:
+                found.append(Violation(
+                    "G8", block,
+                    f"{SCALE_NAMES[sid]} 라벨 불일치: 본문 {word!r} != 입력 band {BAND_KO[actual]!r}"))
+        prev_end = m.end()
+    return found
+
+
+def _check_text(block: str, text: str, profile: CBCLProfile,
+                own_scale: str | None = None, own_dominates: bool = False,
+                caregiver_facing: bool = True) -> list[Violation]:
+    """텍스트 1개에 대한 G1/G2/G3/G6/G7/G8 검사.
+
+    own_scale은 이 텍스트가 속한 척도(scale 블록의 scale_id, 항목의
+    source_scale). caregiver_facing=False(상담사용 사전 요약)는 G7을 건너뛴다.
+    """
     found: list[Violation] = []
     m = DIAGNOSIS_PATTERN.search(text)
     if m:
@@ -202,6 +326,9 @@ def _check_text(block: str, text: str, profile: CBCLProfile) -> list[Violation]:
         for m in pat.finditer(text):
             if int(m.group(1)) not in allowed:
                 found.append(Violation("G3", block, m.group(0)))
+    if caregiver_facing:
+        found += _check_format_leak(block, text)
+    found += _check_band_labels(block, text, profile, own_scale, own_dominates)
     return found
 
 
@@ -259,7 +386,8 @@ def _check_scale_block(profile: CBCLProfile, block: str, item) -> list[Violation
         vs = _require_str(block, item.get(name), name)
         found += vs
         if not vs:
-            found += _check_text(block, item[name], profile)
+            found += _check_text(block, item[name], profile,
+                                 own_scale=sid, own_dominates=True)
     return found
 
 
@@ -274,18 +402,27 @@ def _check_items_block(profile: CBCLProfile, block: str, items, text_key: str,
     found: list[Violation] = []
     if not (lo <= len(items) <= hi):
         found.append(Violation("G5", block, f"항목 수 {len(items)}건 (요구: {lo}~{hi})"))
-    valid_ids = set(profile.scale_map())
+    scale_map = profile.scale_map()
+    # G9는 앵커가 될 비정상 척도가 있을 때만 적용한다 (전 척도 정상 프로파일 예외)
+    apply_g9 = bool(profile.elevated_scales())
     for i, it in enumerate(items):
         if not isinstance(it, dict):
             found.append(Violation("G5", f"{block}[{i}]", "항목은 객체여야 함"))
             continue
+        sid = it.get("source_scale")
+        scale = scale_map.get(sid)
         vs = _require_str(f"{block}[{i}]", it.get(text_key), text_key)
         found += vs
         if not vs:
             found += [Violation(v.rule_id, block, v.matched)
-                      for v in _check_text(block, it[text_key], profile)]
-        if it.get("source_scale") not in valid_ids:
-            found.append(Violation("G4", block, f"source_scale 매칭 실패: {it.get('source_scale')!r}"))
+                      for v in _check_text(block, it[text_key], profile,
+                                           own_scale=sid if scale else None)]
+        if scale is None:
+            found.append(Violation("G4", block, f"source_scale 매칭 실패: {sid!r}"))
+        elif apply_g9 and scale.band == "normal":
+            found.append(Violation(
+                "G9", block,
+                f"source_scale {sid}({SCALE_NAMES[sid]})는 정상 범위 - 질문·관찰의 근거는 준임상/임상 척도만"))
     return found
 
 
@@ -303,7 +440,9 @@ def check_block(profile: CBCLProfile, task: str, block: str, content) -> list[Vi
     vs = _require_str(block, content, block)
     if vs:
         return vs
-    return _check_text(block, content, profile)
+    # 상담사용 사전 요약은 보호자에게 노출되지 않으므로 G7(형식 누출) 대상이 아니다
+    return _check_text(block, content, profile,
+                       caregiver_facing=(block != "counselor_briefing"))
 
 
 def check_output(profile: CBCLProfile, task: str, raw) -> list[Violation]:

@@ -133,3 +133,109 @@ def test_fail_closed_fallback_after_two_regens(explain_out):
     assert result.regen_count == 2
     assert result.fallback_blocks == ["before_counseling"]
     assert check_output(PROFILE, "explain", result.output) == []
+
+
+# ---------------------------------------------------------------- G7/G8/G9
+
+def test_g7_scale_id_leak_in_question(prep_out):
+    """실LLM 실측 결함 (b): 질문 본문에 '(scale_id: 'attention')' 누출."""
+    prep_out["questions_for_counselor"][0]["question"] += " (scale_id: 'attention')"
+    assert "G7" in rules(check_output(PROFILE, "prep", prep_out))
+
+
+def test_g7_lowercase_identifier_in_card(explain_out):
+    explain_out["scale_explanations"][3]["what_the_number_means"] = "위축(withdrawn) 척도의 T점수 62는 준임상 범위입니다."
+    assert "G7" in rules(check_output(PROFILE, "explain", explain_out))
+
+
+def test_g7_uppercase_abbreviations_are_not_leaks(explain_out):
+    """대문자 약어(T점수, K-CBCL, SEM)는 형식 누출이 아니다."""
+    explain_out["limits"] = "K-CBCL 6-18은 T점수로 표기되며 SEM은 측정 오차입니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요."
+    assert "G7" not in rules(check_output(PROFILE, "explain", explain_out))
+
+
+def test_g7_not_applied_to_counselor_briefing(prep_out):
+    """상담사용 사전 요약은 보호자에게 노출되지 않으므로 G7 대상이 아니다."""
+    prep_out["counselor_briefing"] += " 관련 척도: attention, withdrawn."
+    assert "G7" not in rules(check_output(PROFILE, "prep", prep_out))
+
+
+def test_g8_nonstandard_band_vocab(explain_out):
+    """실LLM 실측 결함 (d): 총 문제행동 정상을 '경계 수준'으로 서술."""
+    explain_out["overview"] = "총 문제행동과 내재화 문제는 경계 수준으로 나타났고, 외현화 문제는 정상 범위에 속합니다."
+    assert "G8" in rules(check_output(PROFILE, "explain", explain_out))
+    for bad in ("경계성(borderline) 영역", "위험군에 해당", "다소 높은 편", "준임계 범위"):
+        explain_out["overview"] = f"내재화 문제는 {bad}입니다."
+        assert "G8" in rules(check_output(PROFILE, "explain", explain_out)), bad
+
+
+def test_g8_label_mismatch_per_mentioned_scale(explain_out):
+    """여러 척도를 언급하는 블록은 언급 척도별로 대조 (총 문제행동 정상 → 준임상 오기)."""
+    explain_out["overview"] = "총 문제행동 T점수 57(준임상), 내재화 문제 T점수 62(준임상), 외현화 문제 T점수 52(정상)으로 보고되었습니다."
+    vs = [v for v in check_output(PROFILE, "explain", explain_out) if v.rule_id == "G8"]
+    assert len(vs) == 1 and "총 문제행동" in vs[0].matched
+
+
+def test_g8_uses_block_scale_when_no_scale_mentioned(explain_out, prep_out):
+    """척도 언급이 없으면 블록의 own scale과 대조한다."""
+    explain_out["scale_explanations"][1]["what_the_number_means"] = "T점수 62는 정상 범위에 해당합니다."  # internalizing은 준임상
+    assert "G8" in rules(check_output(PROFILE, "explain", explain_out))
+    prep_out["questions_for_counselor"][0]["question"] = "이 결과가 정상 범위라면 무엇을 더 살펴보면 될까요?"  # source attention(준임상)
+    assert "G8" in rules(check_output(PROFILE, "prep", prep_out))
+
+
+def test_g8_general_usage_of_words_is_not_a_label(explain_out, prep_out):
+    """'임상적', '비정상', '정상적', '경계를' 같은 일반어 용법은 라벨이 아니다."""
+    explain_out["limits"] = "임상적 해석은 상담사가 합니다. 관찰자마다 결과가 다른 것이 비정상은 아니며, 예약된 상담에서 상담사와 이야기해 보세요."
+    assert "G8" not in rules(check_output(PROFILE, "explain", explain_out))
+    prep_out["questions_for_counselor"][0]["question"] = "이 검사로 알 수 있는 것과 없는 것의 경계를 어디에 두면 될까요?"
+    assert "G8" not in rules(check_output(PROFILE, "prep", prep_out))
+
+
+def test_g9_normal_scale_cannot_anchor_question_or_observation(prep_out):
+    """실LLM 실측 결함 (c): 정상 범위 척도(신체증상 T=51)에 대해 증상이 있는 것처럼 묻는 질문."""
+    prep_out["questions_for_counselor"][0] = {
+        "question": "신체 증상이 언제, 어떤 상황에서 나타나는지 어떻게 살펴보면 될까요?",
+        "source_scale": "somatic"}
+    assert "G9" in rules(check_output(PROFILE, "prep", prep_out))
+    prep_out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
+    prep_out["observation_points"][0]["source_scale"] = "total_problems"  # 종합지표도 포함
+    assert "G9" in rules(check_output(PROFILE, "prep", prep_out))
+
+
+def test_g9_skipped_when_all_scales_normal():
+    """전 척도 정상 프로파일(P1)은 앵커가 없으므로 G9를 적용하지 않는다."""
+    profile = load_profile(ROOT / "data/profiles/p1_all_normal.json")
+    out = json.loads((ROOT / "data/fixtures/p1_all_normal.json").read_text(encoding="utf-8"))["prep"]["attempts"][0]
+    assert all(it["source_scale"] in {"total_problems", "anxious_depressed", "social_immaturity"}
+               for it in out["questions_for_counselor"] + out["observation_points"])
+    assert "G9" not in rules(check_output(profile, "prep", out))
+
+
+def test_g2_allows_emotion_acknowledgement_but_blocks_verdict(explain_out):
+    """감정 인정 허용선: 보호자의 감정을 인정하는 문장은 통과, 결과 판정은 차단."""
+    for ok in ("결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다.",
+               "숫자를 보면 마음이 무거워질 수 있습니다. 궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요.",
+               "궁금하고 불안한 마음이 드는 것은 당연합니다."):
+        explain_out["before_counseling"] = ok
+        assert "G2" not in rules(check_output(PROFILE, "explain", explain_out)), ok
+    for bad in ("이 정도면 괜찮습니다.", "걱정하지 않으셔도 됩니다.", "안심하셔도 됩니다."):
+        explain_out["before_counseling"] = bad
+        assert "G2" in rules(check_output(PROFILE, "explain", explain_out)), bad
+
+
+def test_new_rules_regenerate_then_fallback(prep_out):
+    """G7/G8/G9도 기존 규칙과 같은 루프: 블록 재생성 2회 후 안전 문구 폴백."""
+    prep_out["questions_for_counselor"][0]["question"] += " (scale_id: 'attention')"
+    calls = []
+
+    def gen_fn(attempt, pending, feedback):
+        calls.append(attempt)
+        if attempt > 0:
+            assert any(v.rule_id == "G7" for v in feedback)
+        return copy.deepcopy(prep_out)
+
+    result = run_with_guardrails(PROFILE, "prep", gen_fn)
+    assert calls == [0, 1, 2]
+    assert result.fallback_blocks == ["questions_for_counselor"]
+    assert check_output(PROFILE, "prep", result.output) == []

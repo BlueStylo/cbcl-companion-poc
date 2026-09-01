@@ -39,13 +39,28 @@ def profile_payload(profile: CBCLProfile) -> dict:
     }
 
 
+# 재생성 피드백에 붙이는 규칙 한 줄 설명 (프롬프트 계약은 규칙 번호를 모른다)
+RULE_HINTS = {
+    "G1": "진단명 금지",
+    "G2": "심각성 단정·근거 없는 안심 금지",
+    "G3": "입력에 없는 수치·판정 금지 (t_score/band는 입력값 그대로)",
+    "G4": "scale_id/source_scale은 입력에 있는 척도만",
+    "G5": "출력 스키마·필수 필드·항목 수 준수",
+    "G6": "약물·치료·병원 방문 권고 금지",
+    "G7": "사람이 읽는 문장에 scale_id·영문 식별자·괄호 코드 금지 (JSON 필드에만)",
+    "G8": "밴드 어휘는 입력 band 라벨 그대로(정상/준임상/임상)만, 척도별 라벨 정확히",
+    "G9": "질문·관찰 포인트의 source_scale은 band가 normal이 아닌 척도만",
+}
+
+
 def build_user_message(profile: CBCLProfile, attempt: int,
                        pending: list[str], feedback: list) -> str:
     """사용자 메시지 조립. 재생성 시 위반 피드백을 앞에 붙인다."""
     body = json.dumps(profile_payload(profile), ensure_ascii=False, indent=2)
     if attempt == 0:
         return body
-    lines = [f"- 블록 {v.block}: 규칙 {v.rule_id} 위반 ({v.matched})" for v in feedback]
+    lines = [f"- 블록 {v.block}: 규칙 {v.rule_id}({RULE_HINTS.get(v.rule_id, '')}) 위반 ({v.matched})"
+             for v in feedback]
     return (
         "이전 출력에서 아래 위반이 발견되어 재생성합니다. 같은 출력 스키마 전체를 "
         "다시 작성하되, 다음 블록의 위반을 반드시 제거하세요.\n"

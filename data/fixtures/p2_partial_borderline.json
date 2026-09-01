@@ -123,8 +123,8 @@
             "source_scale": "internalizing"
           },
           {
-            "question": "교사처럼 다른 관찰자의 보고를 받아 보는 것이 이 결과에 도움이 될까요?",
-            "source_scale": "total_problems"
+            "question": "내재화 문제(T점수 62)처럼 안으로 향하는 어려움은 집에서는 잘 안 보일 수 있다고 들었는데, 교사처럼 다른 관찰자의 보고를 함께 받아 보는 것이 도움이 될까요?",
+            "source_scale": "internalizing"
           }
         ],
         "observation_points": [

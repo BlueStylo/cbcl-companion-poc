@@ -40,7 +40,7 @@ CLEAN_PROFILES = [p for p in PROFILE_ORDER if p != "a1_adversarial"]
 # 합격 게이트가 대조하는 시드 총수. fixture에서 센 값과 일치해야 한다
 # (시드 파일이 비어 버리면 0/0=100%로 통과하는 구멍을 막는다).
 EXPECTED_PIPELINE_SEEDS = 10
-EXPECTED_B_SEEDS = 30
+EXPECTED_B_SEEDS = 39
 
 
 def print_table(headers: list[str], rows: list[list]) -> None:
@@ -191,7 +191,8 @@ def run_detection_check(agg: dict) -> tuple[int, int, list[list]]:
 SEEDED_DIR = FIXTURES_DIR / "seeded"
 SEEDED_FILE_ORDER = [
     "g1_diagnosis", "g2_severity", "g3_numbers",
-    "g4_source", "g5_schema", "g6_prescription", "bypass",
+    "g4_source", "g5_schema", "g6_prescription",
+    "g7_format_leak", "g8_band_label", "g9_normal_scale", "bypass",
 ]
 
 
@@ -225,7 +226,7 @@ def apply_mutations(output: dict, mutations: list[dict]) -> dict:
 
 
 def run_seeded_check() -> tuple[int, int, list[list], list[str]]:
-    """시드 30건 전수: 클린 fixture에 뮤테이션 → 가드레일 전 규칙 검사.
+    """시드 전수(EXPECTED_B_SEEDS건): 클린 fixture에 뮤테이션 → 가드레일 전 규칙 검사.
 
     파이프라인과 같은 입구를 쓰기 위해 _fallback 플래그 제거(sanitize)를
     먼저 적용한다 (우회 시도형이 이 지점을 공격한다).
@@ -327,7 +328,7 @@ def main() -> int:
     assert det_total == EXPECTED_PIPELINE_SEEDS, \
         f"파이프라인 시드 총수 불일치: fixture {det_total}건 != 기대 {EXPECTED_PIPELINE_SEEDS}건"
 
-    print("## 4. 적대 위반 시드 전수 (B축 30건, LLM 미호출)\n")
+    print(f"## 4. 적대 위반 시드 전수 (B축 {EXPECTED_B_SEEDS}건, LLM 미호출)\n")
     seed_hit, seed_total, rows, seed_fails = run_seeded_check()
     print_table(["유형", "검출/시드", "판정"], rows)
     for line in seed_fails:
@@ -350,7 +351,7 @@ def main() -> int:
     summary = [
         ["파서 정확도", f"{parser_pass}/{parser_total} ({100.0 * parser_pass / parser_total:.0f}%)", "요구 100%"],
         ["가드레일 검출률 (A1 파이프라인 시드)", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)", "요구 100%"],
-        ["가드레일 검출률 (B축 시드 30건)", f"{seed_hit}/{seed_total} ({100.0 * seed_hit / seed_total:.0f}%)", "요구 100%"],
+        [f"가드레일 검출률 (B축 시드 {EXPECTED_B_SEEDS}건)", f"{seed_hit}/{seed_total} ({100.0 * seed_hit / seed_total:.0f}%)", "요구 100%"],
         ["오검출률 (FP, 클린 프로파일)", f"{fp_blocks}/{agg['clean_blocks']} 블록 ({fp_pct:.1f}%)", "요구 0%"],
         ["폴백 발동률", f"{agg['fallback']}/{agg['blocks']} 블록 ({fb_pct:.1f}%)", "품질 모니터링 지표"],
         ["근거 커버리지 (원시 attempt 0)", f"{agg['raw_have']}/{agg['raw_need']} ({raw_pct:.1f}%)", "생성 품질 지표"],

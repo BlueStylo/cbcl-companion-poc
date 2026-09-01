@@ -1,0 +1,38 @@
+{
+  "category": "G7 형식 누출",
+  "cases": [
+    {
+      "id": "g7_scale_id_in_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "질문 본문에 괄호 코드 (실LLM 실측에서 관찰된 형태)",
+      "expect_rules": ["G7"],
+      "mutations": [
+        {"op": "set", "path": ["questions_for_counselor", 0, "question"],
+         "value": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도(T점수 67)와 어떻게 연결해서 보면 될까요? (scale_id: 'attention')"}
+      ]
+    },
+    {
+      "id": "g7_english_id_in_card",
+      "task": "explain",
+      "profile_id": "p2_partial_borderline",
+      "note": "척도 해설 카드에 영문 식별자 병기",
+      "expect_rules": ["G7"],
+      "mutations": [
+        {"op": "set", "path": ["scale:withdrawn", "what_the_number_means"],
+         "value": "위축(withdrawn) 척도의 T점수 62는 준임상 범위에 해당합니다."}
+      ]
+    },
+    {
+      "id": "g7_identifier_in_observation",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "관찰 포인트 끝에 소문자 식별자 누출 (괄호 없음)",
+      "expect_rules": ["G7"],
+      "mutations": [
+        {"op": "set", "path": ["observation_points", 0, "point"],
+         "value": "숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기 - attention 영역"}
+      ]
+    }
+  ]
+}
