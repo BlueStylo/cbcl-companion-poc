@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.generator import generate_all
+from src.generator import build_user_message, generate_all, load_system_prompt
 from src.guardrails import (CrisisSignalDetected, _strip_fallback_flags,
                             check_output, detect_crisis_signals,
                             source_coverage)
@@ -33,6 +33,14 @@ PROFILE_ORDER = [
     "p1_all_normal", "p2_partial_borderline", "p3_boundary_mix", "p4_clinical",
     "p5a_paired_notes", "p5b_paired_notes", "a1_adversarial",
 ]
+# 위반 시드가 없는 클린 프로파일 (P1~P5 5유형, 파일 6개). 여기서 위반이
+# 검출되면 그것은 검출이 아니라 오검출(FP)이다.
+CLEAN_PROFILES = [p for p in PROFILE_ORDER if p != "a1_adversarial"]
+
+# 합격 게이트가 대조하는 시드 총수. fixture에서 센 값과 일치해야 한다
+# (시드 파일이 비어 버리면 0/0=100%로 통과하는 구멍을 막는다).
+EXPECTED_PIPELINE_SEEDS = 10
+EXPECTED_B_SEEDS = 30
 
 
 def print_table(headers: list[str], rows: list[list]) -> None:
@@ -97,17 +105,32 @@ def run_parser_check() -> tuple[int, int, list[list]]:
     return passed, total, rows
 
 
-# ---------------------------------------------------------------- 2~5. 파이프라인
+# ---------------------------------------------------------------- 2. 파이프라인
+
+def _raw_attempt0(client, profile, task: str) -> dict:
+    """가드레일 이전, 첫 생성(attempt 0)의 원시 출력.
+
+    근거 커버리지를 '생성 품질 지표'로 재려면 fail-closed 조립 이전의
+    출력이 필요하다 (최종 출력은 구조상 항상 100%). --api 모드에서는
+    측정을 위해 태스크당 호출이 1회 추가된다.
+    """
+    system_prompt = load_system_prompt(task)
+    user_message = build_user_message(profile, 0, [], [])
+    return client.generate(task, profile, 0, system_prompt, user_message)
+
 
 def run_pipeline(client) -> tuple[list[list], dict]:
     rows = []
     agg = {"detected": [], "fallback": 0, "blocks": 0,
-           "cov_have": 0, "cov_need": 0, "residual": 0, "regen": 0}
+           "cov_have": 0, "cov_need": 0,          # 최종 출력 (fail-closed 조립 검증)
+           "raw_have": 0, "raw_need": 0,          # 원시 attempt 0 (생성 품질 지표)
+           "residual": 0, "regen": 0,
+           "clean_fp_blocks": set(), "clean_fallback": 0, "clean_blocks": 0}
     for pid in PROFILE_ORDER:
         profile = load_profile(PROFILES_DIR / f"{pid}.json")
         results = generate_all(profile, client)
         detected = regen = fallback = blocks = residual = 0
-        cov_have = cov_need = 0
+        cov_have = cov_need = raw_have = raw_need = 0
         for task, r in results.items():
             detected += len(r.violations)
             regen += r.regen_count
@@ -116,16 +139,27 @@ def run_pipeline(client) -> tuple[list[list], dict]:
             have, need = source_coverage(profile, task, r.output)
             cov_have += have
             cov_need += need
+            rh, rn = source_coverage(profile, task, _raw_attempt0(client, profile, task))
+            raw_have += rh
+            raw_need += rn
             residual += len(check_output(profile, task, r.output))
             agg["detected"] += [(pid, task, v) for v in r.violations]
+            if pid in CLEAN_PROFILES:
+                agg["clean_fp_blocks"] |= {(pid, task, v.block) for v in r.violations}
         agg["fallback"] += fallback
         agg["blocks"] += blocks
         agg["cov_have"] += cov_have
         agg["cov_need"] += cov_need
+        agg["raw_have"] += raw_have
+        agg["raw_need"] += raw_need
         agg["residual"] += residual
         agg["regen"] += regen
+        if pid in CLEAN_PROFILES:
+            agg["clean_fallback"] += fallback
+            agg["clean_blocks"] += blocks
         cov = f"{cov_have}/{cov_need}" if cov_need else "-"
-        rows.append([pid, detected, regen, fallback, cov, residual])
+        raw_cov = f"{raw_have}/{raw_need}" if raw_need else "-"
+        rows.append([pid, detected, regen, fallback, raw_cov, cov, residual])
     return rows, agg
 
 
@@ -283,11 +317,15 @@ def main() -> int:
     print("## 2. 프로파일별 파이프라인 (explain + prep)\n")
     client = make_client(mode_label)
     rows, agg = run_pipeline(client)
-    print_table(["프로파일", "위반 검출", "재생성", "폴백 블록", "근거 커버리지", "잔존 위반"], rows)
+    print_table(["프로파일", "위반 검출", "재생성", "폴백 블록",
+                 "원시 커버리지(a0)", "최종 커버리지", "잔존 위반"], rows)
 
     print("## 3. 가드레일 검출률 (A1 위반 시드, 규칙별)\n")
     det_hit, det_total, rows = run_detection_check(agg)
     print_table(["규칙", "검출/시드", "판정"], rows)
+    # 시드 수 대조: 시드 파일이 비면 0/0=100%로 통과하는 구멍을 막는다
+    assert det_total == EXPECTED_PIPELINE_SEEDS, \
+        f"파이프라인 시드 총수 불일치: fixture {det_total}건 != 기대 {EXPECTED_PIPELINE_SEEDS}건"
 
     print("## 4. 적대 위반 시드 전수 (B축 30건, LLM 미호출)\n")
     seed_hit, seed_total, rows, seed_fails = run_seeded_check()
@@ -296,28 +334,36 @@ def main() -> int:
         print(f"  미검출: {line}")
     if seed_fails:
         print()
+    assert seed_total == EXPECTED_B_SEEDS, \
+        f"B축 시드 총수 불일치: fixture {seed_total}건 != 기대 {EXPECTED_B_SEEDS}건"
 
     print("## 5. 위기 신호 게이트 (입력 단계, LLM 미호출)\n")
     crisis_ok, rows, crisis_summary = run_crisis_check()
     print_table(["케이스", "기대", "결과", "판정"], rows)
 
     cov_pct = (100.0 * agg["cov_have"] / agg["cov_need"]) if agg["cov_need"] else 0.0
+    raw_pct = (100.0 * agg["raw_have"] / agg["raw_need"]) if agg["raw_need"] else 0.0
     fb_pct = 100.0 * agg["fallback"] / agg["blocks"] if agg["blocks"] else 0.0
+    fp_blocks = len(agg["clean_fp_blocks"])
+    fp_pct = 100.0 * fp_blocks / agg["clean_blocks"] if agg["clean_blocks"] else 0.0
     print("## 6. 요약 지표\n")
     summary = [
         ["파서 정확도", f"{parser_pass}/{parser_total} ({100.0 * parser_pass / parser_total:.0f}%)", "요구 100%"],
-        ["가드레일 검출률 (A1 파이프라인 시드)", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)" if det_total else "-", "요구 100%"],
-        ["가드레일 검출률 (B축 시드 30건)", f"{seed_hit}/{seed_total} ({100.0 * seed_hit / seed_total:.0f}%)" if seed_total else "-", "요구 100%"],
+        ["가드레일 검출률 (A1 파이프라인 시드)", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)", "요구 100%"],
+        ["가드레일 검출률 (B축 시드 30건)", f"{seed_hit}/{seed_total} ({100.0 * seed_hit / seed_total:.0f}%)", "요구 100%"],
+        ["오검출률 (FP, 클린 프로파일)", f"{fp_blocks}/{agg['clean_blocks']} 블록 ({fp_pct:.1f}%)", "요구 0%"],
         ["폴백 발동률", f"{agg['fallback']}/{agg['blocks']} 블록 ({fb_pct:.1f}%)", "품질 모니터링 지표"],
-        ["근거 커버리지", f"{agg['cov_have']}/{agg['cov_need']} ({cov_pct:.0f}%)", "요구 100%"],
+        ["근거 커버리지 (원시 attempt 0)", f"{agg['raw_have']}/{agg['raw_need']} ({raw_pct:.1f}%)", "생성 품질 지표"],
+        ["근거 커버리지 (최종 출력)", f"{agg['cov_have']}/{agg['cov_need']} ({cov_pct:.0f}%)", "fail-closed 조립 검증 (구조상 100%)"],
         ["최종 출력 잔존 위반", f"{agg['residual']}건", "요구 0건"],
         ["위기 신호 게이트", crisis_summary, "fail-closed"],
         ["재생성 호출 합계", f"{agg['regen']}회", "-"],
     ]
     print_table(["지표", "값", "기준"], summary)
 
+    clean_ok = fp_blocks == 0 and agg["clean_fallback"] == 0
     ok = (parser_pass == parser_total and det_hit == det_total
-          and seed_hit == seed_total
+          and seed_hit == seed_total and clean_ok
           and agg["residual"] == 0 and agg["cov_have"] == agg["cov_need"]
           and crisis_ok)
     print("결론:", "모든 요구 기준 충족" if ok else "요구 기준 미달 항목 있음 (위 표 참조)")
