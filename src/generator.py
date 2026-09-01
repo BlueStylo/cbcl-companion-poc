@@ -74,3 +74,44 @@ def generate_safe(profile: CBCLProfile, task: str, client) -> guardrails.SafeRes
 def generate_all(profile: CBCLProfile, client) -> dict[str, guardrails.SafeResult]:
     """기능 1(해설)과 기능 2(상담 준비)를 모두 생성한다."""
     return {task: generate_safe(profile, task, client) for task in ("explain", "prep")}
+
+
+def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
+    """실행 1건의 관측 요약 (모델 비교·원인 분해용).
+
+    시도별 위반 규칙 분포, 블록별 최종 상태(pass / regen_pass / fallback),
+    LLM 호출별 usage 토큰과 소요 시간을 담는다.
+    """
+    tasks = {}
+    for task, r in results.items():
+        by_attempt: dict[str, dict[str, int]] = {}
+        for v in r.violations:
+            dist = by_attempt.setdefault(f"attempt{v.attempt}", {})
+            dist[v.rule_id] = dist.get(v.rule_id, 0) + 1
+        violated = {v.block for v in r.violations}
+        states = {}
+        for block in guardrails.expected_blocks(profile, task):
+            if block in r.fallback_blocks:
+                states[block] = "fallback"
+            elif block in violated:
+                states[block] = "regen_pass"
+            else:
+                states[block] = "pass"
+        tasks[task] = {
+            "regen_count": r.regen_count,
+            "violations_by_attempt": by_attempt,
+            "block_states": states,
+            "state_counts": {s: sum(1 for v in states.values() if v == s)
+                             for s in ("pass", "regen_pass", "fallback")},
+        }
+    calls = [c for c in getattr(client, "calls", [])
+             if c.get("profile_id") == profile.profile_id]
+    return {
+        "profile_id": profile.profile_id,
+        "model": getattr(client, "model", "?"),
+        "tasks": tasks,
+        "llm_calls": calls,
+        "total_prompt_tokens": sum(c["prompt_tokens"] or 0 for c in calls),
+        "total_completion_tokens": sum(c["completion_tokens"] or 0 for c in calls),
+        "total_llm_seconds": round(sum(c["duration_s"] for c in calls), 2),
+    }

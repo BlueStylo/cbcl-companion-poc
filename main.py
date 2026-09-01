@@ -14,8 +14,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import json
+
 from src.compare_html import build_compare_html
-from src.generator import generate_all
+from src.generator import generate_all, summarize_run
 from src.guardrails import detect_crisis_signals
 from src.llm_client import LLMError, make_client
 from src.parser import ProfileError, load_profile
@@ -54,6 +56,23 @@ def summarize(pid: str, results: dict) -> str:
     return f"{pid}: 가드레일 재생성 {regen}회, 안전 문구 대체 {fallback}건"
 
 
+def print_run_stats(stats: dict) -> None:
+    """실행 통계를 stdout에 표로 출력 (모델 비교·원인 분해용)."""
+    print(f"\n[실행 통계] {stats['profile_id']} · 모델 {stats['model']}")
+    print("| task | 통과 | 재생성 후 통과 | 폴백 | 위반 분포 (시도별) |")
+    print("|---|---|---|---|---|")
+    for task, t in stats["tasks"].items():
+        sc = t["state_counts"]
+        dist = "; ".join(
+            f"{a}: " + ", ".join(f"{r}x{n}" for r, n in sorted(rules.items()))
+            for a, rules in sorted(t["violations_by_attempt"].items())) or "없음"
+        print(f"| {task} | {sc['pass']} | {sc['regen_pass']} | {sc['fallback']} | {dist} |")
+    calls = stats["llm_calls"]
+    tok_in, tok_out = stats["total_prompt_tokens"], stats["total_completion_tokens"]
+    print(f"LLM 호출 {len(calls)}회 · 토큰 입력 {tok_in} / 출력 {tok_out} · "
+          f"LLM 소요 {stats['total_llm_seconds']}초")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="CBCL 보고서 동반 가이드 PoC")
     ap.add_argument("--profile", help="프로파일 JSON 1건 → 해설 리포트 HTML")
@@ -80,6 +99,7 @@ def main() -> int:
     # 산출물은 모든 생성이 성공한 뒤에만 기록한다 (부분 산출물 방지, fail-closed)
     pending: list[tuple[Path, str]] = []
     notes: list[str] = []
+    run_stats: list[dict] = []
 
     def queue_crisis(profile) -> None:
         """위기 신호 검출 시: LLM 호출 없이 상담 연결 안내만 큐에 넣는다."""
@@ -96,6 +116,7 @@ def main() -> int:
                 queue_crisis(profile)
             else:
                 results = generate_all(profile, client)
+                run_stats.append(summarize_run(profile, results, client))
                 path = out_dir / f"{profile.profile_id}.html"
                 pending.append((path, build_report_html(profile, results, mode_label)))
                 notes.append(summarize(profile.profile_id, results))
@@ -110,6 +131,8 @@ def main() -> int:
                 compare_aborted = True
             else:
                 ra, rb = generate_all(pa, client), generate_all(pb, client)
+                run_stats.append(summarize_run(pa, ra, client))
+                run_stats.append(summarize_run(pb, rb, client))
                 path = out_dir / f"compare_{pa.profile_id}_{pb.profile_id}.html"
                 pending.append((path, build_compare_html(pa, ra, pb, rb, mode_label)))
                 notes.append(summarize(pa.profile_id, ra))
@@ -125,10 +148,16 @@ def main() -> int:
         print("생성이 완료되지 않아 리포트를 출력하지 않습니다.", file=sys.stderr)
         return 1
 
+    if run_stats:
+        payload = {"mode": mode_label, "runs": run_stats}
+        pending.append((out_dir / "run_stats.json",
+                        json.dumps(payload, ensure_ascii=False, indent=2) + "\n"))
     for path, content in pending:
         path.write_text(content, encoding="utf-8")
     for line in notes:
         print(line)
+    for stats in run_stats:
+        print_run_stats(stats)
     if compare_aborted:
         print("위기 신호가 검출된 프로파일이 있어 비교 뷰는 생성하지 않습니다.", file=sys.stderr)
         return 1

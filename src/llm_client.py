@@ -14,6 +14,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import time
 from pathlib import Path
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "data" / "fixtures"
@@ -31,44 +32,65 @@ class OpenAICompatClient:
         self.base_url = base_url or os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
         self.api_key = api_key or os.environ.get("LLM_API_KEY", "ollama")
         self.model = model or os.environ.get("LLM_MODEL", "gpt-4o-mini")
+        self.calls: list[dict] = []  # 관측성: 호출별 토큰/시간 기록
         try:
             from openai import OpenAI  # --api 모드에서만 필요 (지연 import)
         except ImportError as e:
             raise LLMError("--api 모드에는 openai 패키지가 필요합니다: pip install -r requirements.txt") from e
         self._client = OpenAI(base_url=self.base_url, api_key=self.api_key)
 
-    def _call(self, messages: list[dict], force_json: bool) -> str:
+    def _call(self, messages: list[dict], force_json: bool) -> tuple[str, dict]:
         kwargs = {"model": self.model, "messages": messages, "temperature": 0.2}
         if force_json:
             kwargs["response_format"] = {"type": "json_object"}
         resp = self._client.chat.completions.create(**kwargs)
-        return resp.choices[0].message.content or ""
+        usage = getattr(resp, "usage", None)
+        return resp.choices[0].message.content or "", {
+            "prompt_tokens": getattr(usage, "prompt_tokens", None),
+            "completion_tokens": getattr(usage, "completion_tokens", None),
+        }
 
     def generate(self, task: str, profile, attempt: int,
                  system_prompt: str, user_message: str) -> dict:
         """JSON 응답 1건 생성. json_object 모드 미지원 모델과 파싱 실패에
 
         각 1회씩 폴백한다 (프롬프트의 JSON 강제 지시 + 재시도).
+        호출별 usage 토큰과 소요 시간을 self.calls에 기록한다.
         """
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ]
+        t0 = time.monotonic()
+        tokens = {"prompt_tokens": 0, "completion_tokens": 0}
+
+        def call(force_json: bool) -> str:
+            text, usage = self._call(messages, force_json=force_json)
+            for key in tokens:
+                tokens[key] += usage[key] or 0
+            return text
+
         try:
-            text = self._call(messages, force_json=True)
-        except Exception:
-            # 일부 로컬 모델은 response_format을 지원하지 않는다
-            text = self._call(messages, force_json=False)
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            messages.append({"role": "assistant", "content": text})
-            messages.append({"role": "user", "content": "유효한 JSON 객체만 다시 출력하세요. 다른 텍스트를 포함하지 마세요."})
-            text = self._call(messages, force_json=False)
+            try:
+                text = call(force_json=True)
+            except Exception:
+                # 일부 로컬 모델은 response_format을 지원하지 않는다
+                text = call(force_json=False)
             try:
                 return json.loads(text)
-            except json.JSONDecodeError as e:
-                raise LLMError(f"JSON 파싱 실패 (task={task}, attempt={attempt})") from e
+            except json.JSONDecodeError:
+                messages.append({"role": "assistant", "content": text})
+                messages.append({"role": "user", "content": "유효한 JSON 객체만 다시 출력하세요. 다른 텍스트를 포함하지 마세요."})
+                text = call(force_json=False)
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError as e:
+                    raise LLMError(f"JSON 파싱 실패 (task={task}, attempt={attempt})") from e
+        finally:
+            self.calls.append({
+                "profile_id": profile.profile_id, "task": task, "attempt": attempt,
+                "duration_s": round(time.monotonic() - t0, 2), **tokens,
+            })
 
 
 class MockLLMClient:
@@ -81,6 +103,8 @@ class MockLLMClient:
 
     def __init__(self, fixtures_dir: str | Path = FIXTURES_DIR):
         self.fixtures_dir = Path(fixtures_dir)
+        self.model = "mock"
+        self.calls: list[dict] = []  # 실 클라이언트와 같은 관측 인터페이스
         self._cache: dict[str, dict] = {}
 
     def _fixture(self, profile_id: str) -> dict:
@@ -94,6 +118,10 @@ class MockLLMClient:
     def generate(self, task: str, profile, attempt: int,
                  system_prompt: str, user_message: str) -> dict:
         attempts = self._fixture(profile.profile_id)[task]["attempts"]
+        self.calls.append({
+            "profile_id": profile.profile_id, "task": task, "attempt": attempt,
+            "duration_s": 0.0, "prompt_tokens": None, "completion_tokens": None,
+        })
         return copy.deepcopy(attempts[min(attempt, len(attempts) - 1)])
 
 
