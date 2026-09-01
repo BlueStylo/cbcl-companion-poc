@@ -1,0 +1,100 @@
+{
+  "profile_id": "p2_partial_borderline",
+  "profile_type": "partial_borderline",
+  "instrument": "K-CBCL 6-18 (보호자 보고형)",
+  "child": {
+    "alias": "이가상",
+    "sex": "female",
+    "age_years": 9,
+    "age_months": 1,
+    "norm_group": "여자 4-11세"
+  },
+  "test_date": "2026-08-20",
+  "band_criteria": {
+    "composite": {
+      "normal_max_t": 59,
+      "borderline_max_t": 62
+    },
+    "syndrome": {
+      "normal_max_t": 59,
+      "borderline_max_t": 69
+    }
+  },
+  "composites": [
+    {
+      "scale_id": "total_problems",
+      "name_ko": "총 문제행동",
+      "t_score": 58,
+      "band": "normal"
+    },
+    {
+      "scale_id": "internalizing",
+      "name_ko": "내재화 문제",
+      "t_score": 61,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "externalizing",
+      "name_ko": "외현화 문제",
+      "t_score": 52,
+      "band": "normal"
+    }
+  ],
+  "syndromes": [
+    {
+      "scale_id": "withdrawn",
+      "name_ko": "위축",
+      "t_score": 62,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "somatic",
+      "name_ko": "신체증상",
+      "t_score": 51,
+      "band": "normal"
+    },
+    {
+      "scale_id": "anxious_depressed",
+      "name_ko": "우울/불안",
+      "t_score": 65,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "social_immaturity",
+      "name_ko": "사회적 미성숙",
+      "t_score": 57,
+      "band": "normal"
+    },
+    {
+      "scale_id": "thought_problems",
+      "name_ko": "사고의 문제",
+      "t_score": 50,
+      "band": "normal"
+    },
+    {
+      "scale_id": "attention",
+      "name_ko": "주의집중",
+      "t_score": 66,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "delinquent",
+      "name_ko": "비행",
+      "t_score": 47,
+      "band": "normal"
+    },
+    {
+      "scale_id": "aggressive",
+      "name_ko": "공격성",
+      "t_score": 53,
+      "band": "normal"
+    }
+  ],
+  "special_scales_administered": false,
+  "caregiver_notes": [
+    "학원 숙제를 앞에 두면 딴 데를 자주 봅니다",
+    "놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다"
+  ],
+  "counseling_scheduled": true,
+  "days_until_counseling": 5
+}

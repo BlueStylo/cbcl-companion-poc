@@ -1,0 +1,100 @@
+{
+  "profile_id": "p1_all_normal",
+  "profile_type": "all_normal",
+  "instrument": "K-CBCL 6-18 (보호자 보고형)",
+  "child": {
+    "alias": "김샘플",
+    "sex": "male",
+    "age_years": 8,
+    "age_months": 2,
+    "norm_group": "남자 4-11세"
+  },
+  "test_date": "2026-08-18",
+  "band_criteria": {
+    "composite": {
+      "normal_max_t": 59,
+      "borderline_max_t": 62
+    },
+    "syndrome": {
+      "normal_max_t": 59,
+      "borderline_max_t": 69
+    }
+  },
+  "composites": [
+    {
+      "scale_id": "total_problems",
+      "name_ko": "총 문제행동",
+      "t_score": 47,
+      "band": "normal"
+    },
+    {
+      "scale_id": "internalizing",
+      "name_ko": "내재화 문제",
+      "t_score": 48,
+      "band": "normal"
+    },
+    {
+      "scale_id": "externalizing",
+      "name_ko": "외현화 문제",
+      "t_score": 46,
+      "band": "normal"
+    }
+  ],
+  "syndromes": [
+    {
+      "scale_id": "withdrawn",
+      "name_ko": "위축",
+      "t_score": 45,
+      "band": "normal"
+    },
+    {
+      "scale_id": "somatic",
+      "name_ko": "신체증상",
+      "t_score": 52,
+      "band": "normal"
+    },
+    {
+      "scale_id": "anxious_depressed",
+      "name_ko": "우울/불안",
+      "t_score": 50,
+      "band": "normal"
+    },
+    {
+      "scale_id": "social_immaturity",
+      "name_ko": "사회적 미성숙",
+      "t_score": 47,
+      "band": "normal"
+    },
+    {
+      "scale_id": "thought_problems",
+      "name_ko": "사고의 문제",
+      "t_score": 44,
+      "band": "normal"
+    },
+    {
+      "scale_id": "attention",
+      "name_ko": "주의집중",
+      "t_score": 53,
+      "band": "normal"
+    },
+    {
+      "scale_id": "delinquent",
+      "name_ko": "비행",
+      "t_score": 46,
+      "band": "normal"
+    },
+    {
+      "scale_id": "aggressive",
+      "name_ko": "공격성",
+      "t_score": 49,
+      "band": "normal"
+    }
+  ],
+  "special_scales_administered": false,
+  "caregiver_notes": [
+    "동생이 태어난 뒤로 잠드는 데 시간이 오래 걸립니다",
+    "정상 범위라는 말을 들어도 마음이 놓이지 않아 여쭤보고 싶습니다"
+  ],
+  "counseling_scheduled": true,
+  "days_until_counseling": 3
+}

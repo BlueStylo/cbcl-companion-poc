@@ -1,0 +1,100 @@
+{
+  "profile_id": "p3_boundary_mix",
+  "profile_type": "boundary_mix",
+  "instrument": "K-CBCL 6-18 (보호자 보고형)",
+  "child": {
+    "alias": "박예시",
+    "sex": "male",
+    "age_years": 10,
+    "age_months": 7,
+    "norm_group": "남자 4-11세"
+  },
+  "test_date": "2026-08-21",
+  "band_criteria": {
+    "composite": {
+      "normal_max_t": 59,
+      "borderline_max_t": 62
+    },
+    "syndrome": {
+      "normal_max_t": 59,
+      "borderline_max_t": 69
+    }
+  },
+  "composites": [
+    {
+      "scale_id": "total_problems",
+      "name_ko": "총 문제행동",
+      "t_score": 60,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "internalizing",
+      "name_ko": "내재화 문제",
+      "t_score": 59,
+      "band": "normal"
+    },
+    {
+      "scale_id": "externalizing",
+      "name_ko": "외현화 문제",
+      "t_score": 62,
+      "band": "borderline"
+    }
+  ],
+  "syndromes": [
+    {
+      "scale_id": "withdrawn",
+      "name_ko": "위축",
+      "t_score": 60,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "somatic",
+      "name_ko": "신체증상",
+      "t_score": 48,
+      "band": "normal"
+    },
+    {
+      "scale_id": "anxious_depressed",
+      "name_ko": "우울/불안",
+      "t_score": 55,
+      "band": "normal"
+    },
+    {
+      "scale_id": "social_immaturity",
+      "name_ko": "사회적 미성숙",
+      "t_score": 52,
+      "band": "normal"
+    },
+    {
+      "scale_id": "thought_problems",
+      "name_ko": "사고의 문제",
+      "t_score": 57,
+      "band": "normal"
+    },
+    {
+      "scale_id": "attention",
+      "name_ko": "주의집중",
+      "t_score": 69,
+      "band": "borderline"
+    },
+    {
+      "scale_id": "delinquent",
+      "name_ko": "비행",
+      "t_score": 58,
+      "band": "normal"
+    },
+    {
+      "scale_id": "aggressive",
+      "name_ko": "공격성",
+      "t_score": 70,
+      "band": "clinical"
+    }
+  ],
+  "special_scales_administered": false,
+  "caregiver_notes": [
+    "사소한 일에도 큰 소리를 내는 날이 늘었습니다",
+    "게임을 끄라고 하면 물건을 던진 적이 두 번 있습니다"
+  ],
+  "counseling_scheduled": true,
+  "days_until_counseling": 2
+}
