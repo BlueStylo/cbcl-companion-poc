@@ -7,6 +7,9 @@
   4. 근거 커버리지  - 최종 출력에서 유효한 근거(scale_id/source_scale)를 가진 항목 비율
   5. 잔존 위반      - 최종 출력을 재스캔했을 때 남은 위반, 요구 0건
 
+품질 지표 3종 (측정·표기만, 게이트 아님 - src/quality.py):
+  (i) 전문 용어 잔존율  (ii) 보호자 표현 반영률  (iii) 질문 방향 경고
+
 mock 모드는 API 없이 완주한다: python harness/run_harness.py --mock
 """
 
@@ -27,6 +30,7 @@ from src.guardrails import (CrisisSignalDetected, _strip_fallback_flags,
                             source_coverage)
 from src.llm_client import FIXTURES_DIR, make_client
 from src.parser import ProfileError, load_profile, parse_profile
+from src.quality import fmt_rate, quality_summary
 
 PROFILES_DIR = ROOT / "data" / "profiles"
 PROFILE_ORDER = [
@@ -125,7 +129,8 @@ def run_pipeline(client) -> tuple[list[list], dict]:
            "cov_have": 0, "cov_need": 0,          # 최종 출력 (fail-closed 조립 검증)
            "raw_have": 0, "raw_need": 0,          # 원시 attempt 0 (생성 품질 지표)
            "residual": 0, "regen": 0,
-           "clean_fp_blocks": set(), "clean_fallback": 0, "clean_blocks": 0}
+           "clean_fp_blocks": set(), "clean_fallback": 0, "clean_blocks": 0,
+           "quality": {}}                          # 프로파일별 품질 지표 (표기용)
     for pid in PROFILE_ORDER:
         profile = load_profile(PROFILES_DIR / f"{pid}.json")
         results = generate_all(profile, client)
@@ -154,6 +159,8 @@ def run_pipeline(client) -> tuple[list[list], dict]:
         agg["raw_need"] += raw_need
         agg["residual"] += residual
         agg["regen"] += regen
+        agg["quality"][pid] = quality_summary(
+            profile, {task: r.output for task, r in results.items()})
         if pid in CLEAN_PROFILES:
             agg["clean_fallback"] += fallback
             agg["clean_blocks"] += blocks
@@ -300,6 +307,33 @@ def run_crisis_check() -> tuple[bool, list[list], str]:
     return ok, rows, summary
 
 
+def quality_rows(quality: dict) -> tuple[list[list], dict]:
+    """프로파일별 품질 지표 행과 합산값. 게이트가 아니라 표기용이다."""
+    rows = []
+    tot = {"term_hits": 0, "blocks_with_term": 0, "glossed": 0, "blocks": 0,
+           "items": 0, "items_reflected": 0, "tokens": 0, "tokens_hit": 0, "warns": 0}
+    for pid, q in quality.items():
+        j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]
+        tot["term_hits"] += j["term_hits"]
+        tot["blocks_with_term"] += j["blocks_with_term"]
+        tot["glossed"] += j["glossed_blocks"]
+        tot["blocks"] += j["blocks_total"]
+        tot["items"] += r["items_total"]
+        tot["items_reflected"] += r["items_reflected"]
+        tot["tokens"] += len(r["tokens"])
+        tot["tokens_hit"] += len(r["tokens_hit"])
+        tot["warns"] += len(w)
+        rows.append([
+            pid,
+            f"{j['term_hits']}회 / {j['blocks_with_term']}/{j['blocks_total']} 블록",
+            f"{j['glossed_blocks']}/{j['blocks_with_term']} ({fmt_rate(j['gloss_rate'])})",
+            f"{r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])})",
+            f"{len(r['tokens_hit'])}/{len(r['tokens'])} ({fmt_rate(r['token_rate'])})",
+            f"{len(w)}건" + (" WARN" if w else ""),
+        ])
+    return rows, tot
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="미니 평가 하네스")
     mode = ap.add_mutually_exclusive_group()
@@ -342,12 +376,22 @@ def main() -> int:
     crisis_ok, rows, crisis_summary = run_crisis_check()
     print_table(["케이스", "기대", "결과", "판정"], rows)
 
+    print("## 6. 품질 지표 (측정·표기, 차단 아님)\n")
+    q_rows, q_tot = quality_rows(agg["quality"])
+    print_table(["프로파일", "용어 등장 / 잔존 블록", "풀이 동반 블록",
+                 "표현 반영 (항목)", "표현 반영 (토큰)", "방향 경고"], q_rows)
+    for pid, q in agg["quality"].items():
+        for w in q["direction_warnings"]:
+            print(f"  WARN {pid} {w['block']}: '{w['matched']}' - {w['question']}")
+    if q_tot["warns"]:
+        print()
+
     cov_pct = (100.0 * agg["cov_have"] / agg["cov_need"]) if agg["cov_need"] else 0.0
     raw_pct = (100.0 * agg["raw_have"] / agg["raw_need"]) if agg["raw_need"] else 0.0
     fb_pct = 100.0 * agg["fallback"] / agg["blocks"] if agg["blocks"] else 0.0
     fp_blocks = len(agg["clean_fp_blocks"])
     fp_pct = 100.0 * fp_blocks / agg["clean_blocks"] if agg["clean_blocks"] else 0.0
-    print("## 6. 요약 지표\n")
+    print("## 7. 요약 지표\n")
     summary = [
         ["파서 정확도", f"{parser_pass}/{parser_total} ({100.0 * parser_pass / parser_total:.0f}%)", "요구 100%"],
         ["가드레일 검출률 (A1 파이프라인 시드)", f"{det_hit}/{det_total} ({100.0 * det_hit / det_total:.0f}%)", "요구 100%"],
@@ -361,6 +405,20 @@ def main() -> int:
         ["재생성 호출 합계", f"{agg['regen']}회", "-"],
     ]
     print_table(["지표", "값", "기준"], summary)
+
+    gloss_rate = (q_tot["glossed"] / q_tot["blocks_with_term"]) if q_tot["blocks_with_term"] else None
+    item_rate = (q_tot["items_reflected"] / q_tot["items"]) if q_tot["items"] else None
+    token_rate = (q_tot["tokens_hit"] / q_tot["tokens"]) if q_tot["tokens"] else None
+    print("### 품질 지표 요약 (게이트 아님)\n")
+    print_table(["지표", "값", "비고"], [
+        ["전문 용어 잔존율", f"{q_tot['term_hits']}회 등장 · 용어 블록 {q_tot['blocks_with_term']}/{q_tot['blocks']}"
+         f" · 풀이 동반 {q_tot['glossed']}/{q_tot['blocks_with_term']} ({fmt_rate(gloss_rate)})",
+         "용어 사전 12종 / 풀이 표현 동반 비율"],
+        ["보호자 표현 반영률", f"항목 {q_tot['items_reflected']}/{q_tot['items']} ({fmt_rate(item_rate)})"
+         f" · 토큰 {q_tot['tokens_hit']}/{q_tot['tokens']} ({fmt_rate(token_rate)})",
+         "기획의 척추 지표 (caregiver_notes 토큰 → 질문·관찰)"],
+        ["질문 방향 경고", f"{q_tot['warns']}건", "WARN만 (의미 판정은 규칙 한계)"],
+    ])
 
     clean_ok = fp_blocks == 0 and agg["clean_fallback"] == 0
     ok = (parser_pass == parser_total and det_hit == det_total

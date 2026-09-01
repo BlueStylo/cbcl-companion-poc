@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import guardrails
 from .parser import CBCLProfile
+from .quality import quality_summary
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 TASK_PROMPT_FILES = {"explain": "explainer_system.md", "prep": "counsel_prep_system.md"}
@@ -95,7 +96,8 @@ def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
     """실행 1건의 관측 요약 (모델 비교·원인 분해용).
 
     시도별 위반 규칙 분포, 블록별 최종 상태(pass / regen_pass / fallback),
-    LLM 호출별 usage 토큰과 소요 시간을 담는다.
+    LLM 호출별 usage 토큰과 소요 시간, 품질 지표 3종(측정용), 최종 출력
+    원문(오프라인 재측정용)을 담는다.
     """
     tasks = {}
     for task, r in results.items():
@@ -129,4 +131,6 @@ def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
         "total_prompt_tokens": sum(c["prompt_tokens"] or 0 for c in calls),
         "total_completion_tokens": sum(c["completion_tokens"] or 0 for c in calls),
         "total_llm_seconds": round(sum(c["duration_s"] for c in calls), 2),
+        "quality": quality_summary(profile, {task: r.output for task, r in results.items()}),
+        "outputs": {task: r.output for task, r in results.items()},
     }

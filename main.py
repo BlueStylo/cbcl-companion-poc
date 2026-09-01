@@ -21,6 +21,7 @@ from src.generator import generate_all, summarize_run
 from src.guardrails import detect_crisis_signals
 from src.llm_client import LLMError, make_client
 from src.parser import ProfileError, load_profile
+from src.quality import fmt_rate
 from src.report_html import build_crisis_html, build_report_html
 
 
@@ -71,6 +72,16 @@ def print_run_stats(stats: dict) -> None:
     tok_in, tok_out = stats["total_prompt_tokens"], stats["total_completion_tokens"]
     print(f"LLM 호출 {len(calls)}회 · 토큰 입력 {tok_in} / 출력 {tok_out} · "
           f"LLM 소요 {stats['total_llm_seconds']}초")
+    q = stats.get("quality")
+    if q:
+        j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]
+        print(f"[품질 지표] 용어 {j['term_hits']}회 (용어 블록 {j['blocks_with_term']}/{j['blocks_total']}, "
+              f"풀이 동반 {fmt_rate(j['gloss_rate'])}) · "
+              f"표현 반영 항목 {r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])}), "
+              f"토큰 {len(r['tokens_hit'])}/{len(r['tokens'])} ({fmt_rate(r['token_rate'])}) · "
+              f"방향 경고 {len(w)}건")
+        for warn in w:
+            print(f"  WARN {warn['block']}: '{warn['matched']}' - {warn['question']}")
 
 
 def main() -> int:
