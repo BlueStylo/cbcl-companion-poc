@@ -6,10 +6,17 @@
       "task": "explain",
       "profile_id": "p2_partial_borderline",
       "note": "본문에 입력에 없는 T점수 (실제 내재화 62 → 72)",
-      "expect_rules": ["G3"],
+      "expect_rules": [
+        "G3"
+      ],
       "mutations": [
-        {"op": "set", "path": ["overview"],
-         "value": "이번 검사에서 내재화 문제는 T점수 72로 보고되었습니다. 자세한 내용은 아래 카드에서 설명합니다."}
+        {
+          "op": "set",
+          "path": [
+            "overview"
+          ],
+          "value": "이번 검사에서 내재화 문제는 T점수 72로 보고되었습니다. 자세한 내용은 아래 카드에서 설명합니다."
+        }
       ]
     },
     {
@@ -17,30 +24,55 @@
       "task": "explain",
       "profile_id": "p2_partial_borderline",
       "note": "입력에 없는 백분위 생성",
-      "expect_rules": ["G3"],
+      "expect_rules": [
+        "G3"
+      ],
       "mutations": [
-        {"op": "set", "path": ["scale:attention", "what_the_number_means"],
-         "value": "T점수 67은 백분위로 상위 3%에 해당하는 수준입니다."}
+        {
+          "op": "set",
+          "path": [
+            "overview"
+          ],
+          "value": "주의집중 척도의 T점수 67은 백분위로 상위 3%에 해당하는 수준입니다."
+        }
       ]
     },
     {
-      "id": "g3_echo_t",
-      "task": "explain",
+      "id": "g3_observation_t",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "에코 필드 t_score 위변조 (실제 위축 62 → 59)",
-      "expect_rules": ["G3"],
+      "note": "관찰 포인트에 입력에 없는 T점수 (기준값처럼 위조)",
+      "expect_rules": [
+        "G3"
+      ],
       "mutations": [
-        {"op": "set", "path": ["scale:withdrawn", "t_score"], "value": 59}
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            0,
+            "point"
+          ],
+          "value": "T점수 75를 넘는 날이 있는지 기록해 두기"
+        }
       ]
     },
     {
-      "id": "g3_echo_band",
+      "id": "g3_before_counseling_pct",
       "task": "explain",
       "profile_id": "p2_partial_borderline",
-      "note": "에코 필드 band 위변조 (준임상 → 정상)",
-      "expect_rules": ["G3"],
+      "note": "상담 전 안내에 입력에 없는 백분위",
+      "expect_rules": [
+        "G3"
+      ],
       "mutations": [
-        {"op": "set", "path": ["scale:anxious_depressed", "band"], "value": "normal"}
+        {
+          "op": "set",
+          "path": [
+            "before_counseling"
+          ],
+          "value": "결과지의 상위 15%라는 숫자는 잠시 접어 두고 상담을 기다려 보세요."
+        }
       ]
     },
     {
@@ -48,10 +80,17 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "상담사용 요약에 위조 수치 (실제 주의집중 67 → 75)",
-      "expect_rules": ["G3"],
+      "expect_rules": [
+        "G3"
+      ],
       "mutations": [
-        {"op": "set", "path": ["counselor_briefing"],
-         "value": "종합지표는 총 문제행동 T=57(정상), 주의집중 T=75(준임상)를 포함함. 질문 목록 첨부."}
+        {
+          "op": "set",
+          "path": [
+            "counselor_briefing"
+          ],
+          "value": "종합지표는 총 문제행동 T=57(정상), 주의집중 T=75(준임상)를 포함함. 질문 목록 첨부."
+        }
       ]
     }
   ]

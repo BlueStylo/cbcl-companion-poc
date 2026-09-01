@@ -4,9 +4,15 @@
 결과'(총점 위계 + 척도 카드), 이어서 상담 준비 도우미 섹션. 서버 없이
 브라우저로 열면 끝나는 단일 파일이며 외부 CDN을 쓰지 않는다.
 
-고정 심리교육 문구(렌즈 안내, T점수 설명, 준임상 일반론, 유의사항)는
-사전 작성 문구를 그대로 노출한다. 일반론과 개별 단정의 거리가 한 문장이라
-이 문단들은 LLM에 맡기지 않는다.
+LLM 문장은 다섯 자리뿐이다: 전체 요약(보호자 관찰과 소견을 잇는 연결
+문단), 상담 전 안내, 질문, 관찰 포인트, 상담사용 요약. 척도 카드 본문과
+심리교육 문단(렌즈 안내, T점수 설명, 준임상 일반론, 한계 고지)은 전부
+사전 작성 고정 문구다 (scale_texts.py) - 일반론과 개별 단정의 거리가 한
+문장이라 LLM에 맡기지 않고, 고정 문구는 검증도 필요 없다.
+
+길이 원칙: 사람들은 긴 글을 읽지 않는다. 정상 범위 척도는 접힌 한 줄,
+준임상·임상 척도만 펼친 카드, 문단은 3문장 상한, 각주·메타는 접기,
+첫 화면에서 상담 준비 섹션으로 바로 가는 앵커.
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, SCALE_NAMES
 from .renderer import DEFAULT_SEM, EXAMPLE_RELIABILITY, bell_curve_svg, concept_curve_svg
+from .scale_texts import LIMITS_TEXT, scale_card_text, scale_one_liner
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -27,10 +34,11 @@ LENS_QUOTE = (
     "그래서 상담사와의 대화에서 그림이 완성됩니다."
 )
 TSCORE_EXPLAIN = (
-    "T점수는 또래 집단의 평균을 50, 표준편차를 10으로 맞춘 점수입니다. "
-    "또래 대부분은 40에서 60 사이에 위치합니다. 점수는 점이 아니라 구간으로 "
-    "읽는 것이 정확하며, 아래 곡선의 밴드가 그 구간입니다."
+    "T점수는 또래 평균을 50, 표준편차를 10으로 맞춘 점수입니다. "
+    "또래 100명을 줄 세우면 50은 한가운데, 60은 위에서 16번째쯤, 70은 위에서 2~3번째쯤입니다. "
+    "점수는 점이 아니라 구간으로 읽는 것이 정확하며, 아래 곡선의 밴드가 그 구간입니다."
 )
+FOOTNOTES_SUMMARY = "보호자와 교사의 평가 상관은 평균 r=.28 (메타분석 2건) - 불일치는 오류가 아니라 정보입니다."
 FOOTNOTES = [
     "서로 다른 위치의 관찰자(부모·교사)가 같은 아동을 평가할 때 상관은 평균 r=.28입니다. "
     "119개 연구 메타분석의 수치이고(Achenbach, McConaughy & Howell, 1987), 341개 연구를 "
@@ -43,13 +51,12 @@ FOOTNOTES = [
 ]
 SEM_NOTE = (
     f"마커 주변의 밴드는 측정의 표준오차(SEM)로 계산한 대칭 구간입니다. "
-    f"신뢰도 예시값 {EXAMPLE_RELIABILITY} 기준 SEM {DEFAULT_SEM}T이며(예시값 - 실제 서비스는 "
-    f"검사 매뉴얼의 척도별 신뢰도 계수 사용), 반복 측정 시 점수가 이 범위에 들어올 확률은 약 68%입니다."
+    f"신뢰도 예시값 {EXAMPLE_RELIABILITY} 기준 SEM {DEFAULT_SEM}T이며, 반복 측정 시 점수가 이 범위에 들어올 확률은 약 68%입니다. "
+    f"실제 서비스는 검사 매뉴얼의 척도별 신뢰도 계수를 씁니다."
 )
 BORDERLINE_NOTE = (
     "준임상 구간은 확정된 상태가 아니라 관찰과 개입의 여지가 있는 구간입니다. "
-    "이 검사는 조기 발견을 위한 선별 도구이며, 해석 유의사항은 재검사와 다중 정보원"
-    "(교사 보고 TRF, 자기 보고 YSR) 병행을 권고합니다."
+    "해석 유의사항은 재검사와 다중 정보원(교사 보고, 자기 보고) 병행을 권고합니다."
 )
 CAUTION = ("이 보고서는 선별 도구이며 진단이 아닙니다. 검사 한 번의 결과는 "
            "아이를 이해하는 출발점일 뿐, 그 자체로 어떤 판정도 확정하지 않습니다.")
@@ -62,27 +69,27 @@ def _template_env() -> Environment:
     )
 
 
-def _scale_view(profile: CBCLProfile, sid: str, exp_map: dict) -> dict:
-    """템플릿에 넘길 척도 카드 1개 분량의 데이터."""
+def _scale_view(profile: CBCLProfile, sid: str) -> dict:
+    """템플릿에 넘길 척도 카드 1개 분량의 데이터 (본문은 고정 문구)."""
     scale = profile.scale_map()[sid]
-    item = exp_map.get(sid, {})
     return {
+        "id": sid,
         "name": scale.name_ko,
         "t": scale.t_score,
         "band": scale.band,
         "band_ko": BAND_KO[scale.band],
+        "open": scale.band != "normal",      # 정상 범위는 접힌 한 줄
+        "one_liner": scale_one_liner(sid, scale.band),
         "svg": bell_curve_svg(scale.t_score, profile.criteria_for(sid)),
-        "what_it_measures": item.get("what_it_measures", ""),
-        "what_the_number_means": item.get("what_the_number_means", ""),
-        "everyday_example": item.get("everyday_example", ""),
-        "fallback": bool(item.get("_fallback")),
+        "text": scale_card_text(sid, scale.band),
     }
 
 
 def _items_view(profile: CBCLProfile, items: list, text_key: str) -> list[dict]:
     names = SCALE_NAMES
     return [{"text": it.get(text_key, ""),
-             "source_name": names.get(it.get("source_scale"), "원 보고서")}
+             "source_name": names.get(it.get("source_scale"), "원 보고서"),
+             "fallback": bool(it.get("_fallback"))}
             for it in items if isinstance(it, dict)]
 
 
@@ -101,35 +108,38 @@ def build_crisis_html(profile: CBCLProfile) -> str:
     )
 
 
-def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mock") -> str:
+def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mock",
+                      model_label: str = "") -> str:
     """SafeResult 2건({"explain","prep"})을 받아 완성 HTML 문자열을 만든다."""
     explain, prep = results["explain"], results["prep"]
-    exp_map = {i.get("scale_id"): i for i in explain.output["scale_explanations"]
-               if isinstance(i, dict)}
-
     fallback_blocks = set(explain.fallback_blocks) | set(prep.fallback_blocks)
+    elevated = [s.name_ko for s in profile.elevated_scales()]
     return _template_env().get_template("report.html.j2").render(
         alias=profile.child.alias,
         instrument=profile.instrument,
         test_date=profile.test_date,
         mode_label=mode_label,
+        model_label=model_label,
         lens_quote=LENS_QUOTE,
         tscore_explain=TSCORE_EXPLAIN,
+        footnotes_summary=FOOTNOTES_SUMMARY,
         footnotes=FOOTNOTES,
         concept_svg=concept_curve_svg(),
         sem_note=SEM_NOTE,
         borderline_note=BORDERLINE_NOTE,
         caution=CAUTION,
+        limits=LIMITS_TEXT,
+        elevated_names=elevated,
         overview=explain.output["overview"],
         overview_fallback="overview" in fallback_blocks,
-        composites=[_scale_view(profile, sid, exp_map) for sid in COMPOSITE_IDS],
-        syndromes=[_scale_view(profile, sid, exp_map) for sid in SYNDROME_IDS],
-        limits=explain.output["limits"],
-        limits_fallback="limits" in fallback_blocks,
+        composites=[_scale_view(profile, sid) for sid in COMPOSITE_IDS],
+        syndromes=[_scale_view(profile, sid) for sid in SYNDROME_IDS],
         before_counseling=explain.output["before_counseling"],
+        before_fallback="before_counseling" in fallback_blocks,
         questions=_items_view(profile, prep.output["questions_for_counselor"], "question"),
         observations=_items_view(profile, prep.output["observation_points"], "point"),
         briefing=prep.output["counselor_briefing"],
+        briefing_fallback="counselor_briefing" in fallback_blocks,
         days=profile.days_until_counseling,
         regen_count=explain.regen_count + prep.regen_count,
         fallback_count=len(fallback_blocks),

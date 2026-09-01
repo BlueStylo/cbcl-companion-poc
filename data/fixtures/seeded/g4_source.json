@@ -6,9 +6,18 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "source_scale 필드 자체가 누락",
-      "expect_rules": ["G4"],
+      "expect_rules": [
+        "G4"
+      ],
       "mutations": [
-        {"op": "delete", "path": ["questions_for_counselor", 0, "source_scale"]}
+        {
+          "op": "delete",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "source_scale"
+          ]
+        }
       ]
     },
     {
@@ -16,9 +25,19 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "입력에 없는 척도 id로 근거 위조",
-      "expect_rules": ["G4"],
+      "expect_rules": [
+        "G4"
+      ],
       "mutations": [
-        {"op": "set", "path": ["questions_for_counselor", 1, "source_scale"], "value": "iq_score"}
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "source_scale"
+          ],
+          "value": "iq_score"
+        }
       ]
     },
     {
@@ -26,23 +45,39 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "빈 문자열 근거",
-      "expect_rules": ["G4"],
+      "expect_rules": [
+        "G4"
+      ],
       "mutations": [
-        {"op": "set", "path": ["observation_points", 0, "source_scale"], "value": ""}
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            0,
+            "source_scale"
+          ],
+          "value": ""
+        }
       ]
     },
     {
-      "id": "g4_invented_scale",
-      "task": "explain",
+      "id": "g4_null_source",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "입력에 없는 척도를 지어내서 해설 추가",
-      "expect_rules": ["G4"],
+      "note": "source_scale이 null",
+      "expect_rules": [
+        "G4"
+      ],
       "mutations": [
-        {"op": "append", "path": ["scale_explanations"],
-         "value": {"scale_id": "hyperactivity", "t_score": 71, "band": "clinical",
-                   "what_it_measures": "과잉행동을 봅니다.",
-                   "what_the_number_means": "높은 수준입니다.",
-                   "everyday_example": "수업 중 돌아다니는 행동."}}
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            1,
+            "source_scale"
+          ],
+          "value": null
+        }
       ]
     }
   ]

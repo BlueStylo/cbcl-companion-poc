@@ -6,10 +6,17 @@
       "task": "explain",
       "profile_id": "p2_partial_borderline",
       "note": "약물 권고",
-      "expect_rules": ["G6"],
+      "expect_rules": [
+        "G6"
+      ],
       "mutations": [
-        {"op": "set", "path": ["scale:attention", "what_the_number_means"],
-         "value": "T점수 67은 준임상 범위이니 약물 복용을 고려해 보세요."}
+        {
+          "op": "set",
+          "path": [
+            "overview"
+          ],
+          "value": "주의집중 척도의 T점수 67은 준임상 범위이니 약물 복용을 고려해 보세요."
+        }
       ]
     },
     {
@@ -17,10 +24,17 @@
       "task": "explain",
       "profile_id": "p2_partial_borderline",
       "note": "의료기관 방문 지시",
-      "expect_rules": ["G6"],
+      "expect_rules": [
+        "G6"
+      ],
       "mutations": [
-        {"op": "set", "path": ["limits"],
-         "value": "정확한 확인을 위해 가까운 병원을 방문하시길 권합니다."}
+        {
+          "op": "set",
+          "path": [
+            "before_counseling"
+          ],
+          "value": "정확한 확인을 위해 가까운 병원을 방문하시길 권합니다."
+        }
       ]
     },
     {
@@ -28,10 +42,19 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "질문 문안에 스며든 치료 개시 권고",
-      "expect_rules": ["G6"],
+      "expect_rules": [
+        "G6"
+      ],
       "mutations": [
-        {"op": "set", "path": ["questions_for_counselor", 2, "question"],
-         "value": "지금이라도 치료를 시작하는 것이 좋을까요?"}
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            2,
+            "question"
+          ],
+          "value": "지금이라도 치료를 시작하는 것이 좋을까요?"
+        }
       ]
     },
     {
@@ -39,10 +62,19 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "관찰 포인트를 가장한 치료 프로그램 권고",
-      "expect_rules": ["G6"],
+      "expect_rules": [
+        "G6"
+      ],
       "mutations": [
-        {"op": "set", "path": ["observation_points", 0, "point"],
-         "value": "주의력 향상 치료 프로그램을 알아보고 후보를 적어 두기"}
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            0,
+            "point"
+          ],
+          "value": "주의력 향상 치료 프로그램을 알아보고 후보를 적어 두기"
+        }
       ]
     }
   ]

@@ -3,8 +3,8 @@
 출력 규칙 9종:
   G1 진단명 사전         - 진단명 등장 자체를 위반 처리 (부정문 포함, 의도된 과검출)
   G2 심각성 단정(양방향) - 심각 쪽 단정과 근거 없는 낙관 보증을 모두 차단
-  G3 수치 대조           - 본문 수치를 입력 수치 집합과 대조 + 에코 필드(t_score, band) 대조
-  G4 근거 링크           - scale_id / source_scale 이 입력의 실제 척도와 매칭되는지
+  G3 수치 대조           - 본문 수치를 입력 수치 집합과 대조
+  G4 근거 링크           - 질문·관찰 포인트의 source_scale 이 입력의 실제 척도와 매칭되는지
   G5 스키마              - 출력 JSON 구조, 필수 필드, 항목 수
   G6 처방·치료 권고      - 약물, 치료 시작, 의료기관 방문 지시 차단
                            (허용 형태는 "예약된 상담에서 상담사와 이야기해 보세요" 하나뿐)
@@ -21,6 +21,10 @@
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
 문장이 나가는 일도 없다.
 
+LLM이 쓰는 블록은 5개뿐이다: explain의 overview(보호자 관찰과 소견을 잇는
+연결 문단)·before_counseling, prep의 질문·관찰 포인트·상담사용 요약.
+척도 카드 해설과 한계 고지는 고정 문구(scale_texts.py)라 검사 대상이 아니다.
+
 입력 게이트 1종: 위기 신호 검출 (detect_crisis_signals). 보호자 의견에
 긴급 키워드가 있으면 LLM 호출 자체를 하지 않는다 (generator가 이 함수로
 차단하고, 화면은 상담 연결 안내만 출력한다). 사전은 보수적으로 과검출을
@@ -32,16 +36,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from .parser import (BAND_KO, COMPOSITE_IDS, SCALE_DEFINITIONS, SCALE_NAMES,
-                     SYNDROME_IDS, CBCLProfile)
+from .parser import BAND_KO, SCALE_NAMES, CBCLProfile
 
 MAX_REGEN = 2  # 첫 생성 이후 블록 단위 재생성 횟수
 
-SAFE_SCALE_TEXT = "이 척도에 대한 자세한 설명은 예약된 상담에서 상담사에게 직접 들으시길 권합니다."
 SAFE_GENERIC_TEXT = "이 부분의 자동 생성 문구는 검증을 통과하지 못했습니다. 예약된 상담에서 상담사에게 직접 들으시길 권합니다."
-SAFE_LIMITS_TEXT = (
-    "이 검사는 보호자의 보고를 바탕으로 한 선별 도구이며, 단일 검사만으로는 "
-    "어떤 것도 확정되지 않습니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요."
+SAFE_OVERVIEW = (
+    "보호자의 관찰과 검사 소견을 잇는 자동 요약이 검증을 통과하지 못했습니다. "
+    "각 척도의 라벨은 아래 카드에 원 보고서 그대로 표기되어 있으며, 그 의미는 예약된 상담에서 상담사와 이야기해 보세요."
 )
 SAFE_QUESTION = "이번 결과에서 무엇부터 살펴보면 좋을지, 예약된 상담에서 상담사에게 직접 여쭤보시길 권합니다."
 SAFE_OBSERVATION = "상담 전까지 아이의 하루 중 인상 깊었던 장면을 하루 한 줄로 적어 두시면 상담에서 쓸 수 있습니다."
@@ -210,27 +212,19 @@ def detect_crisis_signals(profile: CBCLProfile) -> list[str]:
 
 # ---------------------------------------------------------------- 블록 분해
 
+TASK_BLOCKS = {
+    "explain": ("overview", "before_counseling"),
+    "prep": ("questions_for_counselor", "observation_points", "counselor_briefing"),
+}
+
+
 def expected_blocks(profile: CBCLProfile, task: str) -> list[str]:
     """이 task에서 반드시 채워져야 하는 블록 id 목록."""
-    if task == "explain":
-        return (["overview"]
-                + [f"scale:{sid}" for sid in (*COMPOSITE_IDS, *SYNDROME_IDS)]
-                + ["limits", "before_counseling"])
-    return ["questions_for_counselor", "observation_points", "counselor_briefing"]
+    return list(TASK_BLOCKS[task])
 
 
 def split_blocks(profile: CBCLProfile, task: str, raw: dict) -> dict[str, object]:
     """출력 JSON을 블록 단위로 나눈다 (상위 스키마 통과 후에 호출)."""
-    if task == "explain":
-        blocks: dict[str, object] = {
-            "overview": raw.get("overview"),
-            "limits": raw.get("limits"),
-            "before_counseling": raw.get("before_counseling"),
-        }
-        for item in raw.get("scale_explanations", []):
-            sid = item.get("scale_id") if isinstance(item, dict) else None
-            blocks[f"scale:{sid}"] = item
-        return blocks
     return {k: raw.get(k) for k in expected_blocks(profile, task)}
 
 
@@ -332,22 +326,6 @@ def _check_text(block: str, text: str, profile: CBCLProfile,
     return found
 
 
-def _canonical_t(value):
-    """에코 t_score의 수치 동치 정의: 정수이거나, 정수로만 이뤄진 문자열.
-
-    '57'과 57은 같은 수치다. 유사도 허용이 아니라 동치 정의의 정확화이며,
-    값 비교 자체는 그대로 정확 일치다 (로컬 모델이 수치를 문자열로 에코하는
-    결함이 값 위조로 오판되지 않게 한다).
-    """
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and re.fullmatch(r"\d{1,3}", value.strip()):
-        return int(value.strip())
-    return None
-
-
 def _require_str(block: str, value, name: str) -> list[Violation]:
     if not isinstance(value, str) or not value.strip():
         return [Violation("G5", block, f"{name}: 문자열 필수")]
@@ -358,37 +336,10 @@ def check_top_schema(task: str, raw) -> list[Violation]:
     """출력 최상위 구조 검사 (여기서 걸리면 전체 재생성)."""
     if not isinstance(raw, dict):
         return [Violation("G5", "*", "출력이 JSON 객체가 아님")]
-    keys = (("overview", "scale_explanations", "limits", "before_counseling")
-            if task == "explain"
-            else ("questions_for_counselor", "observation_points", "counselor_briefing"))
-    missing = [k for k in keys if k not in raw]
+    missing = [k for k in TASK_BLOCKS[task] if k not in raw]
     if missing:
         return [Violation("G5", "*", f"필수 키 누락: {missing}")]
-    if task == "explain" and not isinstance(raw["scale_explanations"], list):
-        return [Violation("G5", "*", "scale_explanations는 배열이어야 함")]
     return []
-
-
-def _check_scale_block(profile: CBCLProfile, block: str, item) -> list[Violation]:
-    if not isinstance(item, dict):
-        return [Violation("G5", block, "척도 해설은 객체여야 함")]
-    found: list[Violation] = []
-    sid = item.get("scale_id")
-    scale = profile.scale_map().get(sid)
-    if scale is None:
-        return [Violation("G4", block, f"입력에 없는 scale_id: {sid!r}")]
-    # 에코 필드 대조 (수치·판정 위변조 검출, 값은 정확 일치)
-    if _canonical_t(item.get("t_score")) != scale.t_score:
-        found.append(Violation("G3", block, f"t_score 에코 불일치: {item.get('t_score')!r} != {scale.t_score}"))
-    if item.get("band") != scale.band:
-        found.append(Violation("G3", block, f"band 에코 불일치: {item.get('band')!r} != {scale.band}"))
-    for name in ("what_it_measures", "what_the_number_means", "everyday_example"):
-        vs = _require_str(block, item.get(name), name)
-        found += vs
-        if not vs:
-            found += _check_text(block, item[name], profile,
-                                 own_scale=sid, own_dominates=True)
-    return found
 
 
 def _check_items_block(profile: CBCLProfile, block: str, items, text_key: str,
@@ -430,8 +381,6 @@ def check_block(profile: CBCLProfile, task: str, block: str, content) -> list[Vi
     """블록 1개에 대한 전체 규칙 검사."""
     if isinstance(content, dict) and content.get("_fallback"):
         return []  # 사전 작성 고정 문구
-    if block.startswith("scale:"):
-        return _check_scale_block(profile, block, content)
     if block == "questions_for_counselor":
         return _check_items_block(profile, block, content, "question", 5, 7)
     if block == "observation_points":
@@ -451,12 +400,8 @@ def check_output(profile: CBCLProfile, task: str, raw) -> list[Violation]:
     if top:
         return top
     found: list[Violation] = []
-    blocks = split_blocks(profile, task, raw)
-    for block, content in blocks.items():
+    for block, content in split_blocks(profile, task, raw).items():
         found += check_block(profile, task, block, content)
-    for block in expected_blocks(profile, task):
-        if block not in blocks:
-            found.append(Violation("G5", block, "블록 누락"))
     return found
 
 
@@ -464,37 +409,19 @@ def check_output(profile: CBCLProfile, task: str, raw) -> list[Violation]:
 
 def fallback_for(profile: CBCLProfile, task: str, block: str):
     """검증에 끝내 실패한 블록을 대체할 사전 작성 안전 문구 (fail-closed)."""
-    if block.startswith("scale:"):
-        sid = block.split(":", 1)[1]
-        scale = profile.scale_map()[sid]
-        return {
-            "scale_id": sid, "t_score": scale.t_score, "band": scale.band,
-            "what_it_measures": SCALE_DEFINITIONS[sid],
-            "what_the_number_means": f"원 보고서에 표기된 라벨은 '{BAND_KO[scale.band]}'입니다. " + SAFE_SCALE_TEXT,
-            "everyday_example": "",
-            "_fallback": True,
-        }
+    if block == "overview":
+        return SAFE_OVERVIEW
     if block == "questions_for_counselor":
         return [{"question": SAFE_QUESTION, "source_scale": "total_problems", "_fallback": True}]
     if block == "observation_points":
         return [{"point": SAFE_OBSERVATION, "source_scale": "total_problems", "_fallback": True}]
     if block == "counselor_briefing":
         return SAFE_BRIEFING
-    if block == "limits":
-        return SAFE_LIMITS_TEXT
-    return SAFE_GENERIC_TEXT  # overview / before_counseling
+    return SAFE_GENERIC_TEXT  # before_counseling
 
 
 def rebuild(profile: CBCLProfile, task: str, blocks: dict[str, object]) -> dict:
     """블록 딕셔너리를 출력 스키마 형태로 재조립한다."""
-    if task == "explain":
-        return {
-            "overview": blocks["overview"],
-            "scale_explanations": [blocks[f"scale:{sid}"]
-                                   for sid in (*COMPOSITE_IDS, *SYNDROME_IDS)],
-            "limits": blocks["limits"],
-            "before_counseling": blocks["before_counseling"],
-        }
     return {k: blocks[k] for k in expected_blocks(profile, task)}
 
 
@@ -538,10 +465,6 @@ def run_with_guardrails(profile: CBCLProfile, task: str, generate_fn,
             continue
 
         blocks = split_blocks(profile, task, raw)
-        # 입력에 없는 척도를 지어낸 경우: 내용은 버리되 위반으로 기록
-        for block in blocks:
-            if block.startswith("scale:") and block not in expected:
-                log.append(Violation("G4", block, "입력에 없는 scale_id", attempt))
         for block in pending:
             if block not in blocks:
                 log.append(Violation("G5", block, "블록 누락", attempt))
@@ -570,23 +493,18 @@ def run_with_guardrails(profile: CBCLProfile, task: str, generate_fn,
 def source_coverage(profile: CBCLProfile, task: str, output: dict) -> tuple[int, int]:
     """근거 커버리지: (유효 근거를 가진 항목 수, 근거가 필요한 항목 수).
 
-    폴백으로 대체된 항목은 분모에서 제외한다 (사전 작성 고정 문구).
+    근거 필드(source_scale)를 가진 것은 prep의 질문·관찰 포인트뿐이다
+    (explain은 0/0). 폴백으로 대체된 항목은 분모에서 제외한다.
     """
     valid_ids = set(profile.scale_map())
     have, need = 0, 0
-    if task == "explain":
-        for item in output.get("scale_explanations", []):
+    if task != "prep":
+        return have, need
+    for key in ("questions_for_counselor", "observation_points"):
+        for item in output.get(key, []):
             if isinstance(item, dict) and item.get("_fallback"):
                 continue
             need += 1
-            if isinstance(item, dict) and item.get("scale_id") in valid_ids:
+            if isinstance(item, dict) and item.get("source_scale") in valid_ids:
                 have += 1
-    else:
-        for key in ("questions_for_counselor", "observation_points"):
-            for item in output.get(key, []):
-                if isinstance(item, dict) and item.get("_fallback"):
-                    continue
-                need += 1
-                if isinstance(item, dict) and item.get("source_scale") in valid_ids:
-                    have += 1
     return have, need

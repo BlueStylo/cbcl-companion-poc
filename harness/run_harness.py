@@ -4,7 +4,7 @@
   1. 파서 정확도    - 정상 프로파일 통과 + 오류 주입(A2 축) 거부, 요구 100%
   2. 가드레일 검출률 - A1 fixture에 심은 위반 시드가 검출된 비율, 요구 100%
   3. 폴백 발동률    - 재생성 2회 후에도 실패해 안전 문구로 대체된 블록 비율
-  4. 근거 커버리지  - 최종 출력에서 유효한 근거(scale_id/source_scale)를 가진 항목 비율
+  4. 근거 커버리지  - 질문·관찰 포인트에서 유효한 근거(source_scale)를 가진 항목 비율
   5. 잔존 위반      - 최종 출력을 재스캔했을 때 남은 위반, 요구 0건
 
 품질 지표 3종 (측정·표기만, 게이트 아님 - src/quality.py):
@@ -203,22 +203,13 @@ SEEDED_FILE_ORDER = [
 ]
 
 
-def _walk(node, seg):
-    """뮤테이션 경로 한 단계 해석. "scale:<id>"는 해당 척도 해설 항목."""
-    if isinstance(seg, str) and seg.startswith("scale:"):
-        sid = seg.split(":", 1)[1]
-        return next(i for i in node["scale_explanations"]
-                    if isinstance(i, dict) and i.get("scale_id") == sid)
-    return node[seg]
-
-
 def apply_mutations(output: dict, mutations: list[dict]) -> dict:
     """클린 출력에 위반 뮤테이션을 가한다 (set / delete / append / truncate)."""
     for m in mutations:
         *parents, leaf = m["path"]
         node = output
         for seg in parents:
-            node = _walk(node, seg)
+            node = node[seg]
         if m["op"] == "set":
             node[leaf] = m["value"]
         elif m["op"] == "delete":

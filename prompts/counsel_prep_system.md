@@ -102,10 +102,30 @@ days_until_counseling(상담까지 남은 날수)도 함께 주어집니다.
                          4~6문장으로"
 }
 
-questions_for_counselor는 5~7개, observation_points는 3~5개입니다.
+questions_for_counselor는 5~7개(5개를 기본으로), observation_points는 3~5개입니다.
+
+작성 예시 (입력에서 attention이 borderline, withdrawn이 borderline일 때):
+
+{
+  "questions_for_counselor": [
+    { "question": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도(T점수 67)가 준임상 범위로 보고된 것과 연결해서 보면 될까요?",
+      "source_scale": "attention" },
+    { "question": "놀이터에서 또래에게 먼저 말을 거는 일이 줄어든 것을 상담에서는 무엇부터 살펴보게 되나요?",
+      "source_scale": "withdrawn" }
+  ],
+  "observation_points": [
+    { "point": "숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기",
+      "source_scale": "attention" }
+  ],
+  "counselor_briefing": "종합지표: 총 문제행동 T=57(정상), 내재화 문제 T=62(준임상) ..."
+}
 
 # 근거 참조 규칙
 
-모든 질문과 관찰 항목의 source_scale은 입력 JSON에 실제로 있는 scale_id여야
-합니다. 검증기가 기계적으로 대조하며, 매칭에 실패한 블록은 폐기됩니다.
-counselor_briefing에 수치를 쓸 때도 입력에 있는 값만 씁니다.
+모든 질문과 관찰 항목의 source_scale은 입력 JSON에 실제로 있는 scale_id의
+영문 문자열을 글자 그대로 씁니다 (예: "attention", "withdrawn",
+"anxious_depressed"). 한국어 척도명("주의집중")을 넣거나, 비워 두거나,
+null로 두면 그 블록은 폐기됩니다. 규칙 10의 코드 금지는 question·point·
+counselor_briefing의 문장에만 해당하고, source_scale 필드에는 반드시 영문
+scale_id를 씁니다. 검증기가 기계적으로 대조하며, 매칭에 실패한 블록은
+폐기됩니다. counselor_briefing에 수치를 쓸 때도 입력에 있는 값만 씁니다.

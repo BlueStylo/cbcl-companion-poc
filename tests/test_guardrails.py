@@ -47,9 +47,9 @@ def test_g1_diagnosis_detected_even_in_negation(explain_out):
 
 
 def test_g2_severity_both_directions(explain_out):
-    explain_out["limits"] = "이 점수는 심각한 수준입니다."
+    explain_out["before_counseling"] = "이 점수는 심각한 수준입니다."
     assert "G2" in rules(check_output(PROFILE, "explain", explain_out))
-    explain_out["limits"] = "걱정하지 않으셔도 됩니다. 괜찮습니다."
+    explain_out["before_counseling"] = "걱정하지 않으셔도 됩니다. 괜찮습니다."
     assert "G2" in rules(check_output(PROFILE, "explain", explain_out))
 
 
@@ -58,34 +58,28 @@ def test_g3_fabricated_number_in_text(explain_out):
     assert "G3" in rules(check_output(PROFILE, "explain", explain_out))
 
 
-def test_g3_echo_field_tampering(explain_out):
-    explain_out["scale_explanations"][0]["t_score"] += 1
-    assert "G3" in rules(check_output(PROFILE, "explain", explain_out))
+def test_g3_number_in_prep_observation(prep_out):
+    prep_out["observation_points"][0]["point"] = "T점수 75를 넘는 날이 있는지 기록해 두기"
+    assert "G3" in rules(check_output(PROFILE, "prep", prep_out))
 
 
-def test_g3_echo_digit_string_is_same_value(explain_out):
-    """에코 동치 정의: 문자열 '57'은 정수 57과 같은 수치 (타입 결함 != 값 위조).
-
-    단, 값이 다르면 문자열이어도 여전히 위반이다.
-    """
-    item = explain_out["scale_explanations"][0]
-    item["t_score"] = str(item["t_score"])
+def test_g3_allowed_numbers_pass(explain_out):
+    """입력 수치와 T점수 체계 상수(평균 50 등)는 위조가 아니다."""
+    explain_out["before_counseling"] = "T점수는 또래 평균을 50으로 놓고 비교한 점수이며, 주의집중 척도는 T점수 67입니다."
     assert "G3" not in rules(check_output(PROFILE, "explain", explain_out))
-    item["t_score"] = str(int(item["t_score"]) + 1)
-    assert "G3" in rules(check_output(PROFILE, "explain", explain_out))
 
 
 def test_g6_prescription_detected(explain_out):
     """처방·치료 권고: 약물, 치료 시작, 의료기관 방문 지시 모두 차단."""
-    explain_out["limits"] = "필요하면 약물 치료를 시작해 보세요."
+    explain_out["before_counseling"] = "필요하면 약물 치료를 시작해 보세요."
     assert "G6" in rules(check_output(PROFILE, "explain", explain_out))
-    explain_out["limits"] = "가까운 병원에 방문해 진료를 받아 보세요."
+    explain_out["before_counseling"] = "가까운 병원에 방문해 진료를 받아 보세요."
     assert "G6" in rules(check_output(PROFILE, "explain", explain_out))
 
 
 def test_g6_allowed_counsel_guidance_passes(explain_out):
     """허용된 유일한 형태('예약된 상담에서...')는 G6에 걸리지 않는다."""
-    explain_out["limits"] = "궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요."
+    explain_out["before_counseling"] = "궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요."
     assert "G6" not in rules(check_output(PROFILE, "explain", explain_out))
 
 
@@ -106,8 +100,6 @@ def test_fallback_flag_cannot_bypass_checks(explain_out):
     def gen_fn(attempt, pending, feedback):
         out = copy.deepcopy(explain_out)
         out["_fallback"] = True
-        for item in out["scale_explanations"]:
-            item["_fallback"] = True
         return out
 
     result = run_with_guardrails(PROFILE, "explain", gen_fn)
@@ -143,14 +135,14 @@ def test_g7_scale_id_leak_in_question(prep_out):
     assert "G7" in rules(check_output(PROFILE, "prep", prep_out))
 
 
-def test_g7_lowercase_identifier_in_card(explain_out):
-    explain_out["scale_explanations"][3]["what_the_number_means"] = "위축(withdrawn) 척도의 T점수 62는 준임상 범위입니다."
+def test_g7_lowercase_identifier_in_overview(explain_out):
+    explain_out["overview"] = "위축(withdrawn) 척도의 T점수 62는 준임상 범위입니다."
     assert "G7" in rules(check_output(PROFILE, "explain", explain_out))
 
 
 def test_g7_uppercase_abbreviations_are_not_leaks(explain_out):
     """대문자 약어(T점수, K-CBCL, SEM)는 형식 누출이 아니다."""
-    explain_out["limits"] = "K-CBCL 6-18은 T점수로 표기되며 SEM은 측정 오차입니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요."
+    explain_out["before_counseling"] = "K-CBCL 6-18은 T점수로 표기되며 SEM은 측정 오차입니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요."
     assert "G7" not in rules(check_output(PROFILE, "explain", explain_out))
 
 
@@ -176,17 +168,21 @@ def test_g8_label_mismatch_per_mentioned_scale(explain_out):
     assert len(vs) == 1 and "총 문제행동" in vs[0].matched
 
 
-def test_g8_uses_block_scale_when_no_scale_mentioned(explain_out, prep_out):
-    """척도 언급이 없으면 블록의 own scale과 대조한다."""
-    explain_out["scale_explanations"][1]["what_the_number_means"] = "T점수 62는 정상 범위에 해당합니다."  # internalizing은 준임상
-    assert "G8" in rules(check_output(PROFILE, "explain", explain_out))
+def test_g8_uses_item_scale_when_no_scale_mentioned(prep_out):
+    """척도 언급이 없으면 항목의 source_scale과 대조한다."""
     prep_out["questions_for_counselor"][0]["question"] = "이 결과가 정상 범위라면 무엇을 더 살펴보면 될까요?"  # source attention(준임상)
     assert "G8" in rules(check_output(PROFILE, "prep", prep_out))
 
 
+def test_g8_skips_when_no_scale_attributable(explain_out):
+    """귀속할 척도가 없는 밴드 어휘는 대조하지 않는다 (규칙 한계, README 명시)."""
+    explain_out["before_counseling"] = "정상 범위라는 말을 들어도 마음이 놓이지 않는 것은 자연스럽습니다."
+    assert "G8" not in rules(check_output(PROFILE, "explain", explain_out))
+
+
 def test_g8_general_usage_of_words_is_not_a_label(explain_out, prep_out):
     """'임상적', '비정상', '정상적', '경계를' 같은 일반어 용법은 라벨이 아니다."""
-    explain_out["limits"] = "임상적 해석은 상담사가 합니다. 관찰자마다 결과가 다른 것이 비정상은 아니며, 예약된 상담에서 상담사와 이야기해 보세요."
+    explain_out["before_counseling"] = "임상적 해석은 상담사가 합니다. 관찰자마다 결과가 다른 것이 비정상은 아니며, 예약된 상담에서 상담사와 이야기해 보세요."
     assert "G8" not in rules(check_output(PROFILE, "explain", explain_out))
     prep_out["questions_for_counselor"][0]["question"] = "이 검사로 알 수 있는 것과 없는 것의 경계를 어디에 두면 될까요?"
     assert "G8" not in rules(check_output(PROFILE, "prep", prep_out))
@@ -239,3 +235,12 @@ def test_new_rules_regenerate_then_fallback(prep_out):
     assert calls == [0, 1, 2]
     assert result.fallback_blocks == ["questions_for_counselor"]
     assert check_output(PROFILE, "prep", result.output) == []
+
+
+def test_explain_schema_is_overview_and_before_counseling_only(explain_out):
+    """LLM 범위 축소: explain 출력은 연결 문단 + 상담 전 안내 두 블록뿐이다."""
+    assert set(explain_out) == {"overview", "before_counseling"}
+    extra = dict(explain_out, scale_explanations=[{"scale_id": "attention", "what_the_number_means": "심각합니다."}])
+    assert check_output(PROFILE, "explain", extra) == []   # 스키마 밖 필드는 렌더링되지 않으므로 검사 대상도 아니다
+    del explain_out["before_counseling"]
+    assert "G5" in rules(check_output(PROFILE, "explain", explain_out))
