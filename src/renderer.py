@@ -21,6 +21,12 @@ T_LEFT, T_RIGHT = 25.0, 85.0
 EXAMPLE_RELIABILITY = 0.84
 DEFAULT_SEM = round(T_SD * math.sqrt(1.0 - EXAMPLE_RELIABILITY), 1)
 
+# 기준선 라벨("준임상 기준 60T", 9.5px 글꼴로 약 70px)이 두 기준선 사이에 들어가지
+# 못할 만큼 좁으면 두 번째 라벨을 한 줄 아래로 어긋나게 놓는다. 종합지표(준임상 60T,
+# 임상 63T: 3T = 약 22px)가 해당하고, 개별 척도(60T/70T: 약 72px)는 그대로 한 줄이다.
+MIN_LABEL_GAP_PX = 60
+LABEL_LINE_HEIGHT = 12
+
 _COL = {
     "curve": "#4a6fa5",
     "baseline": "#8a94a3",
@@ -106,11 +112,13 @@ def bell_curve_svg(
         f'fill="{_COL["sem"]}" fill-opacity="0.35"/>'
     )
 
+    stagger = (x(c_start) - x(b_start)) < MIN_LABEL_GAP_PX
     boundaries = "".join(
         f'<line x1="{x(t):.1f}" y1="{top}" x2="{x(t):.1f}" y2="{base}" '
         f'stroke="{_COL["boundary"]}" stroke-width="1" stroke-dasharray="3,3"/>'
-        f'<text x="{x(t) + 3:.1f}" y="{top + 10}" font-size="9.5" fill="{_COL["faint"]}">{label} {t}T</text>'
-        for t, label in ((b_start, "준임상 기준"), (c_start, "임상 기준"))
+        f'<text x="{x(t) + 3:.1f}" y="{top + 10 + (LABEL_LINE_HEIGHT if stagger and i else 0)}" '
+        f'font-size="9.5" fill="{_COL["faint"]}">{label} {t}T</text>'
+        for i, (t, label) in enumerate(((b_start, "준임상 기준"), (c_start, "임상 기준")))
     )
 
     mx, my = x(t_score), y(t_score)
