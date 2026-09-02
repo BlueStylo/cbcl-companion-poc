@@ -1,17 +1,18 @@
 """동점 비교 화면은 보호자 의견 외 입력이 같을 때만 생성한다."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from src.compare_html import build_compare_html
 from src.generator import generate_all
 from src.llm_client import MockLLMClient
 from src.parser import load_profile, parse_profile
-
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def _profile(name: str):
