@@ -31,7 +31,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from .guardrails import SafeResult
+from .guardrails import SafeResult, detect_crisis_signals
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, SCALE_NAMES
 from .renderer import (DEFAULT_SEM, EXAMPLE_RELIABILITY, bell_curve_svg, concept_curve_svg,
                        curve_explainer_svg)
@@ -272,6 +272,20 @@ def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
 def build_pending_report_html(profile: CBCLProfile, mode_label: str = "생성 전") -> str:
     """생성 전 미리보기: 같은 템플릿·같은 렌더러로 결정론 부분만 실제 값으로 그린다."""
     return build_report_html(profile, pending_results(profile), mode_label=mode_label, pending=True)
+
+
+def build_preview_html(profile: CBCLProfile, mode_label: str = "생성 전") -> tuple[str, list[str]]:
+    """생성 버튼을 누르기 전의 미리보기 화면과 검출된 위기 패턴.
+
+    보호자 의견에 위기 표현이 있으면 입력 게이트(detect_crisis_signals)와 같은 판정으로 점수 리포트
+    대신 위기 안내 화면을 돌려준다. 미리보기가 점수와 곡선을 먼저 보여 준 뒤 생성 단계에서야 막는
+    구멍을 없애기 위한 것이며, 탐색 콘솔은 입력이 바뀔 때마다 이 함수를 다시 부른다. LLM은 어느
+    경로에서도 호출되지 않는다.
+    """
+    crisis = detect_crisis_signals(profile)
+    if crisis:
+        return build_crisis_html(profile), crisis
+    return build_pending_report_html(profile, mode_label=mode_label), []
 
 
 def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mock",

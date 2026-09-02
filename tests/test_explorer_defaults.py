@@ -32,3 +32,15 @@ def test_console_reflects_two_llm_blocks_and_eleven_rules():
     assert "연결 문단·질문·관찰·요약" not in SRC
     for absent in ("counselor_briefing", '"explain"', "overview"):
         assert absent not in SRC, absent
+
+
+def test_console_preview_path_goes_through_crisis_gate_with_caption():
+    """미리보기 경로(생성 전·입력 변경 후)는 build_preview_html을 거치고, 위기 검출 시 결과 패널에 정해진 캡션을 붙인다.
+
+    이전에는 미리보기가 build_pending_report_html을 바로 불러 위기 의견에서도 점수 리포트가 먼저 보였다.
+    """
+    assert "build_pending_report_html" not in SRC
+    assert "html, preview_crisis = build_preview_html(profile)" in SRC
+    assert re.search(r'CRISIS_CAPTION = "위기 표현이 검출되어 LLM을 호출하지 않았습니다"', SRC)
+    assert SRC.count("CRISIS_CAPTION") >= 4          # 상수 정의 + 미리보기 캡션 + 실행 패널(미리보기, 생성 후)
+    assert "_run_panel(run, stale, preview_crisis)" in SRC

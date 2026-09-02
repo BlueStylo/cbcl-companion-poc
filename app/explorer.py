@@ -34,9 +34,11 @@ from src.guardrails import detect_crisis_signals
 from src.llm_client import SEED_RULES, OpenAICompatClient, TemplateMockClient
 from src.parser import BAND_KO, COMPOSITE_IDS, SCALE_NAMES, SYNDROME_IDS, ProfileError
 from src.quality import fmt_rate
-from src.report_html import build_crisis_html, build_pending_report_html, build_report_html
+from src.report_html import build_crisis_html, build_preview_html, build_report_html
 
 DEFAULT_EXAMPLE = "p2_partial_borderline"
+# 위기 표현이 있을 때 결과 패널에 붙는 캡션. 생성 전 미리보기와 생성 후 화면이 같은 문장을 쓴다.
+CRISIS_CAPTION = "위기 표현이 검출되어 LLM을 호출하지 않았습니다"
 load_env_file(ROOT / ".env")  # 시작 시 한 번: Ollama 모드 입력칸(base_url, 모델명)이 .env 값으로 미리 채워지도록
 OLLAMA_DEFAULT_URL = "http://localhost:11434/v1"
 OLLAMA_DEFAULT_MODEL = "gemma4:12b"
@@ -249,18 +251,22 @@ def _rule_counts(stats: dict) -> dict[str, int]:
     return counts
 
 
-def _run_panel(run: dict | None, stale: bool) -> None:
+def _run_panel(run: dict | None, stale: bool, preview_crisis: list[str]) -> None:
     _section("out", "이번 실행")
-    if run is None:
-        st.caption("아직 실행 전입니다. 왼쪽에서 값을 바꾸고 '리포트 생성'을 누르면 위기 게이트 → 생성 → "
-                   "가드레일 순서로 실행되고, 위 리포트의 '생성 대기' 자리가 실제 문장으로 바뀝니다.")
-        return
-    if stale:
-        st.info("입력이 바뀌어 이전 실행 결과를 내렸습니다. 위 리포트는 결정론 부분만 갱신된 미리보기입니다. "
-                "'리포트 생성'을 다시 누르세요.")
+    if run is None or stale:
+        if preview_crisis:
+            st.error(f"{CRISIS_CAPTION}. 미리보기 단계에서 입력 게이트와 같은 검사가 먼저 걸려 점수 리포트 대신 "
+                     "상담 연결 안내를 보여 주고 있습니다. '리포트 생성'을 눌러도 같은 화면이며, 의견을 고치면 다시 평가합니다.")
+            st.caption("검출 패턴 (평가자 확인용 - 보호자 화면에는 표시되지 않음): " + ", ".join(preview_crisis))
+        elif run is None:
+            st.caption("아직 실행 전입니다. 왼쪽에서 값을 바꾸고 '리포트 생성'을 누르면 위기 게이트 → 생성 → "
+                       "가드레일 순서로 실행되고, 위 리포트의 '생성 대기' 자리가 실제 문장으로 바뀝니다.")
+        else:
+            st.info("입력이 바뀌어 이전 실행 결과를 내렸습니다. 위 리포트는 결정론 부분만 갱신된 미리보기입니다. "
+                    "'리포트 생성'을 다시 누르세요.")
         return
     if run["crisis"]:
-        st.error("위기 신호 검출 → LLM 호출 0회. 해설 대신 상담 연결 안내만 생성했습니다 (입력 게이트, fail-closed).")
+        st.error(f"{CRISIS_CAPTION} (LLM 호출 0회). 해설 대신 상담 연결 안내만 생성했습니다 (입력 게이트, fail-closed).")
         st.caption("검출 패턴 (평가자 확인용 - 보호자 화면에는 표시되지 않음): " + ", ".join(run["crisis"]))
         return
 
@@ -368,14 +374,19 @@ if clicked or autorun:
 
 run = st.session_state.get("run")
 stale = bool(run) and run["fingerprint"] != fingerprint
+preview_crisis: list[str] = []
 with result_box:
     _section("out", "리포트", "2페이지")
     if run and not stale:
         st.caption("생성 완료 - 위기 안내 화면이거나, 가드레일을 통과한 생성 문구로 채워진 리포트입니다.")
         html = run["html"]
     else:
-        st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구·결정론 조립(연결 문단, 상담사 요약)은 실제 값이고, "
-                   "LLM 생성 자리(질문·관찰 포인트)는 '생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
-        html = build_pending_report_html(profile)
+        # 미리보기 게이트: 입력이 바뀔 때마다 위기 표현을 다시 평가한다. 검출되면 점수 리포트를 그리지 않는다.
+        html, preview_crisis = build_preview_html(profile)
+        if preview_crisis:
+            st.caption(f"{CRISIS_CAPTION} - 생성 전 미리보기에서도 점수 리포트 대신 상담 연결 안내를 보여 줍니다.")
+        else:
+            st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구·결정론 조립(연결 문단, 상담사 요약)은 실제 값이고, "
+                       "LLM 생성 자리(질문·관찰 포인트)는 '생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
     components.html(html, height=REPORT_HEIGHT, scrolling=True)
-    _run_panel(run, stale)
+    _run_panel(run, stale, preview_crisis)

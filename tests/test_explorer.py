@@ -21,7 +21,7 @@ from src.guardrails import check_output
 from src.llm_client import TemplateMockClient
 from src.parser import COMPOSITE_IDS, SYNDROME_IDS, ProfileError, load_profile, parse_profile
 from src.quality import reflection_metrics
-from src.report_html import build_pending_report_html
+from src.report_html import build_pending_report_html, build_preview_html
 
 ALL_IDS = (*COMPOSITE_IDS, *SYNDROME_IDS)
 
@@ -138,3 +138,20 @@ def test_pending_report_renders_deterministic_parts_without_llm():
     assert "생성 대기" in html and "검증 통과" not in html and "안전 문구" not in html
     assert "이번 검사 결과 67T" in html and "<svg" in html and "준임상" in html
     assert "근거:" not in html   # 자리표시 항목에는 근거 배지를 붙이지 않는다
+
+
+def test_preview_gate_shows_crisis_screen_before_generation():
+    """미리보기 게이트: 보호자 의견에 위기 표현이 있으면 생성 버튼 전에도 점수 리포트 대신 위기 안내를 돌려준다.
+
+    입력 게이트와 같은 사전(detect_crisis_signals)을 쓰고, 의견을 고치면 다시 점수 미리보기로 돌아온다. LLM은 없다.
+    """
+    p2 = _profile("p2_partial_borderline")
+    html, crisis = build_preview_html(p2)
+    assert crisis == [] and "생성 대기" in html and "이번 검사 결과 67T" in html
+    flagged = p2.model_copy(update={"caregiver_notes": ["아빠가 때려요", p2.caregiver_notes[1]]})
+    html, crisis = build_preview_html(flagged)
+    assert crisis and "상담 연결 안내" in html and "1577-0199" in html
+    assert "T점수" not in html and "67T" not in html and "생성 대기" not in html    # 점수와 곡선을 먼저 보여 주지 않는다
+    assert "아빠가 때려요" not in html                                              # 검출 원문도 재노출하지 않는다
+    html, crisis = build_preview_html(_profile("c1_crisis"))
+    assert crisis and "상담 연결 안내" in html
