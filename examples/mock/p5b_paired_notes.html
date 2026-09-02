@@ -327,7 +327,7 @@ document.addEventListener('click', function (e) {
   var t = document.getElementById(a.getAttribute('href').slice(1));
   if (!t) return;
   e.preventDefault();
-  t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  t.scrollIntoView({ block: 'start' }); // 즉시 이동: 숨은 탭·감속 모션 설정에서도 확실히 동작
 });
 </script>
 </body>
