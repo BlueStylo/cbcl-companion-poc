@@ -20,9 +20,10 @@ from src.guardrails import TASK_BLOCKS, _check_crisis_vocab, _check_text, check_
 from src.llm_client import make_client
 from src.parser import COMPOSITE_IDS, SYNDROME_IDS, load_profile
 from src.quality import caregiver_texts, quality_summary
-from src.report_html import (ASSEMBLED_TAG, BRIEFING_LABEL, BRIEFING_QUESTIONS_NOTE, LLM_TAG,
-                             OVERVIEW_LABEL, build_counselor_briefing, build_observation_points,
-                             build_overview_text, build_pending_report_html, build_report_html)
+from src.report_html import (ASSEMBLED_TAG, BRIEFING_LABEL, BRIEFING_QUESTIONS_NOTE, FALLBACK_TAG, LLM_TAG,
+                             OVERVIEW_LABEL, UNSCHEDULED_LABEL, build_counselor_briefing,
+                             build_observation_points, build_overview_text, build_pending_report_html,
+                             build_report_html)
 from src.scale_texts import GENERAL_OBSERVATION_TEXTS, OBSERVATION_TEXT
 
 
@@ -81,7 +82,7 @@ def test_overview_without_notes_and_when_unscheduled():
 # ---------------------------------------------------------------- 관찰 포인트
 
 def test_observation_points_pick_elevated_scales_in_hierarchy_order():
-    """준임상 이상 척도를 위계 순서(종합지표 → 개별 척도)로 셋 골라 척도별 고정 문구를 붙인다.
+    """준임상 이상 척도를 위계 순서(종합지표 다음 개별 척도)로 셋 골라 척도별 고정 문구를 붙인다.
 
     같은 층 안에서는 임상이 준임상보다 먼저다: p4는 개별 척도 중 주의집중(준임상)이 위계상 앞이지만
     공격성(임상)이 뽑힌다. 전부 준임상인 p2는 순수 위계 순서 그대로다.
@@ -157,13 +158,38 @@ def test_briefing_question_section_is_wired_to_checkboxes_in_template():
 
 
 def test_briefing_all_normal_unscheduled_and_no_questions():
-    p1 = _profile("p1_all_normal")
+    """전 척도 정상 요약은 연결 문단과 같은 범위 규칙을 따른다: 특수 척도 미실시면 "이번 가이드에 포함된 척도"."""
+    p1 = _profile("p1_all_normal")                                          # special_scales_administered=False
     text = build_counselor_briefing(p1, [], 17, False)
-    assert "[상승 척도 없음] 모든 척도 정상 범위" in text
+    assert "[상승 척도 없음] 이번 가이드에 포함된 척도는 모두 정상 범위" in text and "모든 척도 정상 범위" not in text
     assert "[상담사에게 물어볼 질문] 아직 생성되지 않음" in text
-    assert text.endswith("[상담 미예약]") and "상담까지" not in text
+    assert text.endswith(f"[{UNSCHEDULED_LABEL}]") and "상담까지" not in text and "미예약" not in text
+    administered = p1.model_copy(update={"special_scales_administered": True})
+    assert "[상승 척도 없음] 모든 척도 정상 범위" in build_counselor_briefing(administered, [], 17, True)
     empty = p1.model_copy(update={"caregiver_notes": []})
     assert build_counselor_briefing(empty, [], 3, True).startswith("[보호자 의견 원문] 적히지 않음")
+
+
+def test_unscheduled_label_is_identical_on_screen_and_in_briefing():
+    """미예약이면 화면 머리글 링크와 요약이 같은 문구("상담 예약 후 사용")를 쓴다."""
+    profile = _profile("p2_partial_borderline").model_copy(update={"counseling_scheduled": False, "days_until_counseling": 0})
+    html = build_report_html(profile, generate_all(profile, make_client("mock")))
+    assert UNSCHEDULED_LABEL == "상담 예약 후 사용"
+    assert f"· {UNSCHEDULED_LABEL}</small>" in html and f"[{UNSCHEDULED_LABEL}]" in _unescape(html)
+    assert "[상담 미예약]" not in html and "예약된 상담" not in html
+
+
+def test_fallback_question_block_is_tagged_as_replaced_not_verified():
+    """질문 블록이 안전 문구로 대체되면 머리글 태그는 "안전 문구로 대체됨"이고 "LLM 생성 · 검증 통과"는 붙지 않는다."""
+    a1 = _profile("a1_adversarial")
+    results = generate_all(a1, make_client("mock"))
+    assert results["prep"].fallback_blocks == ["questions_for_counselor"]
+    html = build_report_html(a1, results)
+    assert f'<span class="tag fb">{FALLBACK_TAG}</span>' in html and LLM_TAG not in html
+    assert html.count('<span class="tag fb">안전 문구</span>') == 1            # 항목 태그는 그대로
+    p2 = _profile("p2_partial_borderline")
+    ok = build_report_html(p2, generate_all(p2, make_client("mock")))
+    assert FALLBACK_TAG not in ok and ok.count(LLM_TAG) == 1
 
 
 def test_briefing_for_p4_lists_clinical_and_borderline_with_t_scores():

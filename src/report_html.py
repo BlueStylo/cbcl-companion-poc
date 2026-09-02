@@ -115,6 +115,10 @@ BRIEFING_LABEL = "상담사에게 전달할 요약 미리보기"
 # 요약의 질문 절 머리글. 화면의 체크박스와 스크립트로 연동된다 (build_counselor_briefing 독스트링).
 BRIEFING_QUESTIONS_NOTE = "위 목록에서 체크한 질문"
 LLM_TAG = "LLM 생성 · 검증 통과"
+# 질문 블록이 재생성 상한 뒤 안전 문구로 대체됐을 때의 태그. "검증 통과"라고 쓰지 않는다 (사실 문구).
+FALLBACK_TAG = "안전 문구로 대체됨"
+# 상담 미예약 표기. 화면 머리글 링크와 상담사 요약이 같은 문구를 쓴다.
+UNSCHEDULED_LABEL = "상담 예약 후 사용"
 
 
 def josa(word: str, with_batchim: str, without: str) -> str:
@@ -205,7 +209,9 @@ def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
         lines.append(f"[상승 척도 {len(elevated)}개] 척도, T점수, 보고서 라벨")
         lines += [f"- {SCALE_NAMES[s.scale_id]} T={s.t_score} {BAND_KO[s.band]}" for s in elevated]
     else:
-        lines.append("[상승 척도 없음] 모든 척도 정상 범위")
+        # 연결 문단과 같은 규칙: 특수 척도 미실시면 "모든 척도"라고 말하지 않는다
+        scope = "모든 척도 정상 범위" if profile.special_scales_administered else "이번 가이드에 포함된 척도는 모두 정상 범위"
+        lines.append(f"[상승 척도 없음] {scope}")
     texts = [(q.get("question", "") if isinstance(q, dict) else str(q)).strip() for q in questions]
     texts = [t for t in texts if t]
     if texts:
@@ -213,7 +219,8 @@ def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
         lines += [f"{i}. {t}" for i, t in enumerate(texts, 1)]
     else:
         lines.append("[상담사에게 물어볼 질문] 아직 생성되지 않음")
-    lines.append(f"[상담까지 {days}일]" if counseling_scheduled else "[상담 미예약]")
+    # 미예약 표기는 화면 머리글의 "상담 예약 후 사용"과 같은 문구를 쓴다
+    lines.append(f"[상담까지 {days}일]" if counseling_scheduled else f"[{UNSCHEDULED_LABEL}]")
     return "\n".join(lines)
 
 
@@ -351,6 +358,9 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         overview_label=OVERVIEW_LABEL,
         assembled_tag=ASSEMBLED_TAG,
         llm_tag=LLM_TAG,
+        fallback_tag=FALLBACK_TAG,
+        questions_fallback="questions_for_counselor" in fallback_blocks,
+        unscheduled_label=UNSCHEDULED_LABEL,
         composites=[_scale_view(profile, sid) for sid in COMPOSITE_IDS],
         syndromes=[_scale_view(profile, sid) for sid in SYNDROME_IDS],
         pre_counseling_label=PRE_COUNSELING_LABEL,

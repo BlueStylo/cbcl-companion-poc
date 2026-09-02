@@ -145,9 +145,9 @@ def test_unscheduled_report_uses_booking_neutral_phrases():
     html = build_report_html(profile, results)
 
     assert "상담 예약 후" in html
-    assert "상담 예약 후 사용" in html
+    assert "상담 예약 후 사용" in html and "[상담 예약 후 사용]" in html   # 머리글과 요약이 같은 문구
     assert "상담 예약 후 상담 전까지 살펴볼 가정 관찰 포인트" in html
-    assert "예약된 상담" not in html
+    assert "예약된 상담" not in html and "미예약" not in html
     assert not re.search(r"상담까지\s*(?:남은\s*)?\d+일", html)
 
 
@@ -155,12 +155,18 @@ def test_special_scale_scope_is_shown_only_when_not_administered():
     profile = _profile("p1_all_normal")
     scoped = build_report_html(profile, generate_all(profile, make_client("mock")))
     assert "이번 가이드에 포함된 문제행동 척도 기준입니다" in scoped
+    # 위계 안내와 상담사 요약도 같은 범위 규칙: 미실시면 "모든 척도"라고 쓰지 않는다
+    assert "이번 가이드에 포함된 척도는 모두 정상 범위로 보고되었습니다" in scoped
+    assert "[상승 척도 없음] 이번 가이드에 포함된 척도는 모두 정상 범위" in scoped
+    assert "모든 척도가 정상 범위로 보고되었습니다" not in scoped and "모든 척도 정상 범위" not in scoped
 
     administered = profile.model_copy(update={"special_scales_administered": True})
     administered_html = build_report_html(
         administered, generate_all(administered, make_client("mock"))
     )
     assert "이번 가이드에 포함된 문제행동 척도 기준입니다" not in administered_html
+    assert "모든 척도가 정상 범위로 보고되었습니다" in administered_html
+    assert "[상승 척도 없음] 모든 척도 정상 범위" in administered_html
 
 
 def test_sem_copy_names_example_assumption_without_probability_claim():
