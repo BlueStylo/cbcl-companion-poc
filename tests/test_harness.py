@@ -63,7 +63,7 @@ def test_raw_vs_final_coverage_are_different_metrics():
     prep에만 있으므로 explain은 0/0이다.
     """
     assert source_coverage(load_profile(ROOT / "data/profiles/p2_partial_borderline.json"),
-                           "explain", {"overview": "x", "before_counseling": "y"}) == (0, 0)
+                           "explain", {"overview": "x"}) == (0, 0)
     profile = load_profile(ROOT / "data/profiles/a1_adversarial.json")
     client = MockLLMClient()
 

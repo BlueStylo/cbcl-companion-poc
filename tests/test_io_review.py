@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "harness"))
 
 import io_review  # noqa: E402
+from src.guardrails import TASK_BLOCKS  # noqa: E402
 
 PROFILES = ROOT / "data" / "profiles"
 
@@ -45,8 +46,8 @@ def _run(model, mode="api", regen=False, tokens=True):
         if mode == "api" else {},
         "tasks": {
             "explain": {"regen_count": 0, "violations_by_attempt": {},
-                        "block_states": {"overview": "pass", "before_counseling": "pass"},
-                        "state_counts": {"pass": 2, "regen_pass": 0, "fallback": 0}},
+                        "block_states": {"overview": "pass"},
+                        "state_counts": {"pass": 1, "regen_pass": 0, "fallback": 0}},
             "prep": prep_task,
         },
         "llm_calls": calls,
@@ -54,7 +55,7 @@ def _run(model, mode="api", regen=False, tokens=True):
         "total_completion_tokens": sum(c["completion_tokens"] or 0 for c in calls),
         "total_llm_seconds": round(sum(c["duration_s"] for c in calls), 2),
         "quality": {
-            "jargon": {"term_hits": 3, "by_term": {"T점수": 2, "준임상": 1}, "blocks_total": 6,
+            "jargon": {"term_hits": 3, "by_term": {"T점수": 2, "준임상": 1}, "blocks_total": 5,
                        "blocks_with_term": 2, "glossed_blocks": 0, "residual_rate": 0.33, "gloss_rate": 0.0},
             "reflection": {"tokens": ["학원", "숙제", "놀이터", "또래"], "tokens_hit": ["학원", "숙제"],
                            "token_rate": 0.5, "items_total": 4, "items_reflected": 2, "item_rate": 0.5,
@@ -64,7 +65,6 @@ def _run(model, mode="api", regen=False, tokens=True):
         "outputs": {
             "explain": {
                 "overview": f"[{model}] 학원 숙제를 앞에 두면 딴 데를 본다는 관찰은 주의집중 척도(T점수 67, 준임상)와 연결됩니다.",
-                "before_counseling": f"[{model}] 결과를 보고 걱정되는 마음은 자연스럽습니다.",
             },
             "prep": {
                 "questions_for_counselor": [
@@ -106,11 +106,12 @@ def test_html_contains_inputs_models_blocks_and_highlight(stats_files):
     assert "학원 숙제를 앞에 두면 딴 데를 자주 봅니다" in html.replace('<mark class="hit">', "").replace("</mark>", "") \
         .replace('<span class="cand">', "").replace("</span>", "")
     assert "상담까지 <b>5</b>일" in html
-    # 출력: 모델명 열, mock 표기, 5블록 텍스트
+    # 출력: 모델명 열, mock 표기, 4블록 텍스트 (옛 블록 행은 없다)
     assert "gemma4:12b" in html and "mock 템플릿(실제 LLM 아님)" in html
-    for text in ("[gemma4:12b] 결과를 보고 걱정되는 마음은 자연스럽습니다.",
+    for text in ("[gemma4:12b] 위축 척도가 준임상인 것은 무엇부터 보게 되나요?",
                  "[mock] 종합지표: 총 문제행동 T=57(정상)."):
         assert text in html
+    assert "4블록" in html and "before_counseling" not in html
     assert "근거: 주의집중" in html and "안전 문구" in html
     # 하이라이트: 인용된 어절에 mark, 인용되지 않은 어절은 점선 후보
     assert '<mark class="hit">학원</mark> <mark class="hit">숙제</mark>' in html
@@ -147,9 +148,52 @@ def test_missing_profile_still_renders_outputs(tmp_path):
     runs = io_review.load_runs([str(_write_stats(tmp_path, "x", "api", [_run("gemma4:12b")]))])
     html = io_review.build_review_html(runs, tmp_path / "no_profiles_here")
     assert "프로파일을 읽지 못함" in html
-    assert "[gemma4:12b] 결과를 보고 걱정되는 마음은 자연스럽습니다." in html
+    assert "[gemma4:12b] 위축 척도가 준임상인 것은 무엇부터 보게 되나요?" in html
     # 프로파일이 없어도 run_stats의 어절 목록으로 표시한다
     assert '<mark class="hit">학원</mark>' in html
+
+
+def test_blocks_match_guardrail_schema():
+    """리뷰 시트의 블록 목록은 가드레일의 LLM 블록(4개)과 같은 집합이다 (스키마 드리프트 방지)."""
+    assert [(t, b) for t, b, _l, _k in io_review.BLOCKS] == [(t, b) for t, bs in TASK_BLOCKS.items() for b in bs]
+    assert len(io_review.BLOCKS) == 4
+    assert set(io_review.LEGACY_BLOCKS) == {("explain", "before_counseling")}
+
+
+def test_legacy_five_block_run_stats_still_render(tmp_path):
+    """옛 5블록 run_stats(explain에 before_counseling)를 넣어도 깨지지 않는다.
+
+    옛 블록은 "구 스키마(고정 문구로 전환됨)" 표기의 참고용 행으로 나오고, 어절 집계와 폴백 분모(x/4)에서는
+    빠진다. 새 스키마 런과 섞이면 옛 블록이 없는 열은 "출력 없음"이다.
+    """
+    old = _run("gemma4:12b")
+    old["outputs"]["explain"]["before_counseling"] = "[old] 놀이터에서 본 장면을 메모해 두시면 재료가 됩니다."
+    old["tasks"]["explain"]["block_states"]["before_counseling"] = "pass"
+    new = _run("mock", mode="mock", tokens=False)
+    files = [_write_stats(tmp_path, "old", "api", [old]), _write_stats(tmp_path, "new", "mock", [new])]
+    runs = io_review.load_runs([str(p) for p in files])
+
+    html = io_review.build_review_html(runs, PROFILES)
+    plain = html.replace('<mark class="hit">', "").replace("</mark>", "")
+    assert "[old] 놀이터에서 본 장면을 메모해 두시면 재료가 됩니다." in plain
+    assert "상담 전 안내<small>before_counseling · 구 스키마(고정 문구로 전환됨)</small>" in html
+    assert '<tr class="legacy">' in html
+
+    sec = io_review.build_context(runs, PROFILES)["sections"][0]
+    assert [r["block"] for r in sec["rows"] if not r["legacy"]] == [b for _t, b, _l, _k in io_review.BLOCKS]
+    assert [(r["task"], r["block"]) for r in sec["rows"] if r["legacy"]] == [("explain", "before_counseling")]
+    old_col, new_col = sec["columns"]
+    assert old_col["cells"]["before_counseling"]["kind"] == "text"
+    assert new_col["cells"]["before_counseling"]["kind"] == "missing"     # 새 스키마 런에는 없는 블록
+    assert old_col["blocks_total"] == 4 and old_col["fallback_blocks"] == 0
+    assert "놀이터" not in old_col["hit"]                                  # 옛 블록의 어절은 집계하지 않는다
+    assert "놀이터" not in sec["hit_union"]
+
+    md = io_review.build_review_md(runs, PROFILES)
+    assert "#### 상담 전 안내 (before_counseling) - 구 스키마(고정 문구로 전환됨)" in md
+    # 저장소에 커밋된 실측 산출물(5블록 시절)도 그대로 읽힌다
+    api = io_review.load_runs([str(ROOT / "examples" / "api" / "run_stats.json")])
+    assert "구 스키마(고정 문구로 전환됨)" in io_review.build_review_html(api, PROFILES)
 
 
 def test_bad_inputs_fail_cleanly(tmp_path, capsys):

@@ -14,7 +14,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.guardrails import check_output, run_with_guardrails
+from src.generator import build_user_message, load_system_prompt
+from src.guardrails import TASK_BLOCKS, Violation, check_output, run_with_guardrails
 from src.parser import load_profile
 
 PROFILE = load_profile(ROOT / "data/profiles/p2_partial_borderline.json")
@@ -47,9 +48,9 @@ def test_g1_diagnosis_detected_even_in_negation(explain_out):
 
 
 def test_g2_severity_both_directions(explain_out):
-    explain_out["before_counseling"] = "이 점수는 심각한 수준입니다."
+    explain_out["overview"] = "이 점수는 심각한 수준입니다."
     assert "G2" in rules(check_output(PROFILE, "explain", explain_out))
-    explain_out["before_counseling"] = "걱정하지 않으셔도 됩니다. 괜찮습니다."
+    explain_out["overview"] = "걱정하지 않으셔도 됩니다. 괜찮습니다."
     assert "G2" in rules(check_output(PROFILE, "explain", explain_out))
 
 
@@ -65,21 +66,21 @@ def test_g3_number_in_prep_observation(prep_out):
 
 def test_g3_allowed_numbers_pass(explain_out):
     """입력 수치와 T점수 체계 상수(평균 50 등)는 위조가 아니다."""
-    explain_out["before_counseling"] = "T점수는 또래 평균을 50으로 놓고 비교한 점수이며, 주의집중 척도는 T점수 67입니다."
+    explain_out["overview"] = "T점수는 또래 평균을 50으로 놓고 비교한 점수이며, 주의집중 척도는 T점수 67입니다."
     assert "G3" not in rules(check_output(PROFILE, "explain", explain_out))
 
 
 def test_g6_prescription_detected(explain_out):
     """처방·치료 권고: 약물, 치료 시작, 의료기관 방문 지시 모두 차단."""
-    explain_out["before_counseling"] = "필요하면 약물 치료를 시작해 보세요."
+    explain_out["overview"] = "필요하면 약물 치료를 시작해 보세요."
     assert "G6" in rules(check_output(PROFILE, "explain", explain_out))
-    explain_out["before_counseling"] = "가까운 병원에 방문해 진료를 받아 보세요."
+    explain_out["overview"] = "가까운 병원에 방문해 진료를 받아 보세요."
     assert "G6" in rules(check_output(PROFILE, "explain", explain_out))
 
 
 def test_g6_allowed_counsel_guidance_passes(explain_out):
     """허용된 유일한 형태('예약된 상담에서...')는 G6에 걸리지 않는다."""
-    explain_out["before_counseling"] = "궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요."
+    explain_out["overview"] = "궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요."
     assert "G6" not in rules(check_output(PROFILE, "explain", explain_out))
 
 
@@ -117,13 +118,13 @@ def test_fail_closed_fallback_after_two_regens(explain_out):
     def gen_fn(attempt, pending, feedback):
         calls.append(attempt)
         out = copy.deepcopy(explain_out)
-        out["before_counseling"] = "이 정도면 아무 문제 없습니다."
+        out["overview"] = "이 정도면 아무 문제 없습니다."
         return out
 
     result = run_with_guardrails(PROFILE, "explain", gen_fn)
     assert calls == [0, 1, 2]
     assert result.regen_count == 2
-    assert result.fallback_blocks == ["before_counseling"]
+    assert result.fallback_blocks == ["overview"]
     assert check_output(PROFILE, "explain", result.output) == []
 
 
@@ -142,7 +143,7 @@ def test_g7_lowercase_identifier_in_overview(explain_out):
 
 def test_g7_uppercase_abbreviations_are_not_leaks(explain_out):
     """대문자 약어(T점수, K-CBCL, SEM)는 형식 누출이 아니다."""
-    explain_out["before_counseling"] = "K-CBCL 6-18은 T점수로 표기되며 SEM은 측정 오차입니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요."
+    explain_out["overview"] = "K-CBCL 6-18은 T점수로 표기되며 SEM은 측정 오차입니다. 결과의 해석은 예약된 상담에서 상담사와 이야기해 보세요."
     assert "G7" not in rules(check_output(PROFILE, "explain", explain_out))
 
 
@@ -176,13 +177,13 @@ def test_g8_uses_item_scale_when_no_scale_mentioned(prep_out):
 
 def test_g8_skips_when_no_scale_attributable(explain_out):
     """귀속할 척도가 없는 밴드 어휘는 대조하지 않는다 (규칙 한계, README 명시)."""
-    explain_out["before_counseling"] = "정상 범위라는 말을 들어도 마음이 놓이지 않는 것은 자연스럽습니다."
+    explain_out["overview"] = "정상 범위라는 말을 들어도 마음이 놓이지 않는 것은 자연스럽습니다."
     assert "G8" not in rules(check_output(PROFILE, "explain", explain_out))
 
 
 def test_g8_general_usage_of_words_is_not_a_label(explain_out, prep_out):
     """'임상적', '비정상', '정상적', '경계를' 같은 일반어 용법은 라벨이 아니다."""
-    explain_out["before_counseling"] = "임상적 해석은 상담사가 합니다. 관찰자마다 결과가 다른 것이 비정상은 아니며, 예약된 상담에서 상담사와 이야기해 보세요."
+    explain_out["overview"] = "임상적 해석은 상담사가 합니다. 관찰자마다 결과가 다른 것이 비정상은 아니며, 예약된 상담에서 상담사와 이야기해 보세요."
     assert "G8" not in rules(check_output(PROFILE, "explain", explain_out))
     prep_out["questions_for_counselor"][0]["question"] = "이 검사로 알 수 있는 것과 없는 것의 경계를 어디에 두면 될까요?"
     assert "G8" not in rules(check_output(PROFILE, "prep", prep_out))
@@ -213,12 +214,12 @@ def test_g2_allows_emotion_acknowledgement_but_blocks_verdict(explain_out):
     for ok in ("결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다.",
                "숫자를 보면 마음이 무거워질 수 있습니다. 궁금한 점은 예약된 상담에서 상담사와 이야기해 보세요.",
                "궁금하고 불안한 마음이 드는 것은 당연합니다."):
-        explain_out["before_counseling"] = ok
+        explain_out["overview"] = ok
         assert "G2" not in rules(check_output(PROFILE, "explain", explain_out)), ok
     for bad in ("이 정도면 괜찮습니다.", "걱정하지 않으셔도 됩니다.", "안심하셔도 됩니다.",
                 "전반적으로 큰 문제는 없어 보입니다.",    # 새 구조 실측에서 통과했던 결과 판정
                 "전반적으로 안정적인 상태를 유지하고 있는 것으로 보입니다."):
-        explain_out["before_counseling"] = bad
+        explain_out["overview"] = bad
         assert "G2" in rules(check_output(PROFILE, "explain", explain_out)), bad
 
 
@@ -239,13 +240,41 @@ def test_new_rules_regenerate_then_fallback(prep_out):
     assert check_output(PROFILE, "prep", result.output) == []
 
 
-def test_explain_schema_is_overview_and_before_counseling_only(explain_out):
-    """LLM 범위 축소: explain 출력은 연결 문단 + 상담 전 안내 두 블록뿐이다."""
-    assert set(explain_out) == {"overview", "before_counseling"}
-    extra = dict(explain_out, scale_explanations=[{"scale_id": "attention", "what_the_number_means": "심각합니다."}])
-    assert check_output(PROFILE, "explain", extra) == []   # 스키마 밖 필드는 렌더링되지 않으므로 검사 대상도 아니다
-    del explain_out["before_counseling"]
+def test_explain_schema_is_overview_only(explain_out):
+    """LLM 범위 축소 (ADR 0005, 0009): explain 출력은 연결 문단 한 블록뿐이다. 상담 전 안내는 고정 문구."""
+    assert set(explain_out) == {"overview"}
+    assert TASK_BLOCKS["explain"] == ("overview",)
+    del explain_out["overview"]
     assert "G5" in rules(check_output(PROFILE, "explain", explain_out))
+
+
+def test_unknown_explain_fields_are_ignored_and_dropped(explain_out):
+    """스키마 밖 필드 정책 (기존 정책 유지, 명시적으로 고정): G5는 필수 키 누락만 잡고, 옛 스키마의
+    before_counseling처럼 스키마에 없는 키는 위반이 아니라 무시된다. 무시된 키는 rebuild가 버리므로
+    최종 출력(리포트)에 닿지 않는다.
+
+    옛 프롬프트를 기억한 모델이 before_counseling을 계속 내도, 통과한 overview까지 전체 재생성하지
+    않기 위한 선택이다. 그 대가로 스키마 드리프트는 G5가 아니라 이 테스트와 프롬프트 계약이 잡는다.
+    """
+    legacy = dict(explain_out, before_counseling="가까운 병원에 방문해 보세요.")   # 옛 블록에 G6 문장이 있어도
+    assert check_output(PROFILE, "explain", legacy) == []                          # 검사 대상이 아니고
+    result = run_with_guardrails(PROFILE, "explain", lambda a, p, f: copy.deepcopy(legacy))
+    assert set(result.output) == {"overview"}                                       # 최종 출력에서 버려진다
+    assert result.violations == [] and result.fallback_blocks == [] and result.block_count == 1
+    extra = dict(explain_out, scale_explanations=[{"scale_id": "attention", "what_the_number_means": "심각합니다."}])
+    assert check_output(PROFILE, "explain", extra) == []
+
+
+def test_prompts_and_user_messages_do_not_ask_for_before_counseling():
+    """LLM에 보내는 시스템 프롬프트(두 태스크)와 사용자 메시지(첫 시도, 재생성 피드백)에 옛 블록이 없다."""
+    for task in ("explain", "prep"):
+        system = load_system_prompt(task)
+        assert "before_counseling" not in system and "마음가짐" not in system, task
+    assert '"overview"' in load_system_prompt("explain")
+    first = build_user_message(PROFILE, 0, ["overview"], [])
+    regen = build_user_message(PROFILE, 1, ["overview"], [Violation("G2", "overview", "괜찮습니다", 0)])
+    assert "before_counseling" not in first + regen
+    assert "블록 overview" in regen and "caregiver_notes" in first
 
 
 def test_g10_example_phrase_only_allowed_when_caregiver_wrote_it(prep_out):

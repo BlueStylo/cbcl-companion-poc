@@ -58,10 +58,10 @@
       ]
     },
     {
-      "id": "g3_before_counseling_pct",
-      "task": "explain",
+      "id": "g3_question_pct",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "상담 전 안내에 입력에 없는 백분위",
+      "note": "질문에 입력에 없는 백분위",
       "expect_rules": [
         "G3"
       ],
@@ -69,9 +69,11 @@
         {
           "op": "set",
           "path": [
-            "before_counseling"
+            "questions_for_counselor",
+            1,
+            "question"
           ],
-          "value": "결과지의 상위 15%라는 숫자는 잠시 접어 두고 상담을 기다려 보세요."
+          "value": "결과지에 적힌 상위 15%라는 숫자는 어떤 뜻인가요?"
         }
       ]
     },

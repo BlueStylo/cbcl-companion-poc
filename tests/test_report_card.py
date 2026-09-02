@@ -19,8 +19,8 @@ from src.llm_client import make_client
 from src.parser import load_profile
 from src.quality import caregiver_texts
 from src.report_html import (CARD_NOT_DIAGNOSIS, CARD_PLAIN_RANGE, CARD_VERDICT,
-                             CURVE_HOWTO_CAPTION, CURVE_HOWTO_LINES, build_pending_report_html,
-                             build_report_html)
+                             CURVE_HOWTO_CAPTION, CURVE_HOWTO_LINES, PRE_COUNSELING_LABEL,
+                             PRE_COUNSELING_NOTE, build_pending_report_html, build_report_html)
 
 
 def _profile(name):
@@ -98,6 +98,28 @@ def test_card_fixed_texts_stay_outside_llm_gates():
     assert all(text not in gated for text in fixed)
     for task in ("explain", "prep"):
         assert check_output(profile, task, results[task].output) == []
+
+
+def test_pre_counseling_note_is_fixed_text_once_and_outside_gates():
+    """상담 전 안내는 고정 문구다 (ADR 0009): 리포트에 1회, "고정 문구" 태그가 붙고 생성 문구 태그는 없다.
+
+    LLM 출력에도, 가드레일과 품질 지표가 보는 텍스트에도 섞이지 않는다. 생성 전 미리보기에서도 같은 문구가
+    그대로 나온다. 고정 문구 자체도 LLM에 금지하는 규칙(G2 낙관 보증, G6 처방 등)을 어기지 않는다.
+    """
+    profile = _profile("p2_partial_borderline")
+    results = generate_all(profile, make_client("mock"))
+    html = build_report_html(profile, results)
+    assert html.count(PRE_COUNSELING_NOTE) == 1
+    assert re.search(rf'<h3>{PRE_COUNSELING_LABEL} <span class="tag">고정 문구</span></h3>\s*<p>{re.escape(PRE_COUNSELING_NOTE)}</p>', html)
+    assert PRE_COUNSELING_LABEL == "상담 전 안내" and "마음가짐" not in html
+    assert html.count("생성 문구 · 검증 통과") == 1        # 연결 문단 하나뿐 (상담 전 안내에는 붙지 않는다)
+    assert "before_counseling" not in results["explain"].output
+    gated = " ".join(t for task in ("explain", "prep")
+                     for _b, t in caregiver_texts(task, results[task].output))
+    assert PRE_COUNSELING_NOTE not in gated
+    assert check_output(profile, "explain", {"overview": PRE_COUNSELING_NOTE}) == []
+    pending = build_pending_report_html(profile)
+    assert pending.count(PRE_COUNSELING_NOTE) == 1 and "생성 대기" in pending
 
 
 def test_normal_cards_have_single_line_header():
