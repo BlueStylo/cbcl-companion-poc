@@ -27,9 +27,7 @@
 
 mock 모드 산출물(HTML)은 [`examples/mock`](../examples/mock)에 커밋되어 있습니다 (프로파일 8종과
 동점 페어 비교 뷰). 직접 만들려면 `python main.py --profile <json> --mock` 입니다 (`out/`, gitignore).
-실LLM 산출물 [`examples/api`](../examples/api)는 호출 1회 구조(ADR 0010, 블록 2개: 질문과 관찰
-포인트)로 2026-09-02에 재실측한 값입니다. 관찰 포인트를 결정론으로 옮긴 질문 1블록 구조(ADR 0010
-보강)의 재실측은 머지 전에 다시 해 교체합니다.
+실LLM 산출물 [`examples/api`](../examples/api)는 질문 1블록 구조(ADR 0010 보강: LLM은 상담사에게 물어볼 질문만, 관찰 포인트·연결 문단·상담사 요약은 결정론 조립)로 2026-09-02 20:15에 서버에서 재실측한 gemma4:12b 산출물입니다. 6런 전부 첫 시도 통과였고 수치는 README "--api 실측" 절에 있습니다.
 
 ## 운영 규칙
 
