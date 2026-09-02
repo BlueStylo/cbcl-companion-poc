@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<style>
+  :root {
+    --ink: #2f3437; --sub: #6b7280; --line: #e5e2dc; --bg: #f7f6f3;
+    --card: #ffffff; --accent: #4a6fa5; --warm: #b0552e; --soft: #f2f5f9; --paper: #fbfaf7;
+    --chip-normal: #eef2ec; --chip-normal-ink: #4f6b52;
+    --chip-borderline: #f8ecd9; --chip-borderline-ink: #8a6425;
+    --chip-clinical: #f6e0d8; --chip-clinical-ink: #97462a;
+    --hit-bg: #dce7f6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+         line-height: 1.6; font-size: 14px; }
+  main { max-width: 1480px; margin: 0 auto; padding: 24px 20px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 32px 0 14px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+  h3 { font-size: 14px; margin: 0 0 8px; }
+  p { margin: 0 0 8px; }
+  .sub { color: var(--sub); font-size: 12.5px; }
+  .lead { color: var(--sub); font-size: 13px; margin: 6px 0 14px; max-width: 900px; }
+  code { font-size: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  table { border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; }
+
+  /* 상단: 런 목록 */
+  .runs-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  table.runs { width: 100%; font-size: 12.5px; }
+  table.runs th { background: var(--soft); color: var(--sub); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.runs td { padding: 5px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.runs tr:last-child td { border-bottom: none; }
+  .env { margin-top: 8px; font-size: 12.5px; color: var(--sub); }
+  .nav { font-size: 13px; margin: 6px 0 0; }
+  .nav a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .nav a:hover { text-decoration: underline; }
+
+  /* 범례 */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--sub); margin: 10px 0 14px; }
+  mark.hit { background: var(--hit-bg); color: var(--ink); padding: 0 1px; border-radius: 2px; border-bottom: 2px solid var(--accent); }
+  span.cand { border-bottom: 1px dashed var(--sub); }
+  .chip { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 20px; padding: 0 9px; line-height: 18px; }
+  .chip.normal { background: var(--chip-normal); color: var(--chip-normal-ink); }
+  .chip.borderline { background: var(--chip-borderline); color: var(--chip-borderline-ink); }
+  .chip.clinical { background: var(--chip-clinical); color: var(--chip-clinical-ink); }
+  .mock-tag { display: inline-block; font-size: 11px; font-weight: 600; color: var(--warm); border: 1px solid var(--warm);
+              border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
+  .state { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 0 6px; border: 1px solid var(--line); }
+  .state.pass { background: var(--chip-normal); color: var(--chip-normal-ink); border-color: transparent; }
+  .state.regen_pass { background: var(--chip-borderline); color: var(--chip-borderline-ink); border-color: transparent; }
+  .state.fallback { background: var(--chip-clinical); color: var(--chip-clinical-ink); border-color: transparent; }
+  .rule { color: var(--warm); font-weight: 700; }
+
+  /* 프로파일 섹션: 좌 입력 340px, 우 출력 가변 */
+  .profile { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 980px) { .profile { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 14px; min-width: 0; }
+  .panel-title { font-size: 11.5px; letter-spacing: .06em; font-weight: 700; color: var(--accent); margin: 0 0 10px; }
+  .panel-title.out { color: var(--warm); }
+  .panel.input h3 { font-size: 13px; color: var(--sub); margin: 14px 0 6px; }
+  .kv { font-size: 13px; margin-bottom: 2px; }
+  .kv b { font-weight: 600; }
+  table.scales { width: 100%; font-size: 13px; }
+  table.scales td { padding: 3px 2px; border-bottom: 1px dashed var(--line); }
+  table.scales td.t { text-align: right; width: 42px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  table.scales td.b { width: 64px; text-align: right; }
+  table.scales tr.composite td { font-weight: 600; }
+  ol.notes { margin: 4px 0 0; padding-left: 22px; font-size: 13.5px; }
+  ol.notes li { margin-bottom: 6px; }
+  .tokens { font-size: 12px; color: var(--sub); margin-top: 6px; }
+  .days { margin-top: 12px; padding: 8px 12px; background: var(--soft); border-radius: 8px; font-size: 13px; }
+  .days b { color: var(--accent); font-size: 16px; }
+  .err { color: var(--warm); font-size: 13px; }
+
+  /* 출력 격자 */
+  .grid-wrap { overflow-x: auto; }
+  table.grid { width: 100%; font-size: 13px; }
+  table.grid th { background: var(--soft); padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  table.grid th.model { min-width: 300px; }
+  table.grid th.rowh, table.grid td.rowh { width: 128px; min-width: 128px; background: var(--paper); color: var(--sub);
+                                            font-size: 12px; font-weight: 600; }
+  table.grid td { padding: 10px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
+  table.grid td:last-child { border-right: none; }
+  table.grid td.rowh small { display: block; font-weight: 400; font-size: 11px; color: var(--sub); }
+  table.grid tr.task-head td { background: var(--paper); font-size: 11.5px; color: var(--sub); padding: 5px 10px; }
+  table.grid tr.task-head td.rowh { color: var(--ink); }
+  .cell-text p { margin: 0; }
+  ol.items { margin: 0; padding-left: 20px; }
+  ol.items li { margin-bottom: 6px; }
+  .src { font-size: 11px; color: var(--accent); white-space: nowrap; margin-left: 6px; }
+  .fb { font-size: 11px; color: var(--chip-clinical-ink); margin-left: 6px; }
+  .meta { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 11.5px; color: var(--sub); line-height: 1.5; }
+  .missing { color: var(--sub); font-style: italic; }
+
+  /* 품질 지표 표 */
+  .quality-wrap { overflow-x: auto; margin-top: 16px; }
+  table.quality { width: 100%; font-size: 12.5px; background: var(--card); }
+  table.quality th { background: var(--soft); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  table.quality td { padding: 5px 10px; border-bottom: 1px solid var(--line); }
+  table.quality td.rowh { width: 170px; color: var(--sub); font-weight: 600; background: var(--paper); }
+
+  /* 부록 */
+  .appendix-item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .pair { display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: 12px; margin-top: 8px; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+  .pair > div { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .pair .blocked { background: var(--paper); color: var(--sub); }
+  .pair h4 { margin: 0 0 6px; font-size: 12px; color: var(--sub); }
+  .note { font-size: 12.5px; color: var(--sub); }
+
+  footer { color: var(--sub); font-size: 12px; margin-top: 28px; }
+
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    main { max-width: none; padding: 0; }
+    .panel, .appendix-item { border-color: #bbb; break-inside: avoid; }
+    section.profile-sec { break-before: page; }
+    .grid-wrap, .quality-wrap, .runs-wrap { overflow: visible; }
+    table.grid th.model { min-width: 0; }
+    mark.hit { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>{{ title }}</h1>
+    <p class="sub">생성 {{ generated_at }} · 런 {{ n_runs }}개 · 프로파일 {{ n_profiles }}종 · 모델 {{ n_models }}종 · 자작 가상 데이터</p>
+    <p class="lead">프로파일마다 왼쪽에 LLM에 들어간 입력을, 오른쪽에 모델별 최종 출력 5블록을 놓았습니다.
+      보호자 의견의 어절이 출력에 등장한 자리는 <mark class="hit">이렇게</mark> 표시합니다.</p>
+
+    <h3>포함된 런</h3>
+    <div class="runs-wrap">
+    <table class="runs">
+      <thead><tr>
+        <th>모델</th><th>프로파일</th><th>모드</th>
+        {% for k in setting_keys %}<th>{{ k }}</th>{% endfor %}
+        <th>호출</th><th>재생성</th><th>폴백 블록</th><th>파일</th>
+      </tr></thead>
+      <tbody>
+      {% for r in run_rows %}
+      <tr>
+        <td><b>{{ r.model }}</b>{% if r.is_mock %}<span class="mock-tag">{{ mock_label }}</span>{% endif %}</td>
+        <td>{{ r.profile_id }}</td><td>{{ r.mode }}</td>
+        {% for v in r.settings %}<td>{{ v }}</td>{% endfor %}
+        <td>{{ r.calls }}</td><td>{{ r.regen }}</td><td>{{ r.fallback }}</td>
+        <td><code title="{{ r.source }}">{{ r.source_short }}</code></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="env">{% if env_note %}실행 환경 메모: {{ env_note }}. {% endif %}서버 버전 등 run_stats에 없는 항목은 위 메모로만 남습니다.{% if source_root %} 파일 기준 디렉토리 <code>{{ source_root }}</code>{% endif %}</p>
+    <p class="nav">바로가기: {% for sec in sections %}<a href="#{{ sec.profile_id }}">{{ sec.profile_id }}</a> · {% endfor %}<a href="#appendix">부록 (규칙에 걸린 시도)</a></p>
+
+    <div class="legend">
+      <span><mark class="hit">어절</mark> 보호자 의견의 어절이 출력에 등장 (5블록 전체 기준)</span>
+      <span><span class="cand">어절</span> 측정 대상 어절이지만 어느 모델 출력에도 없음</span>
+      <span><span class="state pass">첫 시도 통과</span> <span class="state regen_pass">재생성 후 통과</span> <span class="state fallback">안전 문구 대체</span></span>
+      <span>반영률 수치는 하네스 정의대로 질문·관찰 항목만 셉니다</span>
+    </div>
+  </header>
+
+  {% for sec in sections %}
+  <section class="profile-sec" id="{{ sec.profile_id }}">
+    <h2>{{ sec.profile_id }}</h2>
+    <div class="profile">
+      <aside class="panel input">
+        <p class="panel-title">입력 (LLM에 들어간 것)</p>
+        {% set inp = sec.input %}
+        {% if inp.ok %}
+        <div class="kv"><b>{{ inp.alias }}</b> (가상 아동) · {{ inp.sex_ko }} · {{ inp.age }}</div>
+        <div class="kv sub">{{ inp.instrument }} · 규준 {{ inp.norm_group }} · 검사일 {{ inp.test_date }}</div>
+
+        <h3>종합 3종</h3>
+        <table class="scales">
+          {% for s in inp.composites %}
+          <tr class="composite"><td>{{ s.name }}</td><td class="t">T {{ s.t }}</td><td class="b"><span class="chip {{ s.band }}">{{ s.band_ko }}</span></td></tr>
+          {% endfor %}
+        </table>
+        <h3>하위 척도 8종</h3>
+        <table class="scales">
+          {% for s in inp.syndromes %}
+          <tr><td>{{ s.name }}</td><td class="t">T {{ s.t }}</td><td class="b"><span class="chip {{ s.band }}">{{ s.band_ko }}</span></td></tr>
+          {% endfor %}
+        </table>
+        <p class="tokens">밴드 기준: 종합 정상 T≤{{ inp.criteria.composite[0] }}, 준임상 ≤{{ inp.criteria.composite[1] }} · 하위 정상 T≤{{ inp.criteria.syndrome[0] }}, 준임상 ≤{{ inp.criteria.syndrome[1] }}</p>
+
+        <h3>보호자 의견 (원문 그대로)</h3>
+        <ol class="notes">
+          {% for n in inp.notes %}<li>{{ n|hl(sec.tokens, sec.hit_union) }}</li>{% endfor %}
+        </ol>
+        <p class="tokens">반영률 측정 대상 어절 {{ sec.tokens|length }}개 (조사·어미를 뗀 휴리스틱):
+          {% for t in sec.tokens %}{% if t in sec.hit_union %}<mark class="hit">{{ t }}</mark>{% else %}<span class="cand">{{ t }}</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+
+        <div class="days">상담까지 <b>{{ inp.days }}</b>일{% if not inp.scheduled %} (예약 안 됨){% endif %}</div>
+        {% else %}
+        <p class="err">{{ inp.error }}</p>
+        {% endif %}
+      </aside>
+
+      <div class="panel output">
+        <p class="panel-title out">출력 (모델별 최종 텍스트, 리포트에 나간 그대로)</p>
+        <div class="grid-wrap">
+        <table class="grid">
+          <thead><tr>
+            <th class="rowh">블록</th>
+            {% for col in sec.columns %}
+            <th class="model">{{ col.label }}{% if col.is_mock %}<span class="mock-tag">{{ mock_label }}</span>{% endif %}</th>
+            {% endfor %}
+          </tr></thead>
+          <tbody>
+          {% set ns = namespace(task=None) %}
+          {% for task, block, label, text_key in blocks %}
+            {% if task != ns.task %}
+              {% set ns.task = task %}
+              <tr class="task-head">
+                <td class="rowh">{{ task_ko[task] }}</td>
+                {% for col in sec.columns %}{% set m = col.task_meta[task] %}
+                <td>호출 {{ m.attempts }}회 · 토큰 {{ m.prompt_tokens|fmt_tokens(m.completion_tokens) }}{% if m.seconds is not none %} · {{ m.seconds }}초{% endif %}{% if m.violations %} ·
+                  {% for v in m.violations %}{{ v.attempt_no }}차 시도 위반 {% for r in v.rules %}<span class="rule">{{ r.id }}</span> {{ r.count }}건{% if r.ko %}({{ r.ko }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}{% endfor %}{% endif %}</td>
+                {% endfor %}
+              </tr>
+            {% endif %}
+            <tr>
+              <td class="rowh">{{ label }}<small>{{ block }}</small></td>
+              {% for col in sec.columns %}{% set cell = col.cells[block] %}
+              <td>
+                {% if cell.kind == "text" %}
+                  <div class="cell-text"><p>{{ cell.text|hl(sec.tokens) }}</p></div>
+                {% elif cell.kind == "list" %}
+                  <ol class="items">
+                    {% for it in cell["items"] %}
+                    <li>{{ it.text|hl(sec.tokens) }}<span class="src">근거: {{ it.source_ko }}</span>{% if it.fallback %}<span class="fb">안전 문구</span>{% endif %}</li>
+                    {% endfor %}
+                  </ol>
+                {% else %}
+                  <p class="missing">출력 없음</p>
+                {% endif %}
+                <div class="meta">
+                  <span class="state {{ cell.state or 'none' }}">{{ cell.state_ko }}</span>
+                  {% if cell.violations %}{% for v in cell.violations %} · {{ v.attempt_no }}차 시도에서 {% for r in v.rules %}<span class="rule">{{ r.id }}</span> {{ r.count }}건{% if r.ko %}({{ r.ko }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}{% endfor %}
+{% if cell.ambiguous %}
+                  <span class="sub"> (위반은 호출 단위 집계라 같은 호출의 다른 블록과 구분되지 않음)</span>{% endif %}{% endif %}
+                </div>
+              </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+
+        <div class="quality-wrap">
+        <table class="quality">
+          <thead><tr><th>품질 지표</th>{% for col in sec.columns %}<th>{{ col.label }}</th>{% endfor %}</tr></thead>
+          <tbody>
+          {% for row in sec.quality_rows %}
+          <tr><td class="rowh">{{ row.label }}</td>{% for v in row["values"] %}<td>{{ v }}</td>{% endfor %}</tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+
+  <section id="appendix">
+    <h2>부록 · 규칙에 걸린 시도</h2>
+    {% if not appendix %}
+    <p class="note">규칙에 걸린 시도가 없습니다.</p>
+    {% else %}
+    <p class="note">{{ no_attempt_text }}</p>
+    {% for a in appendix %}
+    <div class="appendix-item">
+      <h3>{{ a.profile_id }} · {{ a.model }}{% if a.is_mock %}<span class="mock-tag">{{ mock_label }}</span>{% endif %} · {{ task_ko[a.task] }}</h3>
+      <p class="sub">걸린 규칙:
+        {% for v in a.meta.violations %}{{ v.attempt_no }}차 시도 {% for r in v.rules %}<span class="rule">{{ r.id }}</span> {{ r.count }}건{% if r.ko %}({{ r.ko }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}{% endfor %}
+        · 호출 {{ a.meta.attempts }}회 · 토큰 {{ a.meta.prompt_tokens|fmt_tokens(a.meta.completion_tokens) }}</p>
+      {% for label, cell in a.blocks %}
+      <div class="pair">
+        <div class="blocked"><h4>차단된 첫 시도 · {{ label }}</h4><p>원문 미저장 (run_stats에는 위반 규칙과 건수만 있음)</p></div>
+        <div><h4>통과한 재생성 (최종) · {{ label }} <span class="state {{ cell.state }}">{{ cell.state_ko }}</span></h4>
+          {% if cell.kind == "text" %}<p>{{ cell.text|hl(a.tokens) }}</p>
+          {% elif cell.kind == "list" %}<ol class="items">{% for it in cell["items"] %}<li>{{ it.text|hl(a.tokens) }}<span class="src">근거: {{ it.source_ko }}</span></li>{% endfor %}</ol>
+          {% else %}<p class="missing">출력 없음</p>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% endif %}
+  </section>
+
+  <footer>harness/io_review.py 가 run_stats.json과 data/profiles 에서 생성. 수치와 밴드는 입력 파일 값 그대로, 출력은 리포트에 나간 최종 문장 그대로입니다.</footer>
+</main>
+</body>
+</html>
