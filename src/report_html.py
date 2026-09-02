@@ -80,7 +80,7 @@ def _scale_view(profile: CBCLProfile, sid: str) -> dict:
         "band_ko": BAND_KO[scale.band],
         "open": scale.band != "normal",      # 정상 범위는 접힌 한 줄
         "one_liner": scale_one_liner(sid, scale.band),
-        "svg": bell_curve_svg(scale.t_score, profile.criteria_for(sid)),
+        "svg": bell_curve_svg(scale.t_score, profile.criteria_for(sid), height=150),
         "text": scale_card_text(sid, scale.band),
     }
 
@@ -130,6 +130,7 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         caution=CAUTION,
         limits=LIMITS_TEXT,
         elevated_names=elevated,
+        has_borderline=any(s.band == "borderline" for s in profile.all_scales()),
         overview=explain.output["overview"],
         overview_fallback="overview" in fallback_blocks,
         composites=[_scale_view(profile, sid) for sid in COMPOSITE_IDS],

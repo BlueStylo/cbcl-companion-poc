@@ -215,7 +215,8 @@ def test_g2_allows_emotion_acknowledgement_but_blocks_verdict(explain_out):
                "궁금하고 불안한 마음이 드는 것은 당연합니다."):
         explain_out["before_counseling"] = ok
         assert "G2" not in rules(check_output(PROFILE, "explain", explain_out)), ok
-    for bad in ("이 정도면 괜찮습니다.", "걱정하지 않으셔도 됩니다.", "안심하셔도 됩니다."):
+    for bad in ("이 정도면 괜찮습니다.", "걱정하지 않으셔도 됩니다.", "안심하셔도 됩니다.",
+                "전반적으로 큰 문제는 없어 보입니다."):   # 새 구조 실측에서 통과했던 결과 판정
         explain_out["before_counseling"] = bad
         assert "G2" in rules(check_output(PROFILE, "explain", explain_out)), bad
 

@@ -142,9 +142,9 @@
       </summary>
       {{ s.svg|safe }}
       <p class="text">{{ s.text }} <span class="tag">고정 문구</span></p>
-      {% if s.band == "borderline" %}<div class="psyedu">{{ borderline_note }}</div>{% endif %}
     </details>
     {% endfor %}
+    {% if has_borderline %}<div class="psyedu">{{ borderline_note }}</div>{% endif %}
 
     <details class="fold">
       <summary>곡선의 밴드와 기준선은 무엇인가요</summary>
