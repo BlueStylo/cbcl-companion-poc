@@ -19,8 +19,8 @@ from src.guardrails import TASK_BLOCKS, check_output, run_with_guardrails
 from src.llm_client import make_client
 from src.parser import load_profile
 from src.quality import caregiver_texts, quality_summary
-from src.report_html import (ASSEMBLED_TAG, BRIEFING_LABEL, LLM_TAG, OVERVIEW_LABEL,
-                             build_counselor_briefing, build_overview_text,
+from src.report_html import (ASSEMBLED_TAG, BRIEFING_LABEL, BRIEFING_QUESTIONS_NOTE, LLM_TAG,
+                             OVERVIEW_LABEL, build_counselor_briefing, build_overview_text,
                              build_pending_report_html, build_report_html)
 
 
@@ -87,9 +87,31 @@ def test_briefing_has_notes_elevated_table_questions_and_days():
     assert lines[1] == '1. "학원 숙제를 앞에 두면 딴 데를 자주 봅니다"'
     assert "[상승 척도 4개] 척도, T점수, 보고서 라벨" in lines
     assert "- 내재화 문제 T=62 준임상" in lines and "- 주의집중 T=67 준임상" in lines
-    assert "[상담사에게 물어볼 질문 2개] 위 목록의 체크 표시 기준" in lines
+    assert f"[상담사에게 물어볼 질문 2개] {BRIEFING_QUESTIONS_NOTE}" in lines
+    assert "위 목록의 체크 표시 기준" not in text          # 체크 상태를 읽는 코드가 없던 시절의 문구
     assert "1. 첫 질문인가요?" in lines and "2. 둘째 질문인가요?" in lines
     assert lines[-1] == "[상담까지 5일]"
+
+
+def test_briefing_question_section_is_wired_to_checkboxes_in_template():
+    """요약의 질문 절 머리글("위 목록에서 체크한 질문")은 사실이어야 한다: 템플릿에 질문 목록의 체크박스
+    change 이벤트를 받아 요약 텍스트의 같은 번호 줄을 숨기는 스크립트가 있고, 두 요소에 그 스크립트가
+    찾는 id가 있다. 생성 시점 텍스트는 전체 질문(체크박스 기본값 전부 체크)이므로 스크립트 없이도 거짓이 아니다."""
+    profile = _profile("p2_partial_borderline")
+    html = build_report_html(profile, generate_all(profile, make_client("mock")))
+    assert '<ul class="qlist" id="question-list">' in html
+    assert 'id="brief-text"' in html
+    script = html[html.index("<script data-brief-sync>"):]
+    script = script[:script.index("</script>")]
+    assert "getElementById('question-list')" in script and "getElementById('brief-text')" in script
+    assert "addEventListener('change'" in script
+    assert "\\[상담사에게 물어볼 질문 \\d+개\\]" in script       # 머리글 형식이 바뀌면 스크립트도 같이 바뀌어야 한다
+    # 체크박스 수 = 요약 질문 절의 번호 줄 수 (스크립트가 순서대로 1:1 대응시킨다)
+    questions = generate_all(profile, make_client("mock"))["prep"].output["questions_for_counselor"]
+    briefing = build_counselor_briefing(profile, questions, 5, True)
+    section = briefing[briefing.index("[상담사에게 물어볼 질문"):]
+    numbered = [l for l in section.split("\n")[1:] if re.match(r"^\d+\. ", l)]
+    assert html.count('<input type="checkbox" checked>') == len(numbered) == len(questions)
 
 
 def test_briefing_all_normal_unscheduled_and_no_questions():

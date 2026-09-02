@@ -111,6 +111,8 @@ PENDING_TEXT = "생성 대기 - '리포트 생성'을 누르면 보호자 문장
 ASSEMBLED_TAG = "결정론 조립"
 OVERVIEW_LABEL = "보호자의 관찰과 검사 소견"
 BRIEFING_LABEL = "상담사에게 전달할 요약 미리보기"
+# 요약의 질문 절 머리글. 화면의 체크박스와 스크립트로 연동된다 (build_counselor_briefing 독스트링).
+BRIEFING_QUESTIONS_NOTE = "위 목록에서 체크한 질문"
 LLM_TAG = "LLM 생성 · 검증 통과"
 
 
@@ -162,6 +164,10 @@ def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
     보호자 의견 원문, 상승 척도 표(척도, T점수, 보고서 라벨) 또는 "상승 척도 없음", 질문 목록,
     상담까지 남은 일수 또는 미예약 표시. questions는 LLM 출력 항목(dict) 또는 문자열 목록이며,
     비어 있으면 아직 생성되지 않았다고 적는다. LLM 출력이 아니므로 가드레일 대상이 아니다.
+
+    질문 절은 생성 시점에 전체 목록(화면의 체크박스는 기본 전부 체크)이고, 화면에서 체크를 풀면
+    템플릿의 스크립트(report.html.j2, data-brief-sync)가 이 텍스트의 같은 번호 줄을 숨기고
+    머리글의 개수를 맞춘다. 번호는 화면 목록과 맞추기 위해 다시 매기지 않는다.
     """
     notes = _clean_notes(profile)
     lines: list[str] = []
@@ -176,7 +182,7 @@ def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
     texts = [(q.get("question", "") if isinstance(q, dict) else str(q)).strip() for q in questions]
     texts = [t for t in texts if t]
     if texts:
-        lines.append(f"[상담사에게 물어볼 질문 {len(texts)}개] 위 목록의 체크 표시 기준")
+        lines.append(f"[상담사에게 물어볼 질문 {len(texts)}개] {BRIEFING_QUESTIONS_NOTE}")
         lines += [f"{i}. {t}" for i, t in enumerate(texts, 1)]
     else:
         lines.append("[상담사에게 물어볼 질문] 아직 생성되지 않음")
