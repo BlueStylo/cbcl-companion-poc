@@ -12,15 +12,18 @@
       },
       "tasks": {
         "explain": {
-          "regen_count": 0,
-          "violations_by_attempt": {},
+          "regen_count": 1,
+          "violations_by_attempt": {
+            "attempt0": {
+              "G8": 2
+            }
+          },
           "block_states": {
-            "overview": "pass",
-            "before_counseling": "pass"
+            "overview": "regen_pass"
           },
           "state_counts": {
-            "pass": 2,
-            "regen_pass": 0,
+            "pass": 0,
+            "regen_pass": 1,
             "fallback": 0
           }
         },
@@ -44,35 +47,44 @@
           "profile_id": "p2_partial_borderline",
           "task": "explain",
           "attempt": 0,
-          "duration_s": 2.82,
-          "prompt_tokens": 2405,
-          "completion_tokens": 232
+          "duration_s": 4.47,
+          "prompt_tokens": 2392,
+          "completion_tokens": 211
+        },
+        {
+          "profile_id": "p2_partial_borderline",
+          "task": "explain",
+          "attempt": 1,
+          "duration_s": 2.35,
+          "prompt_tokens": 2574,
+          "completion_tokens": 268
         },
         {
           "profile_id": "p2_partial_borderline",
           "task": "prep",
           "attempt": 0,
-          "duration_s": 5.84,
+          "duration_s": 5.66,
           "prompt_tokens": 3478,
-          "completion_tokens": 627
+          "completion_tokens": 625
         }
       ],
-      "total_prompt_tokens": 5883,
-      "total_completion_tokens": 859,
-      "total_llm_seconds": 8.66,
+      "total_prompt_tokens": 8444,
+      "total_completion_tokens": 1104,
+      "total_llm_seconds": 12.48,
       "quality": {
         "jargon": {
-          "term_hits": 22,
+          "term_hits": 30,
           "by_term": {
+            "T점수": 14,
             "준임상": 8,
-            "T점수": 7,
             "척도": 6,
-            "내재화": 1
+            "내재화": 1,
+            "외현화": 1
           },
-          "blocks_total": 10,
+          "blocks_total": 9,
           "blocks_with_term": 4,
           "glossed_blocks": 0,
-          "residual_rate": 0.4,
+          "residual_rate": 0.4444444444444444,
           "gloss_rate": 0.0
         },
         "reflection": {
@@ -113,8 +125,7 @@
       },
       "outputs": {
         "explain": {
-          "overview": "학원 숙제를 할 때 딴 곳을 자주 본다는 보호자님의 관찰은 주의집중 척도(T점수 67, 준임상)와 연결되며, 준임상은 또래보다 조금 더 자주 보고된 범위를 의미합니다. 놀이터에서 또래에게 먼저 말을 거는 일이 줄었다는 관찰은 위축 척도(T점수 62, 준임상) 및 우울/불안 척도(T점수 65, 준임상)와 나란히 놓입니다. 내재화 문제(T점수 62, 준임상)를 제외한 나머지 항목들은 모두 정상 범위로 보고되었으며, 이러한 수치들이 의미하는 구체적인 내용은 예약된 상담에서 상담사와 이야기해 보세요.",
-          "before_counseling": "검사 결과를 처음 접하실 때 걱정되거나 마음이 무거우실 수 있습니다. 결과 수치에 대한 상세한 해석은 예약된 상담에서 상담사와 직접 이야기해 보시기 바랍니다."
+          "overview": "학원 숙제를 할 때 딴 곳을 자주 본다는 관찰은 주의집중 척도(T점수 67, 준임상)와 나란히 놓이며, 놀이터에서 또래에게 먼저 말을 거는 일이 줄었다는 부분은 위축 척도(T점수 62, 준임상) 및 우울/불안 척도(T점수 65, 준임상)와 연결됩니다. 내재화 문제(T점수 62, 준임상)를 제외한 총 문제행동(T점수 57, 정상)과 외현화 문제(T점수 52, 정상), 신체증상(T점수 51, 정상), 사회적 미성숙(T점수 57, 정상), 사고의 문제(T점수 50, 정상), 비행(T점수 47, 정상), 공격성(T점수 53, 정상)은 모두 정상 범위로 보고되었습니다. 준임상(또래보다 조금 더 자주 보고된 범위)이나 정상 범위 등 수치에 대한 구체적인 의미는 예약된 상담에서 상담사와 이야기해 보세요."
         },
         "prep": {
           "questions_for_counselor": [
@@ -131,17 +142,17 @@
               "source_scale": "withdrawn"
             },
             {
-              "question": "또래에게 먼저 말을 거는 일이 줄어든 것과 위축 척도(T점수 62)가 준임상 범위인 것을 함께 고려할 때 어떤 점을 중점적으로 보게 되나요?",
+              "question": "또래에게 먼저 말을 거는 일이 줄어든 것과 위축 척도(T점수 62)가 준임상 범위인 것을 함께 고려하면 어떤 점을 중점적으로 보게 되나요?",
               "source_scale": "withdrawn"
             },
             {
-              "question": "우울/불안 척도(T점수 65)가 준임상 범위로 나온 것이 아이의 내면 상태를 파악하는 데 어떤 정보를 주나요?",
+              "question": "우울/불안 척도(T점수 65)가 준임상 범위로 나온 것이 아이의 현재 정서 상태에 대해 어떤 정보를 주나요?",
               "source_scale": "anxious_depressed"
             }
           ],
           "observation_points": [
             {
-              "point": "학원 숙제를 할 때 딴 곳으로 시선을 돌리는 빈도나 상황 기록하기",
+              "point": "학원 숙제를 할 때 딴 곳으로 시선이 분산되는 빈도나 상황 기록하기",
               "source_scale": "attention"
             },
             {
@@ -149,11 +160,11 @@
               "source_scale": "withdrawn"
             },
             {
-              "point": "아이가 말수가 적어지거나 위축된 듯한 상황이 구체적으로 언제 나타나는지 기록하기",
+              "point": "아이가 말수가 적어지거나 위축된 듯한 행동을 보이는 상황 기록하기",
               "source_scale": "anxious_depressed"
             }
           ],
-          "counselor_briefing": "종합지표: 총 문제행동 T=57(정상). 준임상 범위 척도로는 내재화 문제(T=62), 위축(T=62), 우울/불안(T=65), 주의집중(T=67)이 확인됩니다. 보호자는 아이가 학원 숙제 시 딴 곳을 자주 보고, 놀이터에서 또래에게 먼저 말을 거는 일이 줄어들었다는 점을 관찰하고 있습니다. 상담 시 해당 행동들이 내재화 및 주의집중 척도와 어떻게 연결되는지 논의가 필요합니다. 상담까지 5일이 남은 상태입니다."
+          "counselor_briefing": "종합지표: 총 문제행동 T=57(정상). 준임상 범위 척도로는 내재화 문제(T=62), 위축(T=62), 우울/불안(T=65), 주의집중(T=67)이 확인됩니다. 보호자는 아이가 학원 숙제 시 딴 곳을 자주 보고, 놀이터에서 또래에게 먼저 말을 거는 일이 줄어들었다는 점을 관찰 내용으로 전달했습니다. 상담 시 해당 행동들이 내재화 및 주의집중 관련 척도와 어떻게 연결되는지 논의가 필요합니다. 상담까지 5일의 대기 기간이 있습니다."
         }
       }
     },
@@ -171,11 +182,10 @@
           "regen_count": 0,
           "violations_by_attempt": {},
           "block_states": {
-            "overview": "pass",
-            "before_counseling": "pass"
+            "overview": "pass"
           },
           "state_counts": {
-            "pass": 2,
+            "pass": 1,
             "regen_pass": 0,
             "fallback": 0
           }
@@ -200,36 +210,36 @@
           "profile_id": "p5a_paired_notes",
           "task": "explain",
           "attempt": 0,
-          "duration_s": 3.12,
-          "prompt_tokens": 2408,
-          "completion_tokens": 301
+          "duration_s": 2.02,
+          "prompt_tokens": 2395,
+          "completion_tokens": 192
         },
         {
           "profile_id": "p5a_paired_notes",
           "task": "prep",
           "attempt": 0,
-          "duration_s": 6.03,
+          "duration_s": 5.66,
           "prompt_tokens": 3481,
-          "completion_tokens": 645
+          "completion_tokens": 649
         }
       ],
-      "total_prompt_tokens": 5889,
-      "total_completion_tokens": 946,
-      "total_llm_seconds": 9.15,
+      "total_prompt_tokens": 5876,
+      "total_completion_tokens": 841,
+      "total_llm_seconds": 7.68,
       "quality": {
         "jargon": {
-          "term_hits": 25,
+          "term_hits": 24,
           "by_term": {
-            "준임상": 10,
-            "T점수": 9,
-            "척도": 5,
+            "준임상": 8,
+            "척도": 8,
+            "T점수": 7,
             "내재화": 1
           },
-          "blocks_total": 10,
+          "blocks_total": 9,
           "blocks_with_term": 4,
-          "glossed_blocks": 1,
-          "residual_rate": 0.4,
-          "gloss_rate": 0.25
+          "glossed_blocks": 0,
+          "residual_rate": 0.4444444444444444,
+          "gloss_rate": 0.0
         },
         "reflection": {
           "tokens": [
@@ -259,17 +269,16 @@
           ],
           "token_rate": 0.9090909090909091,
           "items_total": 8,
-          "items_reflected": 6,
-          "item_rate": 0.75,
+          "items_reflected": 7,
+          "item_rate": 0.875,
           "questions_total": 5,
-          "questions_reflected": 4
+          "questions_reflected": 5
         },
         "direction_warnings": []
       },
       "outputs": {
         "explain": {
-          "overview": "낯선 어른이 말을 걸 때 대답을 못 하고 굳어 있다는 관찰은 위축 척도(T점수 61, 준임상)와 나란히 놓이며, 속상한 일을 며칠 뒤에야 이야기한다는 부분은 우울/불안 척도(T점수 64, 준임상)와 연결됩니다. 이와 관련하여 내재화 문제(T점수 62, 준임상)도 준임상 범위로 보고되었으며, 주의집중(T점수 67, 준임상) 또한 준임상 범위로 나타났습니다. 나머지 항목인 신체증상, 사회적 미성숙, 사고의 문제, 비행, 공격성 및 총 문제행동(T점수 59)은 모두 정상 범위로 보고되었습니다. 준임상(T점수)은 또래 평균을 50으로 놓고 비교했을 때, 또래보다 조금 더 자주 보고된 범위를 의미하며, 이러한 수치들이 어떤 의미인지는 예약된 상담에서 상담사와 이야기해 보세요.",
-          "before_counseling": "검사 결과를 확인하며 아이의 행동에 대해 고민이 많으셨을 마음을 충분히 이해합니다. 수치에 대한 구체적인 해석과 앞으로의 방향은 예약된 상담에서 상담사와 직접 이야기해 보세요."
+          "overview": "낯선 어른이 말을 걸 때 대답을 못 하고 굳어 있다는 관찰은 위축 척도(T점수 61, 준임상)와 나란히 놓이며, 속상한 일을 며칠 뒤에야 이야기한다는 부분은 우울/불안 척도(T점수 64, 준임상) 및 내재화 문제(T점수 62, 준임상)와 연결됩니다. 주의집중 척도(T점수 67, 준임상)를 포함한 일부 척도가 준임상(또래보다 조금 더 자주 보고된 범위)으로 나타났으며, 나머지 척도들은 정상 범위로 확인되었습니다. 수치를 확인하며 느끼시는 마음은 충분히 이해하며, 구체적인 의미는 예약된 상담에서 상담사와 이야기해 보세요."
         },
         "prep": {
           "questions_for_counselor": [
@@ -286,11 +295,11 @@
               "source_scale": "anxious_depressed"
             },
             {
-              "question": "속상한 일을 뒤로 미뤄두고 말하지 않는 행동을 상담에서는 어떤 관점에서 먼저 살펴보게 되나요?",
+              "question": "속상한 일을 바로 말하지 못하는 상황을 상담에서는 어떤 관점에서 먼저 살펴보게 되나요?",
               "source_scale": "anxious_depressed"
             },
             {
-              "question": "주의집중 척도(T점수 67)가 준임상 범위로 나왔는데, 이것이 아이의 일상적인 집중력에 어떤 의미를 주나요?",
+              "question": "주의집중 척도(T점수 67)가 준임상 범위로 나왔는데, 아이가 낯선 상황에서 굳어 있는 것과 집중력의 상관관계는 어떻게 보나요?",
               "source_scale": "attention"
             }
           ],
@@ -300,15 +309,15 @@
               "source_scale": "withdrawn"
             },
             {
-              "point": "속상한 일이 생겼을 때 아이가 이를 표현하는 시점과 방식 관찰하기",
+              "point": "속상한 일이 생겼을 때 아이가 이를 표현하기까지 걸리는 시간이나 방식 관찰하기",
               "source_scale": "anxious_depressed"
             },
             {
-              "point": "일상에서 집중이 필요한 과제를 수행할 때의 행동 양상 관찰하기",
+              "point": "일상적인 활동 중 주의가 분산되거나 머뭇거리는 상황이 있는지 살펴보기",
               "source_scale": "attention"
             }
           ],
-          "counselor_briefing": "종합지표: 총 문제행동 T=59(정상). 준임상 범위 척도로는 내재화 문제(T=62), 위축(T=61), 우울/불안(T=64), 주의집중(T=67)이 확인됩니다. 보호자 관찰에 따르면 아이는 낯선 어른 앞에서 굳어버리거나 속상한 일을 며칠 뒤에야 이야기하는 양상을 보입니다. 상담 시 위축 및 우울/불안 척도와 관련된 행동 양상을 중점적으로 확인이 필요합니다. 또한 주의집중 척도가 준임상 범위로 나타난 점도 상담 시 함께 다루어질 예정입니다."
+          "counselor_briefing": "종합지표: 총 문제행동 T=59(정상), 내재화 문제 T=62(준임상), 외현화 문제 T=55(정상). 주요 증상으로 위축(T=61, 준임상), 우울/불안(T=64, 준임상), 주의집중(T=67, 준임상)이 확인됩니다. 보호자는 아이가 낯선 어른 앞에서 굳어버리거나, 속상한 일을 며칠 뒤에야 이야기하는 상황을 관찰하고 있습니다. 상담 시 위 척도들이 보호자의 관찰 내용과 어떻게 연결되는지 중점적으로 다루어 주시기 바랍니다."
         }
       }
     }
