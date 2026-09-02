@@ -16,6 +16,9 @@
   G9 정상 척도 근거 금지 - 질문·관찰 포인트의 source_scale band가 normal이면 위반
                            (종합지표 포함). 정상 척도는 해설 카드에서만 다룬다.
                            전 척도 정상 프로파일은 앵커가 없으므로 적용하지 않는다.
+  G10 예시 오염          - 프롬프트 작성 예시의 관찰 문구("학원 숙제", "놀이터" 등)가
+                           이 프로파일의 caregiver_notes에 없는데 질문·관찰·요약에
+                           등장하면 위반 (보호자가 하지 않은 말을 인용한 것)
 
 위반 블록은 최대 2회 재생성하고, 그래도 실패하면 사전 작성 안전 문구로
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
@@ -74,7 +77,18 @@ OPTIMISM_PATTERNS = [re.compile(p) for p in (
     r"문제\s*없습니다",
     r"큰\s*문제(?:는|가|도)?\s*없",           # "전반적으로 큰 문제는 없어 보입니다" (실측)
     r"문제(?:는|가|도)?\s*없어\s*보",
+    r"안정적인\s*상태",                      # "전반적으로 안정적인 상태를 유지" (실측)
+    r"전반적으로\s*안정",
 )]
+
+# --- G10: 예시 오염 ---
+# 프롬프트 작성 예시(prompts/*.md)에 쓴 관찰 문구. 예시는 p2 프로파일의 보호자 의견을
+# 재료로 썼는데, 7.8B 모델이 다른 프로파일에서 이 문구를 그대로 질문에 옮겨 적는
+# 결함이 실측됐다 (보호자가 하지 않은 말을 인용). 입력 caregiver_notes에 같은 문구가
+# 있으면 정당한 인용이므로 위반이 아니다.
+# "딴 데를" 같은 짧은 구는 보호자 문장의 정당한 바꿔 쓰기("딴 곳을")와 구분이 안 돼 제외한다.
+EXAMPLE_PHRASES = ("학원 숙제", "놀이터", "또래에게 먼저 말")
+
 
 # --- G6: 처방·치료 권고 ---
 PRESCRIPTION_PATTERNS = [re.compile(p) for p in (
@@ -232,6 +246,16 @@ def split_blocks(profile: CBCLProfile, task: str, raw: dict) -> dict[str, object
 
 # ---------------------------------------------------------------- 검사기
 
+def _check_example_contamination(block: str, text: str, profile: CBCLProfile) -> list[Violation]:
+    """G10: 프롬프트 예시의 관찰 문구가 입력 보호자 의견에 없는데 본문에 등장."""
+    notes = " ".join(profile.caregiver_notes)
+    for phrase in EXAMPLE_PHRASES:
+        if phrase in text and phrase not in notes:
+            return [Violation("G10", block,
+                              f"보호자 의견에 없는 예시 문구 인용: {phrase!r} (caregiver_notes에만 있는 관찰을 인용)")]
+    return []
+
+
 def _check_format_leak(block: str, text: str) -> list[Violation]:
     """G7: 보호자 노출 텍스트의 코드 누출. 첫 매칭 1건만 보고한다 (피드백 간결성)."""
     for pat in FORMAT_LEAK_PATTERNS:
@@ -325,6 +349,7 @@ def _check_text(block: str, text: str, profile: CBCLProfile,
     if caregiver_facing:
         found += _check_format_leak(block, text)
     found += _check_band_labels(block, text, profile, own_scale, own_dominates)
+    found += _check_example_contamination(block, text, profile)
     return found
 
 

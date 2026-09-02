@@ -216,7 +216,8 @@ def test_g2_allows_emotion_acknowledgement_but_blocks_verdict(explain_out):
         explain_out["before_counseling"] = ok
         assert "G2" not in rules(check_output(PROFILE, "explain", explain_out)), ok
     for bad in ("이 정도면 괜찮습니다.", "걱정하지 않으셔도 됩니다.", "안심하셔도 됩니다.",
-                "전반적으로 큰 문제는 없어 보입니다."):   # 새 구조 실측에서 통과했던 결과 판정
+                "전반적으로 큰 문제는 없어 보입니다.",    # 새 구조 실측에서 통과했던 결과 판정
+                "전반적으로 안정적인 상태를 유지하고 있는 것으로 보입니다."):
         explain_out["before_counseling"] = bad
         assert "G2" in rules(check_output(PROFILE, "explain", explain_out)), bad
 
@@ -245,3 +246,13 @@ def test_explain_schema_is_overview_and_before_counseling_only(explain_out):
     assert check_output(PROFILE, "explain", extra) == []   # 스키마 밖 필드는 렌더링되지 않으므로 검사 대상도 아니다
     del explain_out["before_counseling"]
     assert "G5" in rules(check_output(PROFILE, "explain", explain_out))
+
+
+def test_g10_example_phrase_only_allowed_when_caregiver_wrote_it(prep_out):
+    """예시 오염: 프롬프트 예시의 관찰(학원 숙제)은 그 말을 쓴 보호자(p2)에게만 인용할 수 있다."""
+    assert "G10" not in rules(check_output(PROFILE, "prep", prep_out))   # p2 의견에 '학원 숙제'가 있다
+    p5a = load_profile(ROOT / "data/profiles/p5a_paired_notes.json")
+    out = json.loads((ROOT / "data/fixtures/p5a_paired_notes.json").read_text(encoding="utf-8"))["prep"]["attempts"][0]
+    assert "G10" not in rules(check_output(p5a, "prep", out))
+    out["questions_for_counselor"][0]["question"] = "학원 숙제 앞에서 딴 곳을 자주 보는 모습은 주의집중 척도(T점수 67)와 관련이 있을까요?"
+    assert "G10" in rules(check_output(p5a, "prep", out))

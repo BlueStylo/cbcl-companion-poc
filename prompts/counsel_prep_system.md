@@ -110,7 +110,11 @@ questions_for_counselor는 5~7개(5개를 기본으로), observation_points는 3
 더하면 5개가 됩니다.
 
 작성 예시 (입력에서 attention·withdrawn·anxious_depressed·internalizing이
-borderline일 때, 질문 5개 전부):
+borderline이고 caregiver_notes가 "학원 숙제를 앞에 두면 딴 데를 자주
+봅니다", "놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다"일 때, 질문
+5개 전부). 예시 속 관찰 문장은 그 입력의 것입니다. 실제 출력에서는 지금
+받은 입력의 caregiver_notes 문장만 인용하고, 예시의 관찰(학원 숙제, 놀이터)을
+옮겨 적으면 보호자가 하지 않은 말을 인용한 것이 되어 블록이 폐기됩니다.
 
 {
   "questions_for_counselor": [
