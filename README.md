@@ -1,5 +1,7 @@
 # cbcl-companion-poc
 
+[![ci](https://github.com/BlueStylo/cbcl-companion-poc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/BlueStylo/cbcl-companion-poc/actions/workflows/ci.yml)
+
 CBCL 검사 결과를 보호자 눈높이 해설과 상담 준비 자료로 바꾸는 PoC.
 
 ## 원칙
@@ -61,18 +63,23 @@ python harness/run_harness.py --mock
 data/profiles/    가상 프로파일 8종 (P1~P4, P5a/P5b 페어, A1 위반유도, C1 위기신호)
 data/fixtures/    mock 모드용 고정 LLM 응답 (A1은 위반 응답 시드 10건 포함)
 data/fixtures/seeded/  적대 위반 시드 41건 (규칙별 10파일 + 우회 시도형, B축 전수 검사용)
+examples/mock/    mock 산출물 9종 (프로파일 8종 + 동점 페어 비교 뷰) - 브라우저로 바로 열어 볼 것
+examples/api/     실LLM(exaone3.5:7.8b) 산출물 + 실행 통계 JSON
 prompts/          프롬프트 계약 전문 (코드 밖 정본)
 src/parser.py     입력 검증 + 밴드 라벨 재계산 대조 (fail-closed 1차 관문)
 src/scale_texts.py 척도 x 밴드 고정 문구 33종 + 한계 고지 (LLM 미사용, 테스트로 어휘 고정)
 src/renderer.py   종형곡선 SVG (마커, SEM 밴드, 구간 배경) - 순수 문자열 생성
-src/llm_client.py OpenAI 호환 클라이언트 + MockLLMClient
-src/generator.py  연결 문단/질문 생성 (구조화 JSON 출력)
+src/llm_client.py OpenAI 호환 클라이언트(타임아웃) + MockLLMClient
+src/generator.py  연결 문단/질문 생성 (구조화 JSON 출력, 아동 이름 마스킹)
 src/guardrails.py 규칙 10종 + 블록 단위 재생성 + 안전 문구 폴백
 src/quality.py    품질 지표 3종 (용어 잔존율, 보호자 표현 반영률, 질문 방향 경고) - 측정만
 src/report_html.py  2페이지 정적 리포트 (1p 관찰자의 렌즈 / 2p 우리 아이 결과 / 상담 준비)
 src/compare_html.py 동점-상이의견 비교 뷰
 harness/          미니 평가 하네스
 tests/            결정론 단위 테스트
+docs/decisions/   설계 결정 기록 (ADR) 6건
+CONTRIBUTING.md   브랜치·커밋·검증 규칙
+.github/          CI 워크플로(ci), PR·이슈 템플릿
 ```
 
 LLM 호출은 프로파일당 2회(연결 문단 + 상담 준비)이고, 검증 대상 블록은
@@ -149,6 +156,7 @@ LLM 호출 자체를 하지 않고, 상담 연결 안내와 즉시 도움 라인
 | LLM_BASE_URL | 기본 https://api.openai.com/v1 · 로컬 http://localhost:11434/v1 |
 | LLM_MODEL | API 기본 **gpt-4o-mini** · 로컬 기본 **exaone3.5:7.8b** (Ollama에 받아둔 모델) |
 | LLM_API_KEY | .env로만 주입 (.env는 gitignore) |
+| LLM_TIMEOUT_S | 호출 1건 상한(초), 기본 180. 초과 시 fail-closed 종료 (로컬 7~8B는 재생성 포함 건당 수 분) |
 
 ## 평가 결과
 
@@ -337,22 +345,35 @@ $0.075/1M), 야간 배치 처리(양사 배치 API 50% 할인).
   대답을 하지 않고 굳어버리는 모습", "며칠 뒤에야 속상함을 이야기하는 것")만
   인용합니다. 두 프로파일 모두 폴백 0/5, 코드 누출·정상 척도 근거·라벨 위반 0.
   p2에 남은 (a) 1건은 "자세히 알려주시면"으로, 방향 경고(WARN)로만 집계됩니다.
-  산출물은 후속 PR(chore/examples-and-hygiene)의 examples/api에 있습니다.
+  examples/api의 산출물이 이 회차입니다.
 
+
+## 문서
+
+- 설계 결정 기록 → `docs/decisions/` (ADR 6건)
+- 기여·검증 규칙(브랜치, 커밋, pytest·하네스 게이트) → `CONTRIBUTING.md`
+- 예시 산출물(브라우저로 바로 열기) → `examples/` (mock 9종, 실LLM 2종 + 실행 통계)
 
 ## 알려진 한계
 
 - 정규식 사전은 미검출 가능성이 있습니다. 하네스로 검출률을 측정하고,
   미검출 유형을 사전에 추가하는 반복이 운영 절차입니다. G7~G10, "준임계"
   같은 오기 변형, G2의 "큰 문제는 없어 보입니다"·"안정적인 상태"가 그
-  반복으로 추가된 사례입니다 (모두 실측 산출물에서 발견).
-- G8의 척도 귀속, G9의 전 척도 정상 예외, 질문 방향의 의미 판정은
-  결정론 규칙의 한계입니다 (가드레일 규칙 절의 "규칙 한계").
+  반복으로 추가된 사례입니다 (모두 실측 산출물에서 발견). G3는 한글 수사로
+  쓴 수치("육십칠점")를 검출하지 못합니다 (#1).
+- G8의 밴드 어휘 척도 귀속은 휴리스틱이며 귀속 실패 시 대조를 생략합니다.
+  G9의 전 척도 정상 예외도 같은 계열의 한계입니다 (#4).
+- 질문 방향(보호자→상담사)은 의미 판정이라 규칙으로 차단하지 않고 WARN만
+  집계합니다 (#3).
+- G7 형식 누출 검사는 보호자 노출 텍스트만 대상이고 상담사용 사전 요약은
+  제외합니다 (#6).
 - 품질 지표의 토큰 추출은 형태소 분석기 없는 휴리스틱이라 "봅니", "줄었"
   같은 잡음 토큰이 섞이며, 반영률의 절대값보다 전후 비교에 쓰는 지표입니다.
 - 보호자 단일 보고 기반 선별 검사의 한계는 리포트 안에 고지됩니다.
 - 준임상 경계의 해설 어조는 상담사 검수가 필요합니다.
 - SEM 밴드의 신뢰도 계수는 예시값(.84)이며 화면에 예시값임을 표기합니다.
+
+위 항목은 GitHub 이슈 트래커로 추적합니다 (#1, #3, #4, #6).
 
 ## 사용한 AI 도구
 

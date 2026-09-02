@@ -1,0 +1,425 @@
+{
+  "mode": "api",
+  "runs": [
+    {
+      "profile_id": "p2_partial_borderline",
+      "model": "exaone3.5:7.8b",
+      "tasks": {
+        "explain": {
+          "regen_count": 0,
+          "violations_by_attempt": {},
+          "block_states": {
+            "overview": "pass",
+            "before_counseling": "pass"
+          },
+          "state_counts": {
+            "pass": 2,
+            "regen_pass": 0,
+            "fallback": 0
+          }
+        },
+        "prep": {
+          "regen_count": 1,
+          "violations_by_attempt": {
+            "attempt0": {
+              "G8": 1
+            }
+          },
+          "block_states": {
+            "questions_for_counselor": "pass",
+            "observation_points": "pass",
+            "counselor_briefing": "regen_pass"
+          },
+          "state_counts": {
+            "pass": 2,
+            "regen_pass": 1,
+            "fallback": 0
+          }
+        }
+      },
+      "total_prompt_tokens": 9032,
+      "total_completion_tokens": 1617,
+      "total_llm_seconds": 153.98,
+      "quality": {
+        "jargon": {
+          "term_hits": 18,
+          "by_term": {
+            "척도": 7,
+            "T점수": 5,
+            "준임상": 5,
+            "내재화": 1
+          },
+          "blocks_total": 11,
+          "blocks_with_term": 4,
+          "glossed_blocks": 0,
+          "residual_rate": 0.36363636363636365,
+          "gloss_rate": 0.0
+        },
+        "reflection": {
+          "tokens": [
+            "학원",
+            "숙제",
+            "앞에",
+            "두면",
+            "데를",
+            "봅니",
+            "놀이터",
+            "또래",
+            "먼저",
+            "말을",
+            "거는",
+            "줄었"
+          ],
+          "tokens_hit": [
+            "학원",
+            "숙제",
+            "앞에",
+            "두면",
+            "데를",
+            "놀이터",
+            "또래",
+            "먼저",
+            "말을",
+            "거는"
+          ],
+          "token_rate": 0.8333333333333334,
+          "items_total": 9,
+          "items_reflected": 7,
+          "item_rate": 0.7777777777777778,
+          "questions_total": 5,
+          "questions_reflected": 4
+        },
+        "direction_warnings": [
+          {
+            "block": "questions_for_counselor[4]",
+            "matched": "알려주시면",
+            "question": "위축 증상이 관찰되는 상황이 일상 생활에서 어떻게 나타나는지 자세히 알려주시면 상담에서 더 구체적으로 이해하는 데 도움이 될 것 같습니다."
+          }
+        ]
+      },
+      "outputs": {
+        "explain": {
+          "overview": "보호자님께서 작성해 주신 관찰 내용에 따르면, 학원 숙제를 앞에 두면 아이가 딴 곳을 자주 보는 경향이 있다고 말씀해 주셨습니다. 이는 주의집중 척도에서 T점수 67로 준임상 범위로 나타난 결과와 연결될 수 있습니다. 또한, 놀이터에서 또래에게 먼저 말을 걸던 모습이 줄어들었다는 점도 주목할 만합니다. 이는 위축 척도에서 T점수 62로 준임상 범위로 보고된 내용과 일치합니다. 총 문제행동과 신체증상은 정상 범위로 나타났지만, 내재화 문제와 위축, 우울/불안 척도는 준임상 범위로 나타나 아이의 감정 표현이나 사회적 상호작용에 약간의 어려움이 있을 수 있음을 시사합니다. 이러한 결과를 통해 아이의 행동과 감정 상태에 대해 더 깊이 이해하고 지원 방안을 모색하는 것이 도움이 될 것입니다. 모든 척도가 정상 범위에 있지는 않으므로, 예약된 상담에서 상담사와 함께 이러한 관찰과 검사 결과를 더 자세히 논의해 보세요.",
+          "before_counseling": "결과를 보고 걱정되는 마음이 드는 것은 자연스러운 반응입니다. 중요한 것은 이러한 감정을 인정하면서도, 전문가와 함께 아이의 상황을 더 잘 이해하고 적절한 지원 방법을 찾는 것입니다. 상담을 통해 아이에게 가장 적합한 도움을 제공할 수 있는 길을 함께 모색해 나갈 수 있을 것입니다. 예약된 상담일까지 아이에게 안정감을 주고, 필요한 지원을 준비하는 시간으로 삼아보세요."
+        },
+        "prep": {
+          "questions_for_counselor": [
+            {
+              "question": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도(T점수 67)가 준임상 범위로 보고된 것과 어떻게 연결해서 이해해야 할까요?",
+              "source_scale": "attention"
+            },
+            {
+              "question": "집중력이 떨어지는 모습이 숙제 시간에만 나타나는지, 아니면 다른 상황에서도 비슷한지 상담사와 함께 살펴보면 어떨까요?",
+              "source_scale": "attention"
+            },
+            {
+              "question": "놀이터에서 또래에게 먼저 말을 거는 일이 줄어든 것이 위축 척도(T점수 62) 결과와 어떻게 연관되어 있는지 궁금합니다. 상담에서는 이를 어떻게 다루게 될까요?",
+              "source_scale": "withdrawn"
+            },
+            {
+              "question": "또래와의 상호작용 감소가 우울/불안 척도(T점수 65)의 준임상 범위와 어떤 관련이 있는지 상담사와 함께 살펴보고 싶습니다.",
+              "source_scale": "anxious_depressed"
+            },
+            {
+              "question": "위축 증상이 관찰되는 상황이 일상 생활에서 어떻게 나타나는지 자세히 알려주시면 상담에서 더 구체적으로 이해하는 데 도움이 될 것 같습니다.",
+              "source_scale": "withdrawn"
+            }
+          ],
+          "observation_points": [
+            {
+              "point": "학원 숙제를 시작하기 전과 후에 아이가 얼마나 집중하는지 관찰하고 기록하기",
+              "source_scale": "attention"
+            },
+            {
+              "point": "놀이터에서 또래와의 상호작용이 줄어들거나 회피하는 구체적인 상황과 행동을 기록하기",
+              "source_scale": "withdrawn"
+            },
+            {
+              "point": "또래와의 대화 시도 횟수와 성공 여부를 기록하기",
+              "source_scale": "withdrawn"
+            },
+            {
+              "point": "우울하거나 불안한 모습이 언제, 어떤 상황에서 나타나는지 구체적인 상황과 함께 기록하기",
+              "source_scale": "anxious_depressed"
+            }
+          ],
+          "counselor_briefing": "상담 전까지의 기간 동안, 총 문제행동(T=57, 정상 범위)과 내재화 문제(T=62, 준임상 범위) 척도 결과를 종합적으로 살펴보게 될 것입니다. 특히 주의집중 척도(T=67, 준임상 범위)와 위축 척도(T=62, 준임상 범위)에서 보이는 변화는 아동의 일상 생활에서 어떤 영향을 미치는지 자세히 논의할 예정입니다. 보호자님의 관찰 사항, 예를 들어 학원 숙제 시간에 집중하지 못하는 모습과 놀이터에서 또래와의 상호작용 감소는 상담에서 중요한 참고 자료가 될 것입니다."
+        }
+      },
+      "wall_s": 154.0,
+      "fallback_blocks": {
+        "explain": [],
+        "prep": []
+      },
+      "violations": [
+        {
+          "task": "prep",
+          "attempt": 0,
+          "rule": "G8",
+          "block": "counselor_briefing",
+          "matched": "허용되지 않는 밴드 표현 'borderline' (정상/준임상/임상만 사용)"
+        }
+      ],
+      "llm_calls": [
+        {
+          "profile_id": "p2_partial_borderline",
+          "task": "explain",
+          "attempt": 0,
+          "duration_s": 39.94,
+          "prompt_tokens": 2280,
+          "completion_tokens": 356
+        },
+        {
+          "profile_id": "p2_partial_borderline",
+          "task": "prep",
+          "attempt": 0,
+          "duration_s": 69.36,
+          "prompt_tokens": 3323,
+          "completion_tokens": 664
+        },
+        {
+          "profile_id": "p2_partial_borderline",
+          "task": "prep",
+          "attempt": 1,
+          "duration_s": 44.68,
+          "prompt_tokens": 3429,
+          "completion_tokens": 597
+        }
+      ]
+    },
+    {
+      "profile_id": "p5a_paired_notes",
+      "model": "exaone3.5:7.8b",
+      "tasks": {
+        "explain": {
+          "regen_count": 1,
+          "violations_by_attempt": {
+            "attempt0": {
+              "G8": 1
+            }
+          },
+          "block_states": {
+            "overview": "regen_pass",
+            "before_counseling": "pass"
+          },
+          "state_counts": {
+            "pass": 1,
+            "regen_pass": 1,
+            "fallback": 0
+          }
+        },
+        "prep": {
+          "regen_count": 2,
+          "violations_by_attempt": {
+            "attempt0": {
+              "G10": 3,
+              "G8": 1
+            },
+            "attempt1": {
+              "G5": 1
+            }
+          },
+          "block_states": {
+            "questions_for_counselor": "regen_pass",
+            "observation_points": "regen_pass",
+            "counselor_briefing": "regen_pass"
+          },
+          "state_counts": {
+            "pass": 0,
+            "regen_pass": 3,
+            "fallback": 0
+          }
+        }
+      },
+      "total_prompt_tokens": 15032,
+      "total_completion_tokens": 2640,
+      "total_llm_seconds": 227.87,
+      "quality": {
+        "jargon": {
+          "term_hits": 26,
+          "by_term": {
+            "척도": 10,
+            "T점수": 7,
+            "준임상": 6,
+            "내재화": 2,
+            "외현화": 1
+          },
+          "blocks_total": 10,
+          "blocks_with_term": 6,
+          "glossed_blocks": 0,
+          "residual_rate": 0.6,
+          "gloss_rate": 0.0
+        },
+        "reflection": {
+          "tokens": [
+            "낯선",
+            "어른",
+            "말을",
+            "걸면",
+            "대답",
+            "굳어",
+            "있어요",
+            "속상한",
+            "며칠",
+            "뒤에야",
+            "이야기"
+          ],
+          "tokens_hit": [
+            "낯선",
+            "어른",
+            "말을",
+            "대답",
+            "굳어",
+            "속상한",
+            "며칠",
+            "뒤에야",
+            "이야기"
+          ],
+          "token_rate": 0.8181818181818182,
+          "items_total": 8,
+          "items_reflected": 6,
+          "item_rate": 0.75,
+          "questions_total": 5,
+          "questions_reflected": 3
+        },
+        "direction_warnings": []
+      },
+      "outputs": {
+        "explain": {
+          "overview": "보호자님께서 말씀하신 대로, 낯선 어른과 대화할 때 대답을 잘 하지 못하고 굳어버리는 모습이 관찰되셨고, 속상한 일이 있어도 며칠이 지나서야 이야기하는 경향이 있다고 하셨습니다. 이러한 관찰은 위축 척도(T점수 61, 준임상)와 사회적 미성숙 척도(T점수 58, 정상)와 함께 나타납니다. 특히 위축 척도는 준임상 범위로 보고되어, 아이가 사회적 상호작용에서 약간의 어려움을 겪고 있을 가능성을 시사합니다. 다른 척도들 중에서는 주의집중 척도(T점수 67, 준임상)와 우울/불안 척도(T점수 64, 준임상)도 준임상 범위에 속해 있어, 아이의 정서적 안정성과 집중력에 약간의 주의가 필요할 수 있습니다. 총 문제행동과 외현화 문제, 신체증상은 모두 정상 범위로 보고되었습니다. 이러한 결과를 통해 아이의 행동과 감정 상태를 좀 더 깊이 이해하고, 필요한 지원 방안을 상담을 통해 논의해 보는 것이 좋을 것 같습니다.",
+          "before_counseling": "결과를 보시면서 걱정되는 마음이 드시는 것은 당연합니다. 아이의 행동과 감정 변화에 대해 주의 깊게 관찰해 오신 보호자님의 노력에 감사드립니다. 상담을 통해 지금까지의 관찰과 검사 결과를 함께 살펴보고, 아이에게 가장 도움이 될 수 있는 방법을 찾는 데 집중해 보세요. 상담은 아이와 함께 성장하고 발전하는 데 중요한 단계가 될 것입니다."
+        },
+        "prep": {
+          "questions_for_counselor": [
+            {
+              "question": "낯선 어른 앞에서 대답을 하지 않고 굳어버리는 모습이 위축 척도(T점수 61)의 준임상 범위와 어떻게 연관되어 보이나요?",
+              "source_scale": "withdrawn"
+            },
+            {
+              "question": "며칠 뒤에야 속상함을 이야기하는 것이 내재화 문제 척도(T점수 62)의 결과와 어떤 관련이 있을까요?",
+              "source_scale": "internalizing"
+            },
+            {
+              "question": "낯선 어른에게 반응이 없는 모습이 주의집중 척도(T점수 67)의 어려움과도 연결되어 보이는지 궁금합니다.",
+              "source_scale": "attention"
+            },
+            {
+              "question": "상담에서는 위축 증상과 내재화 문제가 어떻게 상호 연관되어 나타나는지 살펴보게 될까요?",
+              "source_scale": "withdrawn"
+            },
+            {
+              "question": "아이가 속상함을 늦게 표현하는 것이 사회적 상호작용에 어떤 영향을 미치는지, 주의집중 척도 결과와 함께 어떻게 해석해야 할까요?",
+              "source_scale": "internalizing"
+            }
+          ],
+          "observation_points": [
+            {
+              "point": "낯선 어른이나 새로운 상황에서 아이가 굳어버리거나 말을 하지 않는 횟수와 상황을 기록해 보세요",
+              "source_scale": "withdrawn"
+            },
+            {
+              "point": "아이가 속상한 일을 이야기하기까지 걸리는 시간과 그 상황을 자세히 기록해 두기",
+              "source_scale": "internalizing"
+            },
+            {
+              "point": "집중해야 하는 상황에서 낯선 어른이나 새로운 환경에 노출되었을 때 아이의 반응 변화를 관찰해 보세요",
+              "source_scale": "attention"
+            }
+          ],
+          "counselor_briefing": "상담 전까지 4일이 남아 있습니다. 총 문제행동 척도는 정상 범위(T=59)로 나타났지만, 내재화 문제 척도(T=62, 준임상)와 위축 척도(T=61, 준임상), 주의집중 척도(T=67, 준임상)에서 주의 깊은 관찰이 필요합니다. 특히, 아이가 낯선 어른 앞에서 굳어버리거나 말을 하지 않는 모습과 며칠 뒤에야 속상한 일을 이야기하는 행동은 내재화 문제와 위축 증상과 연관성이 있을 수 있습니다. 상담에서는 이러한 행동 변화와 정서적 반응을 종합적으로 살펴보며, 아이의 현재 상태와 필요한 지원 방안에 대해 논의할 계획입니다."
+        }
+      },
+      "wall_s": 227.9,
+      "fallback_blocks": {
+        "explain": [],
+        "prep": []
+      },
+      "violations": [
+        {
+          "task": "explain",
+          "attempt": 0,
+          "rule": "G8",
+          "block": "overview",
+          "matched": "우울/불안 라벨 불일치: 본문 '정상' != 입력 band '준임상'"
+        },
+        {
+          "task": "prep",
+          "attempt": 0,
+          "rule": "G10",
+          "block": "questions_for_counselor",
+          "matched": "보호자 의견에 없는 예시 문구 인용: '학원 숙제' (caregiver_notes에만 있는 관찰을 인용)"
+        },
+        {
+          "task": "prep",
+          "attempt": 0,
+          "rule": "G10",
+          "block": "questions_for_counselor",
+          "matched": "보호자 의견에 없는 예시 문구 인용: '놀이터' (caregiver_notes에만 있는 관찰을 인용)"
+        },
+        {
+          "task": "prep",
+          "attempt": 0,
+          "rule": "G10",
+          "block": "observation_points",
+          "matched": "보호자 의견에 없는 예시 문구 인용: '놀이터' (caregiver_notes에만 있는 관찰을 인용)"
+        },
+        {
+          "task": "prep",
+          "attempt": 0,
+          "rule": "G8",
+          "block": "counselor_briefing",
+          "matched": "허용되지 않는 밴드 표현 'borderline' (정상/준임상/임상만 사용)"
+        },
+        {
+          "task": "prep",
+          "attempt": 1,
+          "rule": "G5",
+          "block": "questions_for_counselor",
+          "matched": "항목 수 4건 (요구: 5~7)"
+        }
+      ],
+      "llm_calls": [
+        {
+          "profile_id": "p5a_paired_notes",
+          "task": "explain",
+          "attempt": 0,
+          "duration_s": 35.4,
+          "prompt_tokens": 2280,
+          "completion_tokens": 381
+        },
+        {
+          "profile_id": "p5a_paired_notes",
+          "task": "explain",
+          "attempt": 1,
+          "duration_s": 29.77,
+          "prompt_tokens": 2378,
+          "completion_tokens": 350
+        },
+        {
+          "profile_id": "p5a_paired_notes",
+          "task": "prep",
+          "attempt": 0,
+          "duration_s": 74.51,
+          "prompt_tokens": 3323,
+          "completion_tokens": 740
+        },
+        {
+          "profile_id": "p5a_paired_notes",
+          "task": "prep",
+          "attempt": 1,
+          "duration_s": 44.06,
+          "prompt_tokens": 3642,
+          "completion_tokens": 564
+        },
+        {
+          "profile_id": "p5a_paired_notes",
+          "task": "prep",
+          "attempt": 2,
+          "duration_s": 44.13,
+          "prompt_tokens": 3409,
+          "completion_tokens": 605
+        }
+      ]
+    }
+  ]
+}

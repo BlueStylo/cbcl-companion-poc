@@ -21,6 +21,12 @@ T_LEFT, T_RIGHT = 25.0, 85.0
 EXAMPLE_RELIABILITY = 0.84
 DEFAULT_SEM = round(T_SD * math.sqrt(1.0 - EXAMPLE_RELIABILITY), 1)
 
+# 기준선 라벨("준임상 기준 60T", 9.5px 글꼴로 약 70px)이 두 기준선 사이에 들어가지
+# 못할 만큼 좁으면 두 번째 라벨을 한 줄 아래로 어긋나게 놓는다. 종합지표(준임상 60T,
+# 임상 63T: 3T = 약 22px)가 해당하고, 개별 척도(60T/70T: 약 72px)는 그대로 한 줄이다.
+MIN_LABEL_GAP_PX = 60
+LABEL_LINE_HEIGHT = 12
+
 _COL = {
     "curve": "#4a6fa5",
     "baseline": "#8a94a3",
@@ -106,11 +112,13 @@ def bell_curve_svg(
         f'fill="{_COL["sem"]}" fill-opacity="0.35"/>'
     )
 
+    stagger = (x(c_start) - x(b_start)) < MIN_LABEL_GAP_PX
     boundaries = "".join(
         f'<line x1="{x(t):.1f}" y1="{top}" x2="{x(t):.1f}" y2="{base}" '
         f'stroke="{_COL["boundary"]}" stroke-width="1" stroke-dasharray="3,3"/>'
-        f'<text x="{x(t) + 3:.1f}" y="{top + 10}" font-size="9.5" fill="{_COL["faint"]}">{label} {t}T</text>'
-        for t, label in ((b_start, "준임상 기준"), (c_start, "임상 기준"))
+        f'<text x="{x(t) + 3:.1f}" y="{top + 10 + (LABEL_LINE_HEIGHT if stagger and i else 0)}" '
+        f'font-size="9.5" fill="{_COL["faint"]}">{label} {t}T</text>'
+        for i, (t, label) in enumerate(((b_start, "준임상 기준"), (c_start, "임상 기준")))
     )
 
     mx, my = x(t_score), y(t_score)
@@ -141,19 +149,23 @@ def bell_curve_svg(
 def concept_curve_svg(width: int = 560, height: int = 200) -> str:
     """1페이지 '관찰자의 렌즈'용 개념 예시 곡선.
 
-    같은 아이를 보호자와 교사가 평가했을 때의 전형적 차이를 마커 2개로
-    보여준다. 실측값이 아닌 개념 예시임을 그림 안에 명시한다.
+    같은 아이를 두 관찰자가 평가했을 때 결과가 다를 수 있음을 마커 2개로
+    보여준다. 두 마커는 평균 50을 중심으로 대칭(45T, 55T)으로 놓아 "보호자가
+    더 높게 본다"는 방향성이 그림에 실리지 않게 한다. 실측값이 아닌 개념
+    예시임을 그림 안에 명시한다.
     """
     x, y, base = _geometry(width, height)
-    examples = (("보호자 보고 (예시)", 62, _COL["marker"]), ("교사 보고 (예시)", 55, _COL["curve"]))
+    examples = (("관찰자 A (예시)", 45, _COL["curve"], "end"),
+                ("관찰자 B (예시)", 55, _COL["marker"], "start"))
     markers = []
-    for label, t, color in examples:
+    for label, t, color, anchor in examples:
         mx, my = x(t), y(t)
+        lx = mx - 6 if anchor == "end" else mx + 6
         markers.append(
             f'<line x1="{mx:.1f}" y1="{base}" x2="{mx:.1f}" y2="{my:.1f}" '
             f'stroke="{color}" stroke-width="1.5" stroke-dasharray="2,2"/>'
             f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="4" fill="{color}"/>'
-            f'<text x="{mx + 6:.1f}" y="{my - 8:.1f}" font-size="10.5" fill="{color}">{label}</text>'
+            f'<text x="{lx:.1f}" y="{my - 8:.1f}" text-anchor="{anchor}" font-size="10.5" fill="{color}">{label}</text>'
         )
     return (
         f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" '
