@@ -98,7 +98,7 @@
       {{ instrument }} · 생성 모드 {{ mode_label }}{% if model_label %} · 모델 {{ model_label }}{% endif %}
       {% if pending %}· 생성 전 (결정론 부분만 렌더){% else %}· 가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건{% endif %}
     </details>
-    <a class="jump" href="#prep">상담사에게 물어볼 질문 보기 <small>↓ {% if pending %}생성 대기{% else %}{{ questions|length }}개{% endif %} · 상담까지 {{ days }}일</small></a>
+    <a class="jump" href="#prep">상담사에게 물어볼 질문 보기 <small>↓ {% if pending %}생성 대기{% else %}{{ questions|length }}개{% endif %}{% if counseling_scheduled %} · 상담까지 {{ days }}일{% else %} · 상담 예약 후 사용{% endif %}</small></a>
   </header>
 
   <section class="page" id="page1">
@@ -132,6 +132,7 @@
     <h2>2페이지 · 우리 아이 결과</h2>
     <p class="hier-note">읽는 순서: ① 총 문제행동 → ② 내재화/외현화 → ③ 개별 척도.
       {% if elevated_names %}상담에서 함께 살펴볼 영역: {{ elevated_names|join(", ") }}.{% else %}모든 척도가 정상 범위로 보고되었습니다.{% endif %}</p>
+    {% if not special_scales_administered %}<p class="hier-note">결과 범위는 이번 가이드에 포함된 문제행동 척도 기준입니다.</p>{% endif %}
 
     <div class="box gen">
       <h3>보호자의 관찰과 검사 소견{% if pending %}<span class="tag pending">생성 대기</span>{% elif overview_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</h3>
@@ -174,7 +175,7 @@
     {% if has_borderline %}<div class="psyedu">{{ borderline_note }}</div>{% endif %}
 
     <details class="fold">
-      <summary>곡선의 색 구간, 오차 범위선, 기준선은 무엇인가요</summary>
+      <summary>곡선의 색 구간, 오차 구간, 기준선은 무엇인가요</summary>
       <p style="margin-top:6px">{{ sem_note }}</p>
     </details>
 
@@ -190,7 +191,7 @@
     <h3>{{ pre_counseling_label }} <span class="tag">고정 문구</span></h3>
     <p>{{ pre_counseling_note }}</p>
 
-    <h3 style="margin-top:16px">상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
+    <h3 style="margin-top:16px">상담사에게 물어볼 질문 <span class="tag">상담 때 보여줄 질문에 체크해 두세요</span></h3>
     <ul class="qlist">
       {% for q in questions %}
       <li><input type="checkbox" checked> <span{% if q.pending %} class="pending-text"{% endif %}>{{ q.text }}{% if q.pending %}<span class="tag pending">생성 대기</span>{% elif q.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
@@ -198,7 +199,7 @@
       {% endfor %}
     </ul>
 
-    <h3 style="margin-top:16px">상담까지 남은 {{ days }}일, 가정 관찰 포인트</h3>
+    <h3 style="margin-top:16px">{% if counseling_scheduled %}상담까지 남은 {{ days }}일, 가정 관찰 포인트{% else %}상담 예약 후 상담 전까지 살펴볼 가정 관찰 포인트{% endif %}</h3>
     <ul class="qlist">
       {% for o in observations %}
       <li><span>·</span> <span{% if o.pending %} class="pending-text"{% endif %}>{{ o.text }}{% if o.pending %}<span class="tag pending">생성 대기</span>{% elif o.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
