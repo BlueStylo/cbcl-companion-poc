@@ -315,7 +315,7 @@
     <p>검사 결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다. 수치의 의미는 예약된 상담에서 상담사와 함께 확인하게 됩니다.</p>
 
     <h3 style="margin-top:16px">상담사에게 물어볼 질문 <span class="tag">LLM 생성 · 검증 통과</span><span class="tag">상담 때 보여줄 질문에 체크해 두세요</span></h3>
-    <ul class="qlist">
+    <ul class="qlist" id="question-list">
       
       <li><input type="checkbox" checked> <span>사소한 일에도 큰 소리를 내는 날이 늘어난 것은 공격성 척도가 임상 범위로 보고된 것과 연결해서 보면 될까요?</span>
           <span class="src-badge">근거: 공격성</span></li>
@@ -356,7 +356,7 @@
 
     <details class="brief">
       <summary>상담사에게 전달할 요약 미리보기 <span class="tag">결정론 조립</span></summary>
-      <div class="box gen brief-text">[보호자 의견 원문 2건]
+      <div class="box gen brief-text" id="brief-text">[보호자 의견 원문 2건]
 1. &#34;사소한 일에도 큰 소리를 내는 날이 늘었습니다&#34;
 2. &#34;게임을 끄라고 하면 물건을 던진 적이 두 번 있습니다&#34;
 [상승 척도 5개] 척도, T점수, 보고서 라벨
@@ -365,7 +365,7 @@
 - 위축 T=60 준임상
 - 주의집중 T=69 준임상
 - 공격성 T=70 임상
-[상담사에게 물어볼 질문 6개] 위 목록의 체크 표시 기준
+[상담사에게 물어볼 질문 6개] 위 목록에서 체크한 질문
 1. 사소한 일에도 큰 소리를 내는 날이 늘어난 것은 공격성 척도가 임상 범위로 보고된 것과 연결해서 보면 될까요?
 2. 게임을 끄라고 하면 물건을 던진 일이 있었는데, 이런 상황을 상담에서는 어떻게 다루게 되나요?
 3. 공격성 척도가 임상 범위의 기준선 가까이에 있다고 들었는데, 기준선에 걸친 결과는 어떻게 읽어야 하나요?
@@ -396,6 +396,39 @@ document.addEventListener('click', function (e) {
   e.preventDefault();
   t.scrollIntoView({ block: 'start' }); // 즉시 이동: 숨은 탭·감속 모션 설정에서도 확실히 동작
 });
+</script>
+<script data-brief-sync>
+// 질문 목록의 체크 상태를 "상담사에게 전달할 요약 미리보기"의 질문 절에 반영한다.
+// 요약은 결정론 조립 텍스트(report_html.build_counselor_briefing)라 생성 시점에는 전체 질문이 실려 있고
+// (체크박스 기본값이 전부 체크), 체크를 풀면 같은 번호 줄을 숨기고 머리글의 개수를 맞춘다.
+// 번호는 화면 목록과 맞추기 위해 다시 매기지 않는다. 인쇄와 복사는 그 시점의 화면 상태를 따른다.
+(function () {
+  var list = document.getElementById('question-list');
+  var box = document.getElementById('brief-text');
+  if (!list || !box) return;
+  var original = box.textContent;
+  var header = /^\[상담사에게 물어볼 질문 \d+개\]/;
+  function sync() {
+    var boxes = list.querySelectorAll('input[type="checkbox"]');
+    var lines = original.split('\n');
+    var out = [], inQuestions = false, qi = 0, kept = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (header.test(line)) { inQuestions = true; out.push(line); continue; }
+      if (inQuestions && /^\d+\. /.test(line)) {
+        var cb = boxes[qi++];
+        if (!cb || cb.checked) { out.push(line); kept++; }
+        continue;
+      }
+      if (inQuestions && line.charAt(0) === '[') inQuestions = false;
+      out.push(line);
+    }
+    box.textContent = out.map(function (l) {
+      return header.test(l) ? l.replace(/\d+개\]/, kept + '개]') : l;
+    }).join('\n');
+  }
+  list.addEventListener('change', sync);
+})();
 </script>
 </body>
 </html>
