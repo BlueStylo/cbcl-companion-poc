@@ -20,6 +20,7 @@ import os
 import re
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from .guardrails import check_output
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, ScaleScore
@@ -32,6 +33,37 @@ class LLMError(RuntimeError):
 
 
 _CODE_FENCE = re.compile(r"^\s*```(?:json|JSON)?\s*(.*?)\s*```\s*$", re.S)
+
+
+def _is_local_llm_url(base_url: str) -> bool:
+    """Ollama용 로컬 주소 또는 기본 Ollama 포트인지 판별한다."""
+    try:
+        parsed = urlparse(base_url)
+        return parsed.hostname in {"localhost", "127.0.0.1", "::1"} or parsed.port == 11434
+    except ValueError:
+        return False
+
+
+def _status_code(exc: Exception) -> int | None:
+    """SDK별 예외 형태에서 HTTP 상태 코드를 꺼낸다."""
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+    try:
+        return int(status) if status is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_json_mode_unsupported(exc: Exception) -> bool:
+    """JSON 응답 형식 자체를 거부한 4xx 오류만 비 JSON 재시도 대상으로 삼는다."""
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return False
+    status = _status_code(exc)
+    if status is None or not 400 <= status < 500 or status in {401, 403, 408, 429}:
+        return False
+    message = str(exc).lower()
+    return "response_format" in message or "json_object" in message
 
 
 def parse_json_text(text: str) -> dict:
@@ -62,7 +94,11 @@ class OpenAICompatClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None,
                  model: str | None = None):
         self.base_url = base_url or os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
-        self.api_key = api_key or os.environ.get("LLM_API_KEY", "ollama")
+        configured_key = api_key if api_key is not None else os.environ.get("LLM_API_KEY")
+        normalized_key = configured_key.strip() if configured_key else ""
+        if not _is_local_llm_url(self.base_url) and (not normalized_key or normalized_key.lower() == "ollama"):
+            raise LLMError("클라우드 LLM 주소에는 실제 LLM_API_KEY가 필요합니다")
+        self.api_key = normalized_key or "ollama"
         self.model = model or os.environ.get("LLM_MODEL", "gpt-5.6-luna")
         # 사고 강도. 기본 "none". 빈 문자열이면 파라미터를 보내지 않는다 (reasoning_effort를
         # 모르는 구형 모델용). Ollama /v1은 reasoning_effort=none으로 thinking이 꺼진다
@@ -171,15 +207,35 @@ class OpenAICompatClient:
         try:
             try:
                 text = call(force_json=True)
-            except Exception:
-                # 일부 로컬 모델은 response_format을 지원하지 않는다
-                text = call(force_json=False)
+            except Exception as e:
+                if not _is_json_mode_unsupported(e):
+                    if isinstance(e, LLMError):
+                        raise
+                    raise LLMError(
+                        f"LLM 호출 실패 (task={task}, attempt={attempt})"
+                    ) from e
+                # response_format 또는 json_object를 거부한 엔드포인트만 재시도한다
+                try:
+                    text = call(force_json=False)
+                except Exception as retry_error:
+                    if isinstance(retry_error, LLMError):
+                        raise
+                    raise LLMError(
+                        f"LLM 호출 실패 (task={task}, attempt={attempt})"
+                    ) from retry_error
             try:
                 return parse_json_text(text)
             except json.JSONDecodeError:
                 messages.append({"role": "assistant", "content": text})
                 messages.append({"role": "user", "content": "유효한 JSON 객체만 다시 출력하세요. 다른 텍스트를 포함하지 마세요."})
-                text = call(force_json=False)
+                try:
+                    text = call(force_json=False)
+                except Exception as e:
+                    if isinstance(e, LLMError):
+                        raise
+                    raise LLMError(
+                        f"LLM 호출 실패 (task={task}, attempt={attempt})"
+                    ) from e
                 try:
                     return parse_json_text(text)
                 except json.JSONDecodeError as e:

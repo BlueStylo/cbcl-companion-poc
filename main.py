@@ -103,7 +103,7 @@ def main() -> int:
     mode_label = "mock" if args.mock else "api"
     if not args.mock:
         load_env_file()
-    client = make_client(mode_label)
+    client = None
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -111,6 +111,13 @@ def main() -> int:
     pending: list[tuple[Path, str]] = []
     notes: list[str] = []
     run_stats: list[dict] = []
+
+    def get_client():
+        """위기 게이트를 통과한 입력에서만 LLM 클라이언트를 만든다."""
+        nonlocal client
+        if client is None:
+            client = make_client(mode_label)
+        return client
 
     def queue_crisis(profile) -> None:
         """위기 신호 검출 시: LLM 호출 없이 상담 연결 안내만 큐에 넣는다."""
@@ -126,11 +133,12 @@ def main() -> int:
             if detect_crisis_signals(profile):
                 queue_crisis(profile)
             else:
-                results = generate_all(profile, client)
-                run_stats.append(summarize_run(profile, results, client))
+                active_client = get_client()
+                results = generate_all(profile, active_client)
+                run_stats.append(summarize_run(profile, results, active_client))
                 path = out_dir / f"{profile.profile_id}.html"
                 pending.append((path, build_report_html(profile, results, mode_label,
-                                                        getattr(client, "model", ""))))
+                                                        getattr(active_client, "model", ""))))
                 notes.append(summarize(profile.profile_id, results))
                 notes.append(f"리포트 생성: {path}")
 
@@ -142,9 +150,10 @@ def main() -> int:
                     queue_crisis(p)
                 compare_aborted = True
             else:
-                ra, rb = generate_all(pa, client), generate_all(pb, client)
-                run_stats.append(summarize_run(pa, ra, client))
-                run_stats.append(summarize_run(pb, rb, client))
+                active_client = get_client()
+                ra, rb = generate_all(pa, active_client), generate_all(pb, active_client)
+                run_stats.append(summarize_run(pa, ra, active_client))
+                run_stats.append(summarize_run(pb, rb, active_client))
                 path = out_dir / f"compare_{pa.profile_id}_{pb.profile_id}.html"
                 pending.append((path, build_compare_html(pa, ra, pb, rb, mode_label)))
                 notes.append(summarize(pa.profile_id, ra))
