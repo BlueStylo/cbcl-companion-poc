@@ -9,12 +9,15 @@ LLM이 쓰는 블록은 2개뿐이다 (ADR 0010): prep 태스크의 질문(quest
 출력 규칙 11종:
   G1 진단명 사전         - 진단명 등장 자체를 위반 처리 (부정문 포함, 의도된 과검출)
   G2 심각성 단정(양방향) - 심각 쪽 단정과 근거 없는 낙관 보증을 모두 차단
-  G3 수치 금지           - 문장에 아라비아 숫자, 그리고 점/T/퍼센트 앞의 한글 수사(일흔다섯 점,
-                           육십칠점)가 있으면 위반. 수치는 화면 카드가 보여주므로 질문에 쓸 이유가 없다
+  G3 수치 금지           - 문장에 아라비아 숫자, 그리고 한글 수사 점수(점/T/퍼센트 앞 "일흔다섯 점",
+                           점수 어휘 뒤 "T점수가 육십칠", 단독 십 단위 "예순일곱")가 있으면 위반.
+                           수치는 화면 카드가 보여주므로 질문에 쓸 이유가 없다
   G4 근거 링크           - 항목의 source_scale 이 입력의 실제 척도와 매칭되는지
   G5 스키마와 문형       - 출력 JSON 구조, 필수 필드, 항목 수. 질문은 1문장 의문형(요?/까?)
-                           25~90자, 관찰은 명사형 종결("~적어 두기")이며 질문형 금지
-  G6 처방·치료 권고      - 약물, 치료 시작, 의료기관 방문 지시 차단
+                           25~90자, 관찰은 명사형 종결("~적어 두기")이며 질문형 금지. 문장 수는
+                           따옴표 밖에서만 센다 (마침표까지 원문 그대로 인용한 「」는 1문장)
+  G6 처방·치료 권고      - 약물·약 복용, 치료 받기·시작·고려(조사 무관), 병원·진료·상담센터 방문
+                           지시, 정신건강의학과·소아청소년과·전문의 의뢰 시사 차단
                            (허용 형태는 "예약된 상담에서 상담사와 이야기해 보세요" 하나뿐)
   G7 형식 누출           - 문장에 scale_id 값, 영문 소문자 식별자, "scale_id", 괄호 안 영문 코드
   G8 밴드 라벨 정합      - 밴드 어휘는 보고서 라벨(정상/준임상/임상)만 허용하고, 언급된
@@ -25,9 +28,12 @@ LLM이 쓰는 블록은 2개뿐이다 (ADR 0010): prep 태스크의 질문(quest
   G10 근거 강제          - 항목마다 (a) 어느 보호자 의견의 연속 6자 이상 조각(공백 제외)을 그대로
                            포함하거나 (b) source_scale 이 준임상 이상 척도(전 척도 정상이면
                            total_problems)여야 통과, 둘 다 아니면 위반. 문장에 척도명이 나오면 그
-                           척도가 source_scale 과 같아야 한다. "적어 주셨다"류 인용 주장과 따옴표
-                           인용은 (a)를 만족해야만 허용. 프롬프트 작성 예시의 관찰 문구("학원 숙제",
-                           "놀이터" 등)가 이 프로파일의 의견에 없는데 등장하면 위반
+                           척도가 source_scale 과 같아야 한다 ("위축", "비행"은 척도 어휘나 조사가
+                           붙을 때만 척도명). 인용 주장(보고 동사의 존대 회상형 "~다고 하셨는데",
+                           "적어 주신", "보셨다고", "관찰하셨듯이"와 따옴표 인용)은 (a)를 만족해야만
+                           허용. "~이라고 하는 범위"류 용어 풀이와 용어를 감싼 따옴표(“준임상”)는
+                           인용 주장이 아니다. 프롬프트 작성 예시의 관찰 문구("학원 숙제", "놀이터"
+                           등)가 이 프로파일의 의견에 없는데 등장하면 위반
   G11 질문 방향          - 질문은 보호자가 상담사에게 묻는 문형만. 보호자에게 되묻는 명백한 문형
                            ("알려주시겠어요", "말씀해 주세요", "사례를 더", "있으신가요")은 차단
 
@@ -100,11 +106,18 @@ OPTIMISM_PATTERNS = [re.compile(p) for p in (
 # "딴 데를" 같은 짧은 구는 보호자 문장의 정당한 바꿔 쓰기("딴 곳을")와 구분이 안 돼 제외한다.
 EXAMPLE_PHRASES = ("학원 숙제", "놀이터", "또래에게 먼저 말")
 # G10: 인용 주장. 이 표현이 있으면 문장 안에 보호자 의견의 원문 조각이 실제로 있어야 한다.
+# 보고 동사에 존대 회상형(셨/신/셔서)이 붙은 꼴만 인용 주장으로 본다. "~이라고 하는 범위",
+# "~라고 합니다"는 용어 풀이 문형(quality.GLOSS_PATTERNS)이라 인용 주장이 아니다.
+_REPORT_VERBS = (r"(?:적어|적으|써|쓰|말씀해|말씀하|말해|말하|말씀|하|얘기하|이야기하|전해|전하"
+                 r"|느끼|보|표현하|언급하|기록하|보고하|남겨|남기)")
 QUOTE_CLAIM_PATTERNS = [re.compile(p) for p in (
-    r"적어\s*주(?:셨|신)",
-    r"라고\s*(?:적|하|말)",
-    r"[「」“”\"]",
+    r"(?:적어|적으|써|쓰|남겨|남기)\s*(?:주)?(?:셨|신)",                     # 적어 주셨는데, 적으신
+    rf"(?:다|라|냐|자)고\s*{_REPORT_VERBS}\s*(?:주)?(?:셨|신|셔서)",         # ~다고 하셨는데, ~라고 적으셨는데
+    r"(?:보|하|느끼|말씀하|말하|적|쓰|기록하|관찰하|경험하|겪으|들으)(?:셨|신)(?:다|대)고",  # ~보셨다고
+    r"(?:관찰|말씀|언급|보고|기록|경험|표현|묘사|서술)하(?:셨|신)",            # 관찰하셨듯이
 )]
+# 따옴표 쌍. 안의 문자열이 척도명·밴드 라벨·용어(아래 _TERM_QUOTE)면 인용이 아니라 용어 표시다.
+QUOTE_PAIRS = (("「", "」"), ("“", "”"), ("‘", "’"), ("『", "』"), ("〈", "〉"), ('"', '"'), ("'", "'"))
 QUOTE_MIN_CHARS = 6  # (a) 인용으로 인정하는 연속 글자 수 (공백 제외)
 
 
@@ -112,31 +125,47 @@ QUOTE_MIN_CHARS = 6  # (a) 인용으로 인정하는 연속 글자 수 (공백 �
 PRESCRIPTION_PATTERNS = [re.compile(p) for p in (
     r"약물",
     r"약을\s*(?:복용|먹)",
-    r"치료(?:를|가)?\s*(?:받|필요|시작|고려|권)",
+    r"약(?:을|물|\s)*(?:복용|처방)",                                       # 약 복용, 약물 복용
+    r"치료(?:를|가|는|도|만|까지|부터|라도)?\s*(?:받|필요|시작|고려|권|알아보)",  # 조사가 바뀌어도 잡는다
     r"치료\s*프로그램",
     r"(?:놀이|미술|음악|언어|인지\s*행동|심리|행동)\s*치료",
-    r"병원(?:에|을)?\s*(?:가|방문)",
+    r"병원(?:에|을|으로|에도|부터|이라도)?\s*(?:가|방문|데려|예약|들르|찾)",   # 병원에 데려가기, 병원 예약
+    r"진료(?:를|도|는)?\s*(?:받|예약|보)",
     r"처방",
     r"의료\s*기관",
+    r"전문\s*기관",
+    r"상담\s*센터(?:에|를|도)?\s*(?:등록|방문|찾|가)",
     # 완곡한 의뢰 시사도 차단: "전문의 상담이 필요한 수준으로 보입니다" 류.
     # 허용된 전문가 안내 형태는 "예약된 상담에서 상담사와..." 하나뿐이다.
     r"전문의",
     r"정신과",
+    r"정신\s*건강\s*의학과",
     r"소아\s*정신",
+    r"소아\s*청소년\s*(?:정신)?과",
 )]
 
 # --- G3: 수치 금지 ---
-# 아라비아 숫자는 자리와 무관하게 위반이다. 한글 수사는 점/T/퍼센트 앞에 붙은 경우만 본다
-# ("이 점은", "매일 점심"처럼 수사가 아닌 흔한 음절과 겹치는 단독 음절은 제외한다).
+# 아라비아 숫자는 자리와 무관하게 위반이다. 한글 수사는 세 자리에서 본다.
+#   (1) 점/T/퍼센트 앞 ("일흔다섯 점", "육십 칠 점" - 조각 사이 공백 허용)
+#   (2) 점수 어휘 뒤 ("T점수가 육십칠", "백분위 구십", "척도가 예순일곱")
+#   (3) 단독 순우리말 십 단위 ("예순일곱이면", "일흔다섯") - 서른 이상은 수사 외의 용법이 없다
+# "이 점은", "매일 점심", "두 번"처럼 수사가 아닌 흔한 음절과 겹치는 단독 음절은 제외한다.
+# "열"(열어, 열심히)과 "쉰"(쉰 뒤에), "스무"는 단독으로 세지 않고 (1) 또는 단위 수사가 붙을 때만 본다.
 ARABIC_DIGIT_PATTERN = re.compile(r"\d")
-KOREAN_NUMERAL_SCORE_PATTERN = re.compile(
-    r"(?:"
-    r"(?:[일이삼사오육륙칠팔구]?십[일이삼사오육륙칠팔구]?|백)"                 # 육십칠, 칠십, 백
-    r"|(?:열|스물|스무|서른|마흔|쉰|예순|일흔|여든|아흔)"                       # 일흔다섯, 예순
-    r"(?:하나|한|둘|두|셋|세|넷|네|다섯|여섯|일곱|여덟|아홉)?"
-    r"|(?:다섯|여섯|일곱|여덟|아홉)"                                          # 다섯 점
-    r")\s*(?:점(?!검)|T(?![A-Za-z])|퍼센트|%)"
-)
+_SINO_TENS = r"(?:[일이삼사오육륙칠팔구]\s*)?십(?:\s*[일이삼사오육륙칠팔구])?"   # 육십칠, 칠십, 육십 칠
+_NATIVE_UNITS = r"(?:하나|한|둘|두|셋|세|넷|네|다섯|여섯|일곱|여덟|아홉)"
+_NATIVE_TENS_SAFE = r"(?:스물|서른|마흔|예순|일흔|여든|아흔)"
+_NATIVE_TENS_ANY = r"(?:열|스물|스무|서른|마흔|쉰|예순|일흔|여든|아흔)"
+_NUMERAL_BEFORE_SCORE = (rf"(?:{_SINO_TENS}|백|{_NATIVE_TENS_ANY}(?:\s*{_NATIVE_UNITS})?"
+                         r"|(?:다섯|여섯|일곱|여덟|아홉))")
+_NUMERAL_AFTER_SCORE = (rf"(?:{_SINO_TENS}|{_NATIVE_TENS_SAFE}(?:\s*{_NATIVE_UNITS})?"
+                        rf"|(?:열|쉰|스무)\s*{_NATIVE_UNITS})")
+_SCORE_WORD_BEFORE = r"(?:T\s*점수|백분위|점수|척도|결과|수치)(?:가|는|이|를|은|로|도|의|에서)?\s*"
+KOREAN_NUMERAL_SCORE_PATTERNS = [re.compile(p) for p in (
+    rf"{_NUMERAL_BEFORE_SCORE}\s*(?:점(?!검)|T(?![A-Za-z])|퍼센트|%)",
+    rf"{_SCORE_WORD_BEFORE}{_NUMERAL_AFTER_SCORE}",
+    rf"{_NATIVE_TENS_SAFE}(?:\s*{_NATIVE_UNITS})?|쉰\s*{_NATIVE_UNITS}",
+)]
 
 # --- G7: 형식 누출 (문장에 코드·식별자가 새는 경우) ---
 # 한국어 본문에 영문 소문자 식별자가 나타날 정당한 이유는 없다. 대문자 약어
@@ -181,7 +210,19 @@ SCALE_NAME_ALIASES: dict[str, tuple[str, ...]] = {
     "delinquent": ("비행",),
     "aggressive": ("공격성",),
 }
+# 일상어와 겹치는 별칭("위축된", "비행기")은 척도 어휘가 뒤따르거나 조사가 바로 붙을 때만 척도 언급으로 본다.
+_ALIAS_CONTEXT = re.compile(
+    r"(?=\s*(?:척도|문제|영역|점수|결과|범위|구간|수준|항목)"
+    r"|(?:이|가|은|는|을|를|과|와|의|도|에|로|만|이나|이라|라는|처럼|까지|부터|에서|만큼|보다|이며|이고|하고|이란)"
+    r"|\s*[,、·/])")
+_CONTEXT_ALIASES = {"위축", "비행"}
 _SENTENCE_END = re.compile(r"[.!?\n]")
+# 따옴표 안 문자열이 이 꼴이면 인용이 아니라 용어 표시다 (“준임상”이라는 말은 ...). 공백 제거 후 대조.
+_TERM_QUOTE = re.compile(
+    r"^(?:정상|준임상|임상)(?:범위|구간|수준)?$"
+    r"|^(?:" + "|".join(sorted({re.escape(re.sub(r"\s+", "", a)) for al in SCALE_NAME_ALIASES.values() for a in al},
+                             key=len, reverse=True)) + r")(?:척도|문제|영역|점수)?$"
+    r"|^(?:T점수|백분위|퍼센트|표준편차|규준|증후군|SEM|신뢰구간|오차범위)$")
 
 # --- G5: 문형 ---
 QUESTION_MIN_CHARS, QUESTION_MAX_CHARS = 25, 90
@@ -346,6 +387,39 @@ def quotes_caregiver_note(text: str, notes: list[str], min_chars: int = QUOTE_MI
     return False
 
 
+def quoted_spans(text: str) -> list[str]:
+    """짝이 맞는 따옴표(QUOTE_PAIRS) 안의 문자열 목록."""
+    inner: list[str] = []
+    for open_q, close_q in QUOTE_PAIRS:
+        inner += re.findall(re.escape(open_q) + r"([^" + re.escape(close_q) + r"]*)" + re.escape(close_q), text)
+    return inner
+
+
+def strip_quoted(text: str) -> str:
+    """짝이 맞는 따옴표 안을 비운다 (따옴표 기호는 남긴다). G5가 따옴표 밖 문장 수만 세는 데 쓴다."""
+    for open_q, close_q in QUOTE_PAIRS:
+        text = re.sub(re.escape(open_q) + r"[^" + re.escape(close_q) + r"]*" + re.escape(close_q),
+                      open_q + close_q, text)
+    return text
+
+
+def has_quote_claim(text: str) -> bool:
+    """G10: 문장이 보호자의 말을 인용한다고 주장하는지.
+
+    (1) 보고 동사의 존대 회상형("~다고 하셨는데", "적어 주신", "보셨다고", "관찰하셨듯이"),
+    (2) 따옴표 인용. 따옴표 안이 척도명·밴드 라벨·용어뿐이면(“준임상”이라는 말은) 용어 표시라 제외하고,
+    짝이 안 맞는 따옴표는 보수적으로 인용으로 본다.
+    """
+    if any(p.search(text) for p in QUOTE_CLAIM_PATTERNS):
+        return True
+    if any(not _TERM_QUOTE.match(_squash(inner)) for inner in quoted_spans(text)):
+        return True
+    leftover = strip_quoted(text)
+    for open_q, close_q in QUOTE_PAIRS:
+        leftover = leftover.replace(open_q + close_q, "")
+    return any(q in leftover for pair in QUOTE_PAIRS for q in pair)
+
+
 # ---------------------------------------------------------------- 검사기
 
 def _check_example_contamination(block: str, text: str, profile: CBCLProfile) -> list[Violation]:
@@ -369,7 +443,7 @@ def _check_grounding(block: str, text: str, profile: CBCLProfile, sid, scale) ->
         found.append(Violation(
             "G10", block,
             f"근거 없음: 보호자 의견의 원문 조각(연속 {QUOTE_MIN_CHARS}자)도 없고 source_scale {sid!r}도 준임상 이상 척도가 아님"))
-    if not quoted and any(p.search(text) for p in QUOTE_CLAIM_PATTERNS):
+    if not quoted and has_quote_claim(text):
         found.append(Violation(
             "G10", block, "인용 주장이 있으나 보호자 의견의 원문 조각이 없음 (보호자가 하지 않은 말을 인용)"))
     mentioned = [s for _pos, s in scale_mentions(text)]
@@ -393,13 +467,18 @@ def _check_format_leak(block: str, text: str) -> list[Violation]:
 
 
 def scale_mentions(text: str) -> list[tuple[int, str]]:
-    """본문에 언급된 척도를 (위치, scale_id)로 나열한다 (한국어 척도명 사전 기준)."""
+    """본문에 언급된 척도를 (위치, scale_id)로 나열한다 (한국어 척도명 사전 기준).
+
+    "위축", "비행"은 일상어("위축된 듯한", "비행기 소리")와 겹치므로 척도 어휘가 뒤따르거나
+    조사가 바로 붙는 경우("위축 척도", "비행이 준임상")만 척도 언급으로 센다.
+    """
     found: list[tuple[int, str]] = []
     for sid, aliases in SCALE_NAME_ALIASES.items():
         for alias in aliases:
             start = text.find(alias)
             while start != -1:
-                found.append((start, sid))
+                if alias not in _CONTEXT_ALIASES or _ALIAS_CONTEXT.match(text, start + len(alias)):
+                    found.append((start, sid))
                 start = text.find(alias, start + 1)
     return sorted(found)
 
@@ -447,15 +526,17 @@ def _check_band_labels(block: str, text: str, profile: CBCLProfile,
 
 
 def _check_numbers(block: str, text: str) -> list[Violation]:
-    """G3: 아라비아 숫자 금지 + 점/T/퍼센트 앞 한글 수사 금지."""
+    """G3: 아라비아 숫자 금지 + 한글 수사 점수 금지 (점/T/퍼센트 앞, 점수 어휘 뒤, 단독 십 단위)."""
     found: list[Violation] = []
     m = ARABIC_DIGIT_PATTERN.search(text)
     if m:
         run = re.search(r"\d[\d.,%]*", text)
         found.append(Violation("G3", block, f"아라비아 숫자: {run.group(0) if run else m.group(0)!r} (수치는 카드가 보여줌)"))
-    m = KOREAN_NUMERAL_SCORE_PATTERN.search(text)
-    if m:
-        found.append(Violation("G3", block, f"한글 수사 점수: {m.group(0)!r}"))
+    for pat in KOREAN_NUMERAL_SCORE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            found.append(Violation("G3", block, f"한글 수사 점수: {m.group(0)!r}"))
+            break
     return found
 
 
@@ -484,7 +565,10 @@ def _check_text(block: str, text: str, profile: CBCLProfile,
 
 
 def _check_question_form(block: str, text: str) -> list[Violation]:
-    """G5 문형: 질문은 1문장, 의문형 종결(요?/까?/죠?), 25~90자."""
+    """G5 문형: 질문은 1문장, 의문형 종결(요?/까?/죠?), 25~90자.
+
+    문장 수는 따옴표 밖에서만 센다. 보호자 의견을 마침표까지 원문 그대로 「」로 인용한 질문은 1문장이다.
+    """
     found: list[Violation] = []
     t = text.strip()
     n = len(t)
@@ -492,18 +576,20 @@ def _check_question_form(block: str, text: str) -> list[Violation]:
         found.append(Violation("G5", block, f"질문 길이 {n}자 (요구: {QUESTION_MIN_CHARS}~{QUESTION_MAX_CHARS}자)"))
     if not QUESTION_END_PATTERN.search(t):
         found.append(Violation("G5", block, f"질문이 의문형(요?/까?)으로 끝나지 않음: {t[-12:]!r}"))
-    if len(_TERMINATORS.findall(t)) != 1 or "\n" in t:
+    outside = strip_quoted(t)
+    if len(_TERMINATORS.findall(outside)) != 1 or "\n" in t:
         found.append(Violation("G5", block, "질문은 1문장이어야 함 (마침표·물음표가 둘 이상)"))
     return found
 
 
 def _check_observation_form(block: str, text: str) -> list[Violation]:
-    """G5 문형: 관찰은 1문장 명사형 종결(~기), 질문형 금지."""
+    """G5 문형: 관찰은 1문장 명사형 종결(~기), 질문형 금지. 문장 수와 물음표는 따옴표 밖에서만 센다."""
     found: list[Violation] = []
     t = text.strip()
-    if "?" in t or "!" in t:
+    outside = strip_quoted(t)
+    if "?" in outside or "!" in outside:
         found.append(Violation("G5", block, "관찰 포인트는 질문형·감탄형이 아니어야 함"))
-    if t.count(".") > 1 or (t.count(".") == 1 and not t.endswith(".")) or "\n" in t:
+    if outside.count(".") > 1 or (outside.count(".") == 1 and not outside.endswith(".")) or "\n" in t:
         found.append(Violation("G5", block, "관찰 포인트는 1문장이어야 함"))
     if not OBSERVATION_END_PATTERN.search(t):
         found.append(Violation("G5", block, f"관찰 포인트가 명사형(~기)으로 끝나지 않음: {t[-12:]!r}"))
@@ -620,13 +706,18 @@ def rebuild(profile: CBCLProfile, task: str, blocks: dict[str, object]) -> dict:
     return {k: blocks[k] for k in expected_blocks(profile, task)}
 
 
-def _strip_fallback_flags(value):
-    """LLM 출력이 _fallback 플래그를 흉내 내 검사를 우회하지 못하게 제거한다.
+INTERNAL_FLAGS = ("_fallback", "_pending")  # 이 저장소의 코드만 붙이는 내부 표식
 
-    _fallback은 이 모듈이 폴백을 삽입할 때만 붙는 내부 표식이다.
+
+def _strip_fallback_flags(value):
+    """LLM 출력이 내부 표식을 흉내 내지 못하게 제거한다.
+
+    _fallback은 이 모듈이 폴백을 삽입할 때만, _pending은 report_html.pending_results가 생성 전
+    미리보기를 만들 때만 붙는다. LLM 출력에 섞여 오면 _fallback은 검사 우회, _pending은 화면의
+    "생성 대기" 표식과 근거 배지 숨김을 위조하므로 둘 다 입구에서 벗긴다.
     """
     if isinstance(value, dict):
-        return {k: _strip_fallback_flags(v) for k, v in value.items() if k != "_fallback"}
+        return {k: _strip_fallback_flags(v) for k, v in value.items() if k not in INTERNAL_FLAGS}
     if isinstance(value, list):
         return [_strip_fallback_flags(v) for v in value]
     return value

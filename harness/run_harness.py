@@ -47,7 +47,7 @@ CLEAN_PROFILES = [p for p in PROFILE_ORDER if p != "a1_adversarial"]
 # 합격 게이트가 대조하는 시드 총수. fixture에서 센 값과 일치해야 한다
 # (시드 파일이 비어 버리면 0/0=100%로 통과하는 구멍을 막는다).
 EXPECTED_PIPELINE_SEEDS = 10
-EXPECTED_B_SEEDS = 41
+EXPECTED_B_SEEDS = 45
 
 
 def print_table(headers: list[str], rows: list[list]) -> None:

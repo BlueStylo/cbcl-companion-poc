@@ -196,3 +196,33 @@ def test_local_ollama_endpoint_allows_dummy_key(monkeypatch):
         LLM_NUM_CTX="8192",
     )
     assert client.api_key == "ollama"
+
+
+# ---------------------------------------------------------------- 템플릿 목의 인용
+
+def test_template_mock_quotes_notes_ending_with_period_without_tripping_g5():
+    """마침표로 끝나는 보호자 의견(흔한 입력)도 attempt 0에서 「」 인용이 살아남아야 한다.
+
+    이전에는 _quote가 원문을 그대로 넣어 「...봅니다.」가 G5 1문장 검사에 걸리고, attempt 1이 인용을
+    전부 버려 탐색 콘솔의 핵심 데모(보호자 표현 인용)가 조용히 사라졌다.
+    """
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from src.generator import generate_all
+    from src.guardrails import check_output
+    from src.llm_client import TemplateMockClient
+    from src.parser import load_profile
+
+    base = load_profile(Path(__file__).resolve().parents[1] / "data/profiles/p2_partial_borderline.json")
+    profile = base.model_copy(update={"caregiver_notes": ["학원 숙제를 앞에 두면 딴 데를 자주 봅니다.",
+                                                          "놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다!"]})
+    out = TemplateMockClient().generate("prep", profile, 0, "", "")
+    assert check_output(profile, "prep", out) == []
+    texts = [q["question"] for q in out["questions_for_counselor"]] + [o["point"] for o in out["observation_points"]]
+    quoted = [t for t in texts if "「" in t]
+    assert len(quoted) >= 4 and all("」" in t for t in quoted)
+    assert not any(".」" in t or "!」" in t for t in texts)          # 종결 부호는 떼고 인용한다
+    results = generate_all(profile, TemplateMockClient())
+    assert results["prep"].regen_count == 0 and results["prep"].fallback_blocks == []
+    assert sum("「" in q["question"] for q in results["prep"].output["questions_for_counselor"]) >= 2

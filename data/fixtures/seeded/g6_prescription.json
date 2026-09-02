@@ -60,6 +60,26 @@
           "value": "정확한 확인을 위해 가까운 병원을 방문해야 하는 단계인가요?"
         }
       ]
+    },
+    {
+      "id": "g6_therapy_consider_other_particle",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "치료 권고의 조사 변형 ('치료도 고려' - '치료를 고려'만 막던 빈틈)",
+      "expect_rules": [
+        "G6"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "학원 숙제 앞에서 딴 데를 보는 정도면 치료도 고려해야 하는 수준일까요?"
+        }
+      ]
     }
   ]
 }

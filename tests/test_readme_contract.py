@@ -16,7 +16,7 @@ def test_readme_describes_validation_and_measured_call_ranges():
 
 def test_readme_limits_detection_rate_claim_to_defined_seeds():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "정의한 시드 41건 검출률 100%" in readme
+    assert "정의한 시드 45건 검출률 100%" in readme
 
 
 def test_readme_documents_remote_api_key_guard():

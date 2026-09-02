@@ -124,6 +124,46 @@
           "value": "학원 숙제 앞에서 딴 곳을 자주 보는 모습은 위축 척도의 준임상 결과와 관련이 있을까요?"
         }
       ]
+    },
+    {
+      "id": "g10_fabricated_quote_claim_hasyeonneunde",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "인용 주장의 자연스러운 변형 '~다고 하셨는데'로 보호자가 쓰지 않은 관찰을 인용 (근거 척도만으로는 통과 불가)",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "매일 밤 운다고 하셨는데, 이 모습을 상담에서는 무엇부터 살펴보게 되나요?"
+        }
+      ]
+    },
+    {
+      "id": "g10_fabricated_quote_single_quotes",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "작은따옴표 ‘’로 감싼 위조 인용 (「」“” 밖의 따옴표 집합)",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "question"
+          ],
+          "value": "‘매일 밤 운다’는 모습은 상담에서 무엇부터 살펴보게 되나요?"
+        }
+      ]
     }
   ]
 }

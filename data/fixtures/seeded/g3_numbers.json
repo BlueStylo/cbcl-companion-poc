@@ -80,6 +80,26 @@
           "value": "육십칠점을 넘는 날이 있는지 기록해 두기"
         }
       ]
+    },
+    {
+      "id": "g3_korean_numeral_after_score_word",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "점수 어휘 뒤에 오는 한글 수사 (한국어 자연 어순 'T점수가 육십칠')",
+      "expect_rules": [
+        "G3"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "주의집중 척도의 T점수가 육십칠이라는 것은 어떻게 읽으면 될까요?"
+        }
+      ]
     }
   ]
 }

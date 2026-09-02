@@ -16,8 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.generator import PROMPTS_DIR, TASKS, build_user_message, load_system_prompt
-from src.guardrails import (TASK_BLOCKS, Violation, check_output, quotes_caregiver_note,
-                            run_with_guardrails)
+from src.guardrails import (TASK_BLOCKS, Violation, _strip_fallback_flags, check_output,
+                            has_quote_claim, quotes_caregiver_note, run_with_guardrails,
+                            scale_mentions)
+from src.llm_client import TemplateMockClient
 from src.parser import load_profile
 
 PROFILE = load_profile(ROOT / "data/profiles/p2_partial_borderline.json")
@@ -121,10 +123,21 @@ def test_g6_prescription_detected_and_counsel_guidance_allowed(prep_out):
     for bad in ("지금이라도 상담과 별개로 치료를 시작하는 것이 좋을까요?",
                 "정확한 확인을 위해 가까운 병원을 방문해야 하는 단계인가요?",
                 "놀이치료를 고려해 보는 것이 좋은지 상담에서 물어봐도 되나요?",
-                "전문의 상담이 필요한 수준인지 이 결과만으로 알 수 있나요?"):
+                "전문의 상담이 필요한 수준인지 이 결과만으로 알 수 있나요?",
+                # 조사 변형과 완곡한 의료기관 안내: '치료를 고려'만 막던 빈틈
+                "학원 숙제 앞에서 딴 데를 보는 정도면 치료도 고려해야 하는 수준일까요?",
+                "학원 숙제 앞에서 딴 데를 보는 정도면 치료는 필요 없는 수준일까요?",
+                "학원 숙제 앞에서 딴 데를 보는 정도면 정신건강의학과에 가 봐야 하나요?",
+                "학원 숙제 앞에서 딴 데를 보는 정도면 소아청소년과 진료를 받아야 하나요?",
+                "학원 숙제 앞에서 딴 데를 보는 정도면 약 복용이 도움이 될까요?",
+                "학원 숙제 앞에서 딴 데를 보는 정도면 진료 예약을 해야 하나요?",
+                "학원 숙제 앞에서 딴 데를 보는 정도면 상담센터에 등록해야 하나요?"):
         assert "G6" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, bad))), bad
-    ok = "궁금한 점은 예약된 상담에서 상담사와 이야기해 보면 되는 것으로 알면 될까요?"
-    assert "G6" not in rules(check_output(PROFILE, "prep", _q(prep_out, 0, ok)))
+    assert "G6" in rules(check_output(PROFILE, "prep", _o(copy.deepcopy(prep_out), 0, "딴 데를 자주 보는 날이 이어지면 병원에 데려가기")))
+    for ok in ("궁금한 점은 예약된 상담에서 상담사와 이야기해 보면 되는 것으로 알면 될까요?",
+               "상담 예약 후 상담 전까지 학원 숙제 앞에서 딴 데를 보는 모습을 어떻게 적어 두면 될까요?",
+               "학원 숙제 앞에서 딴 데를 보는 모습에 대한 약속을 아이와 어떻게 정하면 될까요?"):
+        assert "G6" not in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, ok))), ok
 
 
 # ---------------------------------------------------------------- G3 수치 금지
@@ -144,10 +157,18 @@ def test_g3_arabic_digits_are_banned_even_if_they_match_input(prep_out):
     "주의집중 척도가 육십칠점이라는 것은 어떤 뜻으로 읽으면 되나요?",
     "위축 척도가 예순 T를 넘었다는 것은 어떤 뜻인가요?",
     "주의집중 척도가 칠십 점 가까이라는 것은 어떤 뜻인가요?",
+    # 점수 어휘가 앞에 오는 한국어 자연 어순, 조각 사이 공백, 단독 순우리말 십 단위
+    "주의집중 척도의 T점수가 육십칠이라는 것은 어떻게 읽으면 될까요?",
+    "주의집중 척도 T점수 예순일곱은 어떻게 읽으면 될까요?",
+    "주의집중 척도가 예순일곱이면 준임상 범위에서 어느 위치인가요?",
+    "주의집중 척도가 백분위 구십이라는 것은 어떻게 읽으면 될까요?",
+    "주의집중 척도가 육십 칠 점이라는 것은 어떻게 읽으면 될까요?",
+    "주의집중 척도 결과가 일흔 다섯이라는 것은 어떻게 읽으면 될까요?",
 ])
-def test_g3_korean_numerals_before_score_words_are_banned(prep_out, bad):
-    """Codex 점검의 '일흔다섯 점'과 #1의 '육십칠점': 점/T 앞 한글 수사도 위반."""
-    assert "G3" in rules(check_output(PROFILE, "prep", _q(prep_out, 1, bad)))
+def test_g3_korean_numerals_around_score_words_are_banned(prep_out, bad):
+    """Codex 점검의 '일흔다섯 점'과 #1의 '육십칠점': 점/T 앞 한글 수사, 점수 어휘 뒤 수사, 단독 십 단위 수사 모두 위반."""
+    vs = check_output(PROFILE, "prep", _q(prep_out, 1, bad))
+    assert "G3" in rules(vs) and any("한글 수사" in v.matched for v in vs)
 
 
 @pytest.mark.parametrize("ok", [
@@ -155,9 +176,13 @@ def test_g3_korean_numerals_before_score_words_are_banned(prep_out, bad):
     "게임을 끄라고 하면 물건을 던진 적이 두 번 있는데 상담에서는 무엇부터 살펴보게 되나요?",
     "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습을 매일 점심 무렵에도 보는데 어떻게 보면 될까요?",
     "학원 숙제를 앞에 두면 딴 데를 자주 보는 것이 특별한 점인지 상담에서 들을 수 있을까요?",
+    # '열', '쉰'은 동사 어간과 겹치므로 단독으로는 수사로 보지 않는다
+    "학원 숙제를 앞에 두면 딴 데를 보는 결과가 열어 주는 다음 단계는 무엇인가요?",
+    "학원 숙제를 앞에 두면 딴 데를 보는 아이가 잠시 쉰 뒤에 다시 앉으면 달라지나요?",
+    "학원 숙제를 앞에 두면 딴 데를 보는 점수 결과가 열린 질문으로 이어지는 이유는 무엇인가요?",
 ])
 def test_g3_ordinary_korean_words_are_not_numerals(prep_out, ok):
-    """'이 점', '두 번', '점심', '특별한 점'처럼 수사가 아닌 흔한 음절은 잡지 않는다 (오검출 방지)."""
+    """'이 점', '두 번', '점심', '특별한 점', '열어', '쉰 뒤'처럼 수사가 아닌 흔한 음절은 잡지 않는다 (오검출 방지)."""
     assert "G3" not in rules(check_output(PROFILE, "prep", _q(prep_out, 0, ok)))
 
 
@@ -229,6 +254,19 @@ def test_g5_question_form_accepts_interrogative_endings(prep_out, ok):
 ])
 def test_g5_observation_form_violations(prep_out, bad, why):
     assert "G5" in rules(check_output(PROFILE, "prep", _o(prep_out, 0, bad))), why
+
+
+def test_g5_counts_sentences_outside_quotes_only(prep_out):
+    """보호자 의견을 마침표까지 원문 그대로 「」로 인용한 질문·관찰은 1문장이다 (TemplateMock과 실 LLM 모두 이렇게 인용한다)."""
+    quoted_q = "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다.」라고 적으셨는데, 이 모습은 주의집중 척도의 준임상 결과와 이어서 보면 될까요?"
+    assert check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, quoted_q)) == []
+    quoted_q2 = "\"학원 숙제를 앞에 두면 딴 데를 자주 봅니다.\" 이 모습은 상담에서 무엇부터 살펴보게 되나요?"
+    assert "G5" not in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, quoted_q2)))
+    quoted_o = "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다.」 같은 장면이 있었던 날, 앞뒤 상황을 한 줄로 적어 두기"
+    assert check_output(PROFILE, "prep", _o(copy.deepcopy(prep_out), 0, quoted_o)) == []
+    # 따옴표 밖의 두 번째 문장은 여전히 위반이다
+    two = "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다.」라고 적으셨습니다. 이 모습은 어떻게 보면 될까요?"
+    assert "G5" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, two)))
 
 
 def test_g5_observation_form_accepts_nominal_endings(prep_out):
@@ -326,6 +364,60 @@ def test_g10_quote_claim_requires_real_fragment(prep_out):
     assert "G10" not in rules(check_output(PROFILE, "prep", real))
 
 
+@pytest.mark.parametrize("fabricated", [
+    "매일 밤 운다고 하셨는데, 이 모습을 상담에서는 무엇부터 살펴보게 되나요?",
+    "매일 밤 운다고 쓰셨는데, 이 모습을 상담에서는 무엇부터 살펴보게 되나요?",
+    "매일 밤 우는 모습을 보셨다고 했는데, 상담에서는 무엇부터 살펴보게 되나요?",
+    "매일 밤 운다고 말씀하셨는데, 이 모습을 상담에서는 무엇부터 살펴보게 되나요?",
+    "밤마다 우는 모습을 관찰하셨듯이 이 결과는 상담에서 어떻게 읽히나요?",
+    "‘매일 밤 운다’는 모습은 상담에서 무엇부터 살펴보게 되나요?",
+    "『매일 밤 운다』는 모습은 상담에서 무엇부터 살펴보게 되나요?",
+    "「매일 밤 운다는 모습은 상담에서 무엇부터 살펴보게 되나요?",          # 짝이 안 맞는 따옴표도 인용으로 본다
+])
+def test_g10_quote_claim_variants_all_require_real_fragment(prep_out, fabricated):
+    """'~다고 하셨는데', '~보셨다고', '관찰하셨듯이', ‘’『』 따옴표: 같은 뜻의 자연스러운 변형도 (a) 필수다.
+    근거 척도(attention, 준임상)만으로는 통과하지 못한다."""
+    vs = check_output(PROFILE, "prep", _q(prep_out, 0, fabricated, "attention"))
+    assert "G10" in rules(vs) and any("인용 주장" in v.matched for v in vs), fabricated
+
+
+@pytest.mark.parametrize("gloss", [
+    "준임상이라고 하는 범위는 또래보다 조금 더 자주 보고된 범위라는 뜻으로 이해하면 될까요?",
+    "준임상이라고 부르는 범위는 또래보다 조금 더 자주 보고된 범위라는 뜻으로 이해하면 될까요?",
+    "“준임상”이라는 말은 또래보다 조금 더 자주 보고된 범위라는 뜻으로 이해하면 될까요?",
+    "\"주의집중 척도\"가 준임상이라는 것은 또래보다 자주 보고되었다는 뜻으로 이해하면 될까요?",
+    "결과지에서 'T점수'라고 하는 것은 또래와 견준 위치라는 뜻으로 이해하면 될까요?",
+])
+def test_g10_gloss_phrases_and_term_quotes_are_not_quote_claims(prep_out, gloss):
+    """프롬프트가 권장하는 용어 풀이('~이라고 하는', quality.GLOSS_PATTERNS)와 용어를 감싼 따옴표는 인용 주장이 아니다."""
+    assert not has_quote_claim(gloss)
+    assert "G10" not in rules(check_output(PROFILE, "prep", _q(prep_out, 0, gloss, "attention"))), gloss
+
+
+def test_scale_mentions_require_context_for_everyday_words():
+    """'위축', '비행'은 일상어('위축된', '비행기')와 겹치므로 척도 어휘나 조사가 붙을 때만 척도 언급이다."""
+    assert scale_mentions("비행기 소리에 놀라요") == []
+    assert scale_mentions("친구 앞에서 위축된 모습") == []
+    assert scale_mentions("위축감이 드는지, 비행시간이 긴지") == []
+    assert scale_mentions("위축 척도") == [(0, "withdrawn")]
+    assert scale_mentions("비행이 준임상") == [(0, "delinquent")]
+    assert scale_mentions("위축과 우울/불안") == [(0, "withdrawn"), (4, "anxious_depressed")]
+    assert scale_mentions("위축, 비행 결과") == [(0, "withdrawn"), (4, "delinquent")]
+    # 실 LLM 산출물(gemma4:12b p2)의 정당한 관찰 항목이 척도 불일치로 막히지 않는다
+    out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
+    out["observation_points"][2] = {"point": "아이가 말수가 적어지거나 위축된 듯한 행동을 보이는 상황 기록하기",
+                                    "source_scale": "anxious_depressed"}
+    assert check_output(PROFILE, "prep", out) == []
+    # 보호자 의견에 '비행기'가 있어도 TemplateMock의 attempt 0이 통째로 재생성되지 않는다
+    profile = PROFILE.model_copy(update={"caregiver_notes": ["비행기 소리만 나면 깜짝 놀라 웁니다", PROFILE.caregiver_notes[0]]})
+    result = run_with_guardrails(profile, "prep", lambda a, p, f: TemplateMockClient().generate("prep", profile, a, "", ""))
+    assert result.regen_count == 0 and result.violations == []
+    # 척도명으로 쓴 '위축', '비행'은 여전히 source_scale과 대조한다
+    vs = check_output(PROFILE, "prep", _q(copy.deepcopy(FIXTURE["prep"]["attempts"][0]), 0,
+                                          "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 비행 척도와 관련이 있을까요?"))
+    assert "G10" in rules(vs) and any("척도 불일치" in v.matched for v in vs)
+
+
 def test_g10_example_phrase_only_allowed_when_caregiver_wrote_it(prep_out):
     """예시 오염: 프롬프트 예시의 관찰(학원 숙제)은 그 말을 쓴 보호자(p2)에게만 인용할 수 있다."""
     assert "G10" not in rules(check_output(PROFILE, "prep", prep_out))   # p2 의견에 '학원 숙제'가 있다
@@ -383,6 +475,18 @@ def test_fallback_flag_cannot_bypass_checks(prep_out):
     result = run_with_guardrails(PROFILE, "prep", lambda a, p, f: copy.deepcopy(prep_out))
     assert result.fallback_blocks == ["questions_for_counselor"]
     assert check_output(PROFILE, "prep", result.output) == []
+
+
+def test_pending_flag_from_llm_output_is_stripped(prep_out):
+    """_pending은 생성 전 미리보기 전용 표식이다. LLM 출력에 섞여 오면 화면의 '생성 대기' 태그와 근거 배지 숨김을
+    위조하므로 _fallback과 같은 입구에서 벗긴다."""
+    prep_out["questions_for_counselor"][0]["_pending"] = True
+    prep_out["observation_points"][0]["_pending"] = "yes"
+    stripped = _strip_fallback_flags(prep_out)
+    assert not any("_pending" in it or "_fallback" in it for it in stripped["questions_for_counselor"] + stripped["observation_points"])
+    result = run_with_guardrails(PROFILE, "prep", lambda a, p, f: copy.deepcopy(prep_out))
+    assert result.violations == [] and result.fallback_blocks == []
+    assert not any("_pending" in it for block in result.output.values() for it in block)
 
 
 def test_fail_closed_fallback_after_two_regens_with_feedback(prep_out):

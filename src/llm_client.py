@@ -328,7 +328,12 @@ def _label(s: ScaleScore) -> str:
 
 
 def _quote(note: str) -> str:
-    """보호자 의견을 「」로 인용한다. 긴 의견은 앞부분만 (원문 조각이므로 G10 (a)를 만족한다)."""
+    """보호자 의견을 「」로 인용한다. 긴 의견은 앞부분만 (원문 조각이므로 G10 (a)를 만족한다).
+
+    끝의 종결 부호(마침표 등)는 떼고 인용한다. 인용 안의 마침표는 G5가 세지 않지만, 질문 문장
+    안에 "봅니다.」라고" 꼴이 남는 것보다 읽기 편하다.
+    """
+    note = note.rstrip(".!?。 ")
     text = note if len(note) <= QUOTE_LIMIT else note[:QUOTE_LIMIT].rstrip() + "…"
     return f"「{text}」"
 

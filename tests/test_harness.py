@@ -77,9 +77,10 @@ def test_raw_vs_final_coverage_are_different_metrics():
 
 
 def test_seed_inventory_matches_gate_constants():
-    """시드 파일 재고: B축 41건(G1~G11 + 우회), 파이프라인 10건, expect_rules 공백 없음, task는 prep뿐.
+    """시드 파일 재고: B축 45건(G1~G11 + 우회), 파이프라인 10건, expect_rules 공백 없음, task는 prep뿐.
 
     새 규칙(G3 숫자·한글 수사, G5 문형, G10 근거 없음·척도 불일치, G11 방향)에는 각각 2건 이상이 있어야 한다.
+    검토 반영분(G10 인용 주장 변형 2, G3 점수 어휘 뒤 수사 1, G6 조사 변형 1)으로 41건에서 45건이 됐다.
     """
     total = 0
     by_file = {}
@@ -93,8 +94,10 @@ def test_seed_inventory_matches_gate_constants():
             notes.append(case["id"])
         by_file[name] = len(data["cases"])
         total += len(data["cases"])
-    assert total == rh.EXPECTED_B_SEEDS == 41
-    assert by_file["g11_direction"] >= 2 and by_file["g10_grounding"] >= 4
+    assert total == rh.EXPECTED_B_SEEDS == 45
+    assert by_file["g11_direction"] >= 2 and by_file["g10_grounding"] >= 6 and by_file["g6_prescription"] >= 4
+    assert sum(1 for i in notes if i.startswith("g10_fabricated_quote")) >= 3
+    assert sum(1 for i in notes if i.startswith("g3_korean_numeral")) >= 3
     assert sum(1 for i in notes if i.startswith("g3_korean_numeral")) >= 2
     assert sum(1 for i in notes if i.startswith("g3_arabic")) >= 2
     assert sum(1 for i in notes if i.startswith("g10_no_grounding")) >= 2
