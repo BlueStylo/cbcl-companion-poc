@@ -115,8 +115,8 @@ def test_template_mock_seed_is_caught_and_self_correction_drops_offending_quotes
 
 
 def test_pending_report_renders_deterministic_parts_without_llm():
-    """생성 전 미리보기: 곡선·밴드·수치는 실제 값, 생성 자리는 '생성 대기', 검증 통과 배지는 없다."""
+    """생성 전 미리보기: 곡선·오차 범위선·수치는 실제 값, 생성 자리는 '생성 대기', 검증 통과 배지는 없다."""
     html = build_pending_report_html(_profile("p2_partial_borderline"))
     assert "생성 대기" in html and "검증 통과" not in html and "안전 문구" not in html
-    assert "T점수 67" in html and "<svg" in html and "준임상" in html
+    assert "이번 검사 결과 67T" in html and "<svg" in html and "준임상" in html
     assert "근거:" not in html   # 자리표시 항목에는 근거 배지를 붙이지 않는다

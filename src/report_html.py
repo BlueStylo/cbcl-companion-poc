@@ -1,8 +1,13 @@
 """2페이지 정적 HTML 리포트 생성.
 
-1페이지 '관찰자의 렌즈'(고정 문구 + 개념 예시 곡선), 2페이지 '우리 아이
-결과'(총점 위계 + 척도 카드), 이어서 상담 준비 도우미 섹션. 서버 없이
-브라우저로 열면 끝나는 단일 파일이며 외부 CDN을 쓰지 않는다.
+1페이지 '관찰자의 렌즈'(고정 문구 + 개념 예시 곡선 + '곡선 읽는 법' 블록),
+2페이지 '우리 아이 결과'(총점 위계 + 척도 카드), 이어서 상담 준비 도우미
+섹션. 서버 없이 브라우저로 열면 끝나는 단일 파일이며 외부 CDN을 쓰지 않는다.
+
+척도 카드의 정보 순서는 고정이다 (ADR 0008): 척도명과 한 문장 결론, 쉬운
+구간 이름 + 원 보고서 라벨 배지 + 수치, 종형곡선, 척도별 고정 해설, 그리고
+준임상·임상 카드에만 "이 점수만으로 진단하지 않아요" 한 줄. 결론과 구간
+이름은 밴드별 고정 문구라 LLM도 가드레일도 거치지 않는다.
 
 LLM 문장은 다섯 자리뿐이다: 전체 요약(보호자 관찰과 소견을 잇는 연결
 문단), 상담 전 안내, 질문, 관찰 포인트, 상담사용 요약. 척도 카드 본문과
@@ -23,8 +28,9 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .guardrails import SafeResult
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, SCALE_NAMES
-from .renderer import DEFAULT_SEM, EXAMPLE_RELIABILITY, bell_curve_svg, concept_curve_svg
-from .scale_texts import LIMITS_TEXT, scale_card_text, scale_one_liner
+from .renderer import (DEFAULT_SEM, EXAMPLE_RELIABILITY, bell_curve_svg, concept_curve_svg,
+                       curve_explainer_svg)
+from .scale_texts import LIMITS_TEXT, scale_card_text
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -37,7 +43,7 @@ LENS_QUOTE = (
 TSCORE_EXPLAIN = (
     "T점수는 또래 평균을 50, 표준편차를 10으로 맞춘 점수입니다. "
     "또래 100명을 줄 세우면 50은 한가운데, 60은 위에서 16번째쯤, 70은 위에서 2~3번째쯤입니다. "
-    "점수는 점이 아니라 구간으로 읽는 것이 정확하며, 아래 곡선의 밴드가 그 구간입니다."
+    "점수는 점이 아니라 구간으로 읽는 것이 정확하며, 2페이지 곡선에서 마커 좌우로 뻗은 오차 범위선이 그 구간입니다."
 )
 FOOTNOTES_SUMMARY = "보호자와 교사의 평가 상관은 평균 r=.28 (메타분석 2건) - 불일치는 오류가 아니라 정보입니다."
 FOOTNOTES = [
@@ -51,10 +57,34 @@ FOOTNOTES = [
     "받아들이라는 것이 현대 임상 문헌의 권고입니다(De Los Reyes & Kazdin, 2005; Dirks et al., 2012).",
 ]
 SEM_NOTE = (
-    f"마커 주변의 밴드는 측정의 표준오차(SEM)로 계산한 대칭 구간입니다. "
+    f"곡선 아래 색은 원 보고서 기준표의 구간(정상, 준임상, 임상)이고, 점선은 그 기준선입니다. "
+    f"마커 좌우로 뻗은 가로 범위선은 측정의 표준오차(SEM)로 계산한 대칭 구간입니다. "
     f"신뢰도 예시값 {EXAMPLE_RELIABILITY} 기준 SEM {DEFAULT_SEM}T이며, 반복 측정 시 점수가 이 범위에 들어올 확률은 약 68%입니다. "
     f"실제 서비스는 검사 매뉴얼의 척도별 신뢰도 계수를 씁니다."
 )
+# 1페이지 '곡선 읽는 법' 블록 (곡선의 의미는 여기서 한 번만 가르치고 카드마다 반복하지 않는다)
+CURVE_HOWTO_CAPTION = "곡선이 높을수록 이 점수대에 해당하는 또래가 많아요"
+CURVE_HOWTO_LINES = (
+    "가운데 50T 근처에 또래의 대부분이 있고, 오른쪽으로 갈수록 그렇게 보고된 아이가 드물어집니다.",
+    "2페이지의 곡선마다 같은 그림 위에 이번 결과의 위치와 오차 범위를 표시합니다.",
+)
+# 척도 카드 상단의 밴드별 고정 문구 (ADR 0008). 어미는 관찰자 프레임("보고됐어요")을 유지하고
+# 심각성 단정과 완화를 모두 피한다. 쉬운 구간 이름은 같은 줄의 원 보고서 라벨 배지와 항상 짝이다.
+CARD_VERDICT = {
+    # 결론 줄은 평가 형용사("높은 편") 없이 원 보고서 라벨을 풀어 쓴 구간 이름만 쓴다.
+    # "선별 관찰 요망"(준임상)을 "상담에서 함께 살펴볼 범위"로 옮긴 것이지 새 판정이 아니다. G8이 LLM에
+    # 금지하는 어휘를 시스템도 쓰지 않는다.
+    "normal": "또래 평균 범위",
+    "borderline": "상담에서 함께 살펴볼 범위",
+    "clinical": "상담에서 우선 살펴볼 범위",
+}
+CARD_PLAIN_RANGE = {
+    "normal": "또래 평균 범위",
+    "borderline": "상담에서 함께 살펴볼 범위",
+    "clinical": "상담에서 우선 살펴볼 범위",
+}
+# 준임상·임상 카드의 해설 아래 한 줄 (정상 카드에는 넣지 않는다)
+CARD_NOT_DIAGNOSIS = "이 점수만으로 진단하지 않아요 · 상담에서 어떤 상황에서 나타났는지 함께 확인해요"
 BORDERLINE_NOTE = (
     "준임상 구간은 확정된 상태가 아니라 관찰과 개입의 여지가 있는 구간입니다. "
     "해석 유의사항은 재검사와 다중 정보원(교사 보고, 자기 보고) 병행을 권고합니다."
@@ -81,9 +111,10 @@ def _scale_view(profile: CBCLProfile, sid: str) -> dict:
         "t": scale.t_score,
         "band": scale.band,
         "band_ko": BAND_KO[scale.band],
-        "open": scale.band != "normal",      # 정상 범위는 접힌 한 줄
-        "one_liner": scale_one_liner(sid, scale.band),
-        "svg": bell_curve_svg(scale.t_score, profile.criteria_for(sid), height=150),
+        "open": scale.band != "normal",      # 정상 범위는 접힌 카드 (헤더 두 줄만 보임)
+        "verdict": CARD_VERDICT[scale.band],
+        "plain_range": CARD_PLAIN_RANGE[scale.band],
+        "svg": bell_curve_svg(scale.t_score, profile.criteria_for(sid), clip_id=f"clip-{sid}"),
         "text": scale_card_text(sid, scale.band),
     }
 
@@ -115,7 +146,7 @@ def build_crisis_html(profile: CBCLProfile) -> str:
 def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
     """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult 2건.
 
-    탐색 콘솔이 슬라이더 변경마다 곡선·밴드·고정 문구를 즉시 다시 그리는 데 쓴다.
+    탐색 콘솔이 슬라이더 변경마다 곡선·오차 범위선·고정 문구를 즉시 다시 그리는 데 쓴다.
     생성 블록 5개는 전부 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다.
     """
     return {
@@ -153,6 +184,10 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         footnotes_summary=FOOTNOTES_SUMMARY,
         footnotes=FOOTNOTES,
         concept_svg=concept_curve_svg(),
+        explainer_svg=curve_explainer_svg(),
+        curve_howto_caption=CURVE_HOWTO_CAPTION,
+        curve_howto_lines=CURVE_HOWTO_LINES,
+        not_diagnosis=CARD_NOT_DIAGNOSIS,
         sem_note=SEM_NOTE,
         borderline_note=BORDERLINE_NOTE,
         caution=CAUTION,

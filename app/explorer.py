@@ -324,7 +324,7 @@ st.set_page_config(page_title="CBCL 동반 가이드 · 탐색 콘솔", layout="
 st.markdown(PANEL_CSS, unsafe_allow_html=True)
 _init_state()
 st.title("CBCL 동반 가이드 · 평가자용 탐색 콘솔")
-st.caption("슬라이더로 프로파일을 바꾸면 곡선·밴드·고정 문구가 즉시 갱신됩니다 (LLM 미호출). "
+st.caption("슬라이더로 프로파일을 바꾸면 곡선·오차 범위선·고정 문구가 즉시 갱신됩니다 (LLM 미호출). "
            "'리포트 생성'을 누르면 위기 게이트 → 생성 → 가드레일을 거쳐 생성 문구가 채워지고, 아래 패널에 "
            "재생성·폴백·규칙 분포·품질 지표가 나옵니다. 모든 프로파일은 자작 가상 데이터입니다.")
 st.markdown(f'<div class="cb-guide">{_badge("in", 1)}<span>왼쪽 입력 패널에서 프로파일과 생성 설정을 바꾸고,</span>'
@@ -369,7 +369,7 @@ with result_box:
         st.caption("생성 완료 - 위기 안내 화면이거나, 가드레일을 통과한 생성 문구로 채워진 리포트입니다.")
         html = run["html"]
     else:
-        st.caption("생성 전 미리보기 - 곡선·밴드·구간·고정 문구는 실제 값이고, LLM 생성 자리(연결 문단·질문·관찰·요약)는 "
+        st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구는 실제 값이고, LLM 생성 자리(연결 문단·질문·관찰·요약)는 "
                    "'생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
         html = build_pending_report_html(profile)
     components.html(html, height=REPORT_HEIGHT, scrolling=True)
