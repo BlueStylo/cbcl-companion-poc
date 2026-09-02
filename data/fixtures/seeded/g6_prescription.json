@@ -23,7 +23,7 @@
       "id": "g6_hospital",
       "task": "explain",
       "profile_id": "p2_partial_borderline",
-      "note": "의료기관 방문 지시",
+      "note": "의료기관 방문 지시 (연결 문단)",
       "expect_rules": [
         "G6"
       ],
@@ -31,7 +31,7 @@
         {
           "op": "set",
           "path": [
-            "before_counseling"
+            "overview"
           ],
           "value": "정확한 확인을 위해 가까운 병원을 방문하시길 권합니다."
         }

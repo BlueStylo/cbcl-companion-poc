@@ -9,11 +9,11 @@
 준임상·임상 카드에만 "이 점수만으로 진단하지 않아요" 한 줄. 결론과 구간
 이름은 밴드별 고정 문구라 LLM도 가드레일도 거치지 않는다.
 
-LLM 문장은 다섯 자리뿐이다: 전체 요약(보호자 관찰과 소견을 잇는 연결
-문단), 상담 전 안내, 질문, 관찰 포인트, 상담사용 요약. 척도 카드 본문과
-심리교육 문단(렌즈 안내, T점수 설명, 준임상 일반론, 한계 고지)은 전부
-사전 작성 고정 문구다 (scale_texts.py) - 일반론과 개별 단정의 거리가 한
-문장이라 LLM에 맡기지 않고, 고정 문구는 검증도 필요 없다.
+LLM 문장은 네 자리뿐이다: 전체 요약(보호자 관찰과 소견을 잇는 연결
+문단), 질문, 관찰 포인트, 상담사용 요약. 상담 전 안내(PRE_COUNSELING_NOTE,
+ADR 0009), 척도 카드 본문과 심리교육 문단(렌즈 안내, T점수 설명, 준임상
+일반론, 한계 고지)은 전부 사전 작성 고정 문구다 (scale_texts.py) - 일반론과
+개별 단정의 거리가 한 문장이라 LLM에 맡기지 않고, 고정 문구는 검증도 필요 없다.
 
 길이 원칙: 사람들은 긴 글을 읽지 않는다. 정상 범위 척도는 접힌 한 줄,
 준임상·임상 척도만 펼친 카드, 문단은 3문장 상한, 각주·메타는 접기,
@@ -91,6 +91,15 @@ BORDERLINE_NOTE = (
 )
 CAUTION = ("이 보고서는 선별 도구이며 진단이 아닙니다. 검사 한 번의 결과는 "
            "아이를 이해하는 출발점일 뿐, 그 자체로 어떤 판정도 확정하지 않습니다.")
+# 상담 준비 섹션 첫 줄의 고정 문구 (ADR 0009). 원래 LLM 블록(before_counseling)이던 자리인데,
+# 실측 6런에서 모델 간 차이가 없었고 조언("이렇게 해 보세요")과 판정으로 흐를 위험이 가장 큰
+# 자리라 고정 문구로 내렸다. 감정 인정 한 문장과 "수치의 의미는 상담에서" 한 문장뿐이며,
+# LLM 출력이 아니므로 가드레일도 품질 지표도 거치지 않는다. 라벨에 "마음가짐"이라는 말은 쓰지 않는다.
+PRE_COUNSELING_LABEL = "상담 전 안내"
+PRE_COUNSELING_NOTE = (
+    "검사 결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다. "
+    "수치의 의미는 예약된 상담에서 상담사와 함께 확인하게 됩니다."
+)
 # LLM 생성 자리의 자리표시 문구 (탐색 콘솔의 생성 전 미리보기용, 리포트 산출물에는 나가지 않음)
 PENDING_TEXT = "생성 대기 - '리포트 생성'을 누르면 보호자 문장을 인용한 생성 문구가 이 자리에 들어옵니다."
 
@@ -147,11 +156,10 @@ def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
     """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult 2건.
 
     탐색 콘솔이 슬라이더 변경마다 곡선·오차 범위선·고정 문구를 즉시 다시 그리는 데 쓴다.
-    생성 블록 5개는 전부 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다.
+    생성 블록 4개는 전부 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다.
     """
     return {
-        "explain": SafeResult(task="explain", output={
-            "overview": PENDING_TEXT, "before_counseling": PENDING_TEXT}),
+        "explain": SafeResult(task="explain", output={"overview": PENDING_TEXT}),
         "prep": SafeResult(task="prep", output={
             "questions_for_counselor": [{"question": PENDING_TEXT, "source_scale": None, "_pending": True}],
             "observation_points": [{"point": PENDING_TEXT, "source_scale": None, "_pending": True}],
@@ -198,8 +206,8 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         overview_fallback="overview" in fallback_blocks,
         composites=[_scale_view(profile, sid) for sid in COMPOSITE_IDS],
         syndromes=[_scale_view(profile, sid) for sid in SYNDROME_IDS],
-        before_counseling=explain.output["before_counseling"],
-        before_fallback="before_counseling" in fallback_blocks,
+        pre_counseling_label=PRE_COUNSELING_LABEL,
+        pre_counseling_note=PRE_COUNSELING_NOTE,
         questions=_items_view(profile, prep.output["questions_for_counselor"], "question"),
         observations=_items_view(profile, prep.output["observation_points"], "point"),
         briefing=prep.output["counselor_briefing"],

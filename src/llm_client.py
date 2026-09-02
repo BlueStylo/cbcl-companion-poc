@@ -330,13 +330,7 @@ def _compose_explain(profile: CBCLProfile, notes: list[str]) -> dict:
             gloss.append("임상은 또래보다 뚜렷이 자주")
         sentences.append(", ".join(gloss) + " 보고되었다는 뜻이며, 적어 주신 관찰과 이 결과를 어떻게 함께 볼지는 "
                          "예약된 상담에서 상담사와 이야기해 보세요.")
-    days = profile.days_until_counseling
-    return {
-        "overview": " ".join(sentences),
-        "before_counseling": (
-            "결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다. "
-            f"적어 주신 장면을 상담까지 남은 {days}일 동안 그대로 메모해 두시면 예약된 상담에서 상담사와 이야기할 재료가 됩니다."),
-    }
+    return {"overview": " ".join(sentences)}
 
 
 def _pad_questions(anchor: ScaleScore, all_normal: bool) -> list[dict]:
@@ -450,7 +444,7 @@ def inject_seed_violations(task: str, profile: CBCLProfile, output: dict, rules)
         if "G8" in rules:
             out["overview"] += " 총 문제행동은 경계 수준입니다."
         if "G6" in rules:
-            out["before_counseling"] += " 가까운 병원에 방문해 진료를 받아 보세요."
+            out["overview"] += " 가까운 병원에 방문해 진료를 받아 보세요."
         return out
     qs = out["questions_for_counselor"]
     if "G4" in rules:

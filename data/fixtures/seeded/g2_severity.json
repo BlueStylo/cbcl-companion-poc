@@ -41,7 +41,7 @@
       "id": "g2_reassure",
       "task": "explain",
       "profile_id": "p2_partial_borderline",
-      "note": "낙관 방향 보증 1 (근거 없는 안심)",
+      "note": "낙관 방향 보증 1 (근거 없는 안심, 연결 문단)",
       "expect_rules": [
         "G2"
       ],
@@ -49,7 +49,7 @@
         {
           "op": "set",
           "path": [
-            "before_counseling"
+            "overview"
           ],
           "value": "결과가 이 정도면 크게 걱정하지 않으셔도 됩니다."
         }
@@ -59,7 +59,7 @@
       "id": "g2_promise",
       "task": "explain",
       "profile_id": "p2_partial_borderline",
-      "note": "낙관 방향 보증 2 (예측 약속)",
+      "note": "낙관 방향 보증 2 (예측 약속, 연결 문단)",
       "expect_rules": [
         "G2"
       ],
@@ -67,7 +67,7 @@
         {
           "op": "set",
           "path": [
-            "before_counseling"
+            "overview"
           ],
           "value": "이 나이대는 시간이 지나면 대부분 괜찮아질 겁니다."
         }
