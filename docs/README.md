@@ -16,6 +16,7 @@
 | [0005](decisions/0005-reduce-llm-scope.md) | LLM 범위 축소: 척도별 해설은 고정 문구, LLM은 인용이 필요한 곳만 |
 | [0006](decisions/0006-harness-metrics-redefinition.md) | 검증 지표 재정의: 커버리지 2단, FP 게이트, 시드 수 assert |
 | [0007](decisions/0007-explorer-console.md) | 평가자용 탐색 콘솔: 슬라이더 입력, 즉시 결정론 렌더, 템플릿 목 (입력/결과 패널 분리 추가 결정 포함) |
+| [0008](decisions/0008-scale-card-order.md) | 척도 카드 정보 순서(결론 → 쉬운 구간 → 수치 → 곡선 → 해설 → 진단 아님 한 줄), 곡선 아래만 채색과 SEM 가로 범위선, 곡선 읽는 법 블록 1회 |
 
 새 결정은 다음 번호로 파일을 추가하고 이 표에 한 줄을 더합니다. 규칙·지표·프롬프트 계약을
 바꾸는 PR은 해당 ADR 번호를 본문에 적습니다.
