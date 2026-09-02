@@ -48,6 +48,30 @@ NOTE_SLOTS = 3
 REPORT_HEIGHT = 980
 CHIP_COLORS = {"normal": ("#eef2ec", "#4f6b52"), "borderline": ("#f8ecd9", "#8a6425"),
                "clinical": ("#f6e0d8", "#97462a")}
+ACCENT = "#4a6fa5"  # 리포트 템플릿의 --accent와 같은 파랑. 결과 패널 표식에만 쓴다.
+# 입력(왼쪽)·결과(오른쪽) 패널 구분. 셀렉터는 st.container(key=...)가 붙이는 st-key-* 클래스와
+# 이 파일이 직접 출력하는 cb-* 클래스만 쓴다 (data-testid 등 내부 DOM에는 의존하지 않음).
+PANEL_CSS = f"""
+<style>
+.st-key-input_panel {{ background: rgba(120, 130, 150, 0.07); border-color: rgba(120, 130, 150, 0.35) !important; }}
+.st-key-result_panel {{ border-color: rgba(74, 111, 165, 0.35) !important; }}
+.cb-badge {{ display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+             border-radius: 50%; font-size: 12px; font-weight: 700; color: #fff; background: #6b7280; flex: none; }}
+.cb-badge.out {{ background: {ACCENT}; }}
+.cb-guide {{ display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 0.9rem; opacity: 0.85;
+             margin: -6px 0 14px; }}
+.cb-head {{ display: flex; align-items: center; gap: 10px; padding-bottom: 10px; margin-bottom: 8px;
+            border-bottom: 1px solid rgba(120, 130, 150, 0.3); }}
+.cb-head .title {{ font-size: 1.15rem; font-weight: 700; }}
+.cb-head .sub {{ font-size: 0.85rem; opacity: 0.65; }}
+.cb-sec {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 18px 0 6px; line-height: 1.3; }}
+.cb-sec .title {{ font-weight: 700; }}
+.cb-sec .note {{ font-size: 0.8rem; opacity: 0.65; }}
+.cb-sec.in .idx {{ font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; opacity: 0.5;
+                   font-variant-numeric: tabular-nums; }}
+.cb-sec.out {{ border-left: 3px solid {ACCENT}; padding-left: 10px; }}
+</style>
+"""
 
 
 # ---------------------------------------------------------------- 상태
@@ -127,6 +151,24 @@ def _chip(band: str) -> str:
             f'font-weight:700;background:{bg};color:{fg};white-space:nowrap">{BAND_KO[band]}</span>')
 
 
+def _badge(kind: str, n: int) -> str:
+    return f'<span class="cb-badge {kind}">{n}</span>'
+
+
+def _panel_head(kind: str, n: int, title: str, sub: str) -> None:
+    """열 맨 위의 패널 라벨. 두 열 모두 테두리 컨테이너 첫 요소라 같은 높이에 놓인다."""
+    st.markdown(f'<div class="cb-head">{_badge(kind, n)}<span class="title">{title}</span>'
+                f'<span class="sub">{sub}</span></div>', unsafe_allow_html=True)
+
+
+def _section(kind: str, title: str, note: str = "", idx: str = "") -> None:
+    """소제목. 입력 패널(in)은 회색 번호 캡션, 결과 패널(out)은 파란 좌측 보더로 어느 영역인지 표시."""
+    idx_html = f'<span class="idx">{idx}</span>' if idx else ""
+    note_html = f'<span class="note">{note}</span>' if note else ""
+    st.markdown(f'<div class="cb-sec {kind}">{idx_html}<span class="title">{title}</span>{note_html}</div>',
+                unsafe_allow_html=True)
+
+
 def _slider_row(sid: str, criteria: dict) -> None:
     c1, c2 = st.columns([5, 1.4], vertical_alignment="bottom")
     c1.slider(SCALE_NAMES[sid], T_SLIDER_MIN, T_SLIDER_MAX, key=f"t_{sid}")
@@ -138,11 +180,11 @@ def _left_panel() -> tuple[bool, str, dict]:
                  format_func=EXAMPLE_LABELS.get, key="example", on_change=_load_example)
     criteria = example_inputs(st.session_state["example"]).criteria
 
-    st.markdown("**하위 척도 T점수** · 준임상 60~69 · 임상 70 이상")
+    _section("in", "하위 척도 T점수", "준임상 60~69 · 임상 70 이상", idx="01")
     for sid in SYNDROME_IDS:
         _slider_row(sid, criteria)
 
-    st.markdown("**종합 지표 T점수 (직접 입력)** · 준임상 60~62 · 임상 63 이상")
+    _section("in", "종합 지표 T점수 (직접 입력)", "준임상 60~62 · 임상 63 이상", idx="02")
     st.caption(COMPOSITE_NOTE)
     for sid in COMPOSITE_IDS:
         _slider_row(sid, criteria)
@@ -157,13 +199,14 @@ def _left_panel() -> tuple[bool, str, dict]:
                  key="sex", horizontal=True)
         c2.number_input("만 나이", 4, 18, key="age_years")
 
-    st.markdown("**보호자 의견** · 질문과 관찰 포인트가 이 문장을 인용합니다")
+    _section("in", "보호자 의견", "질문과 관찰 포인트가 이 문장을 인용합니다", idx="03")
     for i in range(NOTE_SLOTS):
         st.text_input(f"의견 {i + 1}", key=f"note_{i}", label_visibility="collapsed",
                       placeholder=f"보호자 의견 {i + 1} (비우면 제외)")
     st.number_input("상담까지 남은 날 (days_until_counseling)", 0, 60, key="days")
 
-    mode = st.radio("생성 모드", list(MODES), format_func=MODES.get, key="mode")
+    _section("in", "생성 모드", "mock · Ollama · API", idx="04")
+    mode = st.radio("생성 모드", list(MODES), format_func=MODES.get, key="mode", label_visibility="collapsed")
     opts: dict = {}
     if mode == "mock":
         st.caption("mock 템플릿 - 실제 LLM 생성이 아닙니다. 보호자 의견을 「」로 인용하고 준임상 이상 척도만 "
@@ -205,7 +248,7 @@ def _rule_counts(stats: dict) -> dict[str, int]:
 
 
 def _run_panel(run: dict | None, stale: bool) -> None:
-    st.subheader("이번 실행")
+    _section("out", "이번 실행")
     if run is None:
         st.caption("아직 실행 전입니다. 왼쪽에서 값을 바꾸고 '리포트 생성'을 누르면 위기 게이트 → 생성 → "
                    "가드레일 순서로 실행되고, 위 리포트의 '생성 대기' 자리가 실제 문장으로 바뀝니다.")
@@ -255,7 +298,7 @@ def _run_panel(run: dict | None, stale: bool) -> None:
 
     q = stats["quality"]
     j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]
-    st.markdown("**품질 지표 (측정만, 게이트 아님)**")
+    _section("out", "품질 지표", "측정만, 게이트 아님")
     qc = st.columns(3)
     qc[0].metric("보호자 표현 반영률 (항목 · 토큰)",
                  f"{r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])})",
@@ -277,15 +320,24 @@ def _run_panel(run: dict | None, stale: bool) -> None:
 # ---------------------------------------------------------------- 메인
 
 st.set_page_config(page_title="CBCL 동반 가이드 · 탐색 콘솔", layout="wide")
+st.markdown(PANEL_CSS, unsafe_allow_html=True)
 _init_state()
 st.title("CBCL 동반 가이드 · 평가자용 탐색 콘솔")
 st.caption("슬라이더로 프로파일을 바꾸면 곡선·밴드·고정 문구가 즉시 갱신됩니다 (LLM 미호출). "
            "'리포트 생성'을 누르면 위기 게이트 → 생성 → 가드레일을 거쳐 생성 문구가 채워지고, 아래 패널에 "
            "재생성·폴백·규칙 분포·품질 지표가 나옵니다. 모든 프로파일은 자작 가상 데이터입니다.")
+st.markdown(f'<div class="cb-guide">{_badge("in", 1)}<span>왼쪽 입력 패널에서 프로파일과 생성 설정을 바꾸고,</span>'
+            f'{_badge("out", 2)}<span>오른쪽 결과 패널에서 리포트와 실행 지표를 확인합니다.</span></div>',
+            unsafe_allow_html=True)
 
 left_col, right_col = st.columns([2, 3], gap="large")
-with left_col:
+input_box = left_col.container(border=True, key="input_panel")
+result_box = right_col.container(border=True, key="result_panel")
+with input_box:
+    _panel_head("in", 1, "입력", "프로파일과 생성 설정")
     clicked, mode, opts = _left_panel()
+with result_box:
+    _panel_head("out", 2, "결과", "보호자 리포트와 실행 패널")
 
 inputs = _collect_inputs()
 raw = build_profile_raw(inputs)
@@ -293,7 +345,7 @@ fingerprint = json.dumps(raw, sort_keys=True, ensure_ascii=False)
 try:
     profile = build_profile(inputs)
 except ProfileError as e:
-    with right_col:
+    with result_box:
         st.error("입력 프로파일 검증 실패 - 리포트를 생성하지 않습니다 (파서 fail-closed)")
         for msg in e.errors:
             st.write(f"- {msg}")
@@ -301,7 +353,7 @@ except ProfileError as e:
 
 autorun = st.session_state.pop("autorun", False)
 if clicked or autorun:
-    with right_col, st.spinner("위기 게이트 → 생성 → 가드레일 실행 중..."):
+    with result_box, st.spinner("위기 게이트 → 생성 → 가드레일 실행 중..."):
         try:
             st.session_state["run"] = _run_pipeline(profile, mode, opts, fingerprint)
         except llm_failure_types() as e:
@@ -310,8 +362,8 @@ if clicked or autorun:
 
 run = st.session_state.get("run")
 stale = bool(run) and run["fingerprint"] != fingerprint
-with right_col:
-    st.subheader("리포트 (2페이지)")
+with result_box:
+    _section("out", "리포트", "2페이지")
     if run and not stale:
         st.caption("생성 완료 - 위기 안내 화면이거나, 가드레일을 통과한 생성 문구로 채워진 리포트입니다.")
         html = run["html"]
