@@ -126,7 +126,7 @@ python harness/run_harness.py --mock
 | `python main.py ... --api` | 실 LLM 호출 (.env 필요) |
 | `LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=gemma4:12b LLM_NUM_CTX=8192 python main.py ... --api` | 로컬 Ollama로 실행. 사고(thinking)는 기본 off(`LLM_REASONING_EFFORT=none`), `LLM_NUM_CTX`를 주면 네이티브 `/api/chat`로 컨텍스트 길이를 고정 |
 | `python harness/run_harness.py --mock` | 프로파일 7종 실행 + 합격 게이트 지표 표 + 품질 지표 표 |
-| `python harness/io_review.py out/bench/*/run_stats.json --profiles data/profiles --out out/io_review.html` | 실측 런의 입력(프로파일)과 모델별 최종 출력 2블록(질문, 관찰)을 나란히 놓은 리뷰 시트 HTML (옛 4블록과 5블록 run_stats도 읽되 옛 블록은 구 스키마로 표기). 보호자 의견의 어절이 출력에 등장한 자리를 표시. `--md`로 같은 내용의 마크다운도 생성 |
+| `python harness/io_review.py out/bench/*/run_stats.json --profiles data/profiles --out out/io_review.html` | 실측 런의 입력(프로파일)과 모델별 최종 출력(질문 1블록)을 나란히 놓은 리뷰 시트 HTML (옛 4블록과 5블록 run_stats도 읽되 옛 블록은 구 스키마로 표기). 보호자 의견의 어절이 출력에 등장한 자리를 표시. `--md`로 같은 내용의 마크다운도 생성 |
 | `pytest` | LLM 없이 도는 결정론 테스트 (파서, 가드레일, 품질 지표, 하네스, 탐색 콘솔 조립) |
 | `streamlit run app/explorer.py` | 평가자용 탐색 콘솔 - 슬라이더로 프로파일을 바꿔 가며 확인 (`requirements-app.txt`, 아래 절) |
 
@@ -518,7 +518,7 @@ Claude Haiku 4.5 $1 / $5 (캐시 읽기 $0.10, 배치 $0.50 / $2.50);
   미검출 유형을 사전에 추가하는 반복이 운영 절차입니다. G7~G10, "준임계"
   같은 오기 변형, G2의 "큰 문제는 없어 보입니다"와 "안정적인 상태", Codex 점검의
   양극성, 위중, 놀이치료, 경계군이 그 반복으로 추가된 사례입니다. 사전이 볼 문장의
-  형태를 좁힌 것(ADR 0010: 숫자 없음, 질문 1문장 의문형, 관찰 명사형)이 이 한계에
+  형태를 좁힌 것(ADR 0010: 숫자 없음, 질문 1문장 의문형)이 이 한계에
   대한 구조적 대응이지만 사전 자체는 여전히 열려 있습니다. G3는 점/T/퍼센트 앞의
   한글 수사("육십칠점"), 점수 어휘 뒤의 수사("T점수가 육십칠"), 단독 순우리말 십 단위
   ("예순일곱")는 잡고, 점수 어휘 없이 단독으로 쓰인 한자어 수사는 잡지 않습니다 (#1).
@@ -551,7 +551,7 @@ Claude Haiku 4.5 $1 / $5 (캐시 읽기 $0.10, 배치 $0.50 / $2.50);
   범위까지만 보여 줍니다. 현재 `run_stats.json`은 규칙별 위반 건수만 남기므로
   차단된 첫 시도의 문장은 표시되지 않습니다.
 
-위 항목은 GitHub 이슈 트래커로 추적합니다 (#1, #3, #4, #38).
+위 항목은 GitHub 이슈 트래커로 추적합니다 (#1, #3, #4, #6, #33~#37, #41).
 
 ## 사용한 AI 도구
 
