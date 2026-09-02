@@ -61,12 +61,14 @@ python harness/run_harness.py --mock
 data/profiles/    가상 프로파일 8종 (P1~P4, P5a/P5b 페어, A1 위반유도, C1 위기신호)
 data/fixtures/    mock 모드용 고정 LLM 응답 (A1은 위반 응답 시드 10건 포함)
 data/fixtures/seeded/  적대 위반 시드 41건 (규칙별 10파일 + 우회 시도형, B축 전수 검사용)
+examples/mock/    mock 산출물 9종 (프로파일 8종 + 동점 페어 비교 뷰) - 브라우저로 바로 열어 볼 것
+examples/api/     실LLM(exaone3.5:7.8b) 산출물 + 실행 통계 JSON
 prompts/          프롬프트 계약 전문 (코드 밖 정본)
 src/parser.py     입력 검증 + 밴드 라벨 재계산 대조 (fail-closed 1차 관문)
 src/scale_texts.py 척도 x 밴드 고정 문구 33종 + 한계 고지 (LLM 미사용, 테스트로 어휘 고정)
 src/renderer.py   종형곡선 SVG (마커, SEM 밴드, 구간 배경) - 순수 문자열 생성
-src/llm_client.py OpenAI 호환 클라이언트 + MockLLMClient
-src/generator.py  연결 문단/질문 생성 (구조화 JSON 출력)
+src/llm_client.py OpenAI 호환 클라이언트(타임아웃) + MockLLMClient
+src/generator.py  연결 문단/질문 생성 (구조화 JSON 출력, 아동 이름 마스킹)
 src/guardrails.py 규칙 10종 + 블록 단위 재생성 + 안전 문구 폴백
 src/quality.py    품질 지표 3종 (용어 잔존율, 보호자 표현 반영률, 질문 방향 경고) - 측정만
 src/report_html.py  2페이지 정적 리포트 (1p 관찰자의 렌즈 / 2p 우리 아이 결과 / 상담 준비)
@@ -149,6 +151,7 @@ LLM 호출 자체를 하지 않고, 상담 연결 안내와 즉시 도움 라인
 | LLM_BASE_URL | 기본 https://api.openai.com/v1 · 로컬 http://localhost:11434/v1 |
 | LLM_MODEL | API 기본 **gpt-4o-mini** · 로컬 기본 **exaone3.5:7.8b** (Ollama에 받아둔 모델) |
 | LLM_API_KEY | .env로만 주입 (.env는 gitignore) |
+| LLM_TIMEOUT_S | 호출 1건 상한(초), 기본 180. 초과 시 fail-closed 종료 (로컬 7~8B는 재생성 포함 건당 수 분) |
 
 ## 평가 결과
 
@@ -337,7 +340,7 @@ $0.075/1M), 야간 배치 처리(양사 배치 API 50% 할인).
   대답을 하지 않고 굳어버리는 모습", "며칠 뒤에야 속상함을 이야기하는 것")만
   인용합니다. 두 프로파일 모두 폴백 0/5, 코드 누출·정상 척도 근거·라벨 위반 0.
   p2에 남은 (a) 1건은 "자세히 알려주시면"으로, 방향 경고(WARN)로만 집계됩니다.
-  산출물은 후속 PR(chore/examples-and-hygiene)의 examples/api에 있습니다.
+  examples/api의 산출물이 이 회차입니다.
 
 
 ## 알려진 한계
