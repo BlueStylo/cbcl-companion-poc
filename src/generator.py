@@ -144,6 +144,7 @@ def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
     return {
         "profile_id": profile.profile_id,
         "model": getattr(client, "model", "?"),
+        "settings": getattr(client, "settings", {}),  # 측정 조건 (reasoning_effort, num_ctx 등)
         "tasks": tasks,
         "llm_calls": calls,
         "total_prompt_tokens": sum(c["prompt_tokens"] or 0 for c in calls),

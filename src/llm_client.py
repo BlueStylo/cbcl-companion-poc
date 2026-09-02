@@ -17,6 +17,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -30,34 +31,121 @@ class LLMError(RuntimeError):
     """LLM 호출 또는 응답 파싱 실패."""
 
 
+_CODE_FENCE = re.compile(r"^\s*```(?:json|JSON)?\s*(.*?)\s*```\s*$", re.S)
+
+
+def parse_json_text(text: str) -> dict:
+    """모델 응답 텍스트에서 JSON 객체를 꺼낸다.
+
+    마크다운 코드 펜스(```json ... ```)로 감싼 응답만 추가로 허용한다 - 로컬 모델은
+    format=json을 줘도 펜스를 붙이는 경우가 있다 (gemma4:31b, thinking off 실측).
+    그 밖의 앞뒤 잡음은 허용하지 않고 json.JSONDecodeError를 그대로 올린다 (fail-closed).
+    """
+    m = _CODE_FENCE.match(text)
+    if m:
+        text = m.group(1)
+    return json.loads(text)
+
+
 class OpenAICompatClient:
-    """OpenAI 호환 엔드포인트 클라이언트 (.env의 LLM_* 3개 변수로 구성)."""
+    """OpenAI 호환 엔드포인트 클라이언트 (.env의 LLM_* 변수로 구성).
+
+    base_url 교체만으로 OpenAI와 Ollama(/v1)를 겸용한다. 추론(thinking) 모델은
+    기본적으로 사고를 끈다 (LLM_REASONING_EFFORT=none): 이 작업은 구조화 JSON
+    생성이라 사고가 필수가 아니고, 켜 두면 응답 예산·지연·출력 비용을 사고
+    토큰이 먹는다 (Ollama gemma4는 기본 thinking이라 content가 비고 사고만
+    돌아오는 경우가 실측됐다). Ollama의 /v1 호환 계층은 컨텍스트 길이(num_ctx)를
+    받지 않으므로, LLM_NUM_CTX를 지정하면 네이티브 /api/chat로 보낸다
+    (think·format·options 지정 가능, openai 패키지 불필요).
+    """
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None,
                  model: str | None = None):
         self.base_url = base_url or os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
         self.api_key = api_key or os.environ.get("LLM_API_KEY", "ollama")
-        self.model = model or os.environ.get("LLM_MODEL", "gpt-4o-mini")
-        # 호출 1건의 상한 (초). 로컬 7~8B 모델은 재생성 포함 건당 수 분이라 기본 180초.
-        # 넘기면 openai.APITimeoutError → main.py가 fail-closed로 종료한다.
+        self.model = model or os.environ.get("LLM_MODEL", "gpt-5.6-luna")
+        # 사고 강도. 기본 "none". 빈 문자열이면 파라미터를 보내지 않는다 (reasoning_effort를
+        # 모르는 구형 모델용). Ollama /v1은 reasoning_effort=none으로 thinking이 꺼진다
+        # (think=false는 /v1에서 무시됨 - 0.20.2 실측).
+        self.reasoning_effort = os.environ.get("LLM_REASONING_EFFORT", "none").strip()
+        # Ollama 전용 컨텍스트 길이. 지정하면 네이티브 /api/chat 경로를 쓴다.
+        num_ctx = os.environ.get("LLM_NUM_CTX", "").strip()
+        self.num_ctx = int(num_ctx) if num_ctx else None
+        # 호출 1건의 상한 (초). 로컬 8~12B 모델은 재생성 포함 건당 수 분이라 기본 180초.
+        # 넘기면 openai.APITimeoutError(또는 LLMError) → main.py가 fail-closed로 종료한다.
         self.timeout_s = float(os.environ.get("LLM_TIMEOUT_S", "180"))
         self.calls: list[dict] = []  # 관측성: 호출별 토큰/시간 기록
-        try:
-            from openai import OpenAI  # --api 모드에서만 필요 (지연 import)
-        except ImportError as e:
-            raise LLMError("--api 모드에는 openai 패키지가 필요합니다: pip install -r requirements.txt") from e
-        self._client = OpenAI(base_url=self.base_url, api_key=self.api_key,
-                              timeout=self.timeout_s, max_retries=1)
+        self.settings = {  # run_stats에 기록되는 측정 조건
+            "reasoning_effort": self.reasoning_effort or "(미전송)",
+            "num_ctx": self.num_ctx,
+            "transport": "ollama-native" if self.num_ctx else "openai-compat",
+            "temperature": 0.2,
+        }
+        self._client = None
+        if self.num_ctx is None:
+            try:
+                from openai import OpenAI  # --api 모드에서만 필요 (지연 import)
+            except ImportError as e:
+                raise LLMError("--api 모드에는 openai 패키지가 필요합니다: pip install -r requirements.txt") from e
+            self._client = OpenAI(base_url=self.base_url, api_key=self.api_key,
+                                  timeout=self.timeout_s, max_retries=1)
 
-    def _call(self, messages: list[dict], force_json: bool) -> tuple[str, dict]:
+    # ---- 요청 구성 (테스트로 고정) ----
+
+    def _openai_kwargs(self, messages: list[dict], force_json: bool) -> dict:
         kwargs = {"model": self.model, "messages": messages, "temperature": 0.2}
+        if self.reasoning_effort:
+            kwargs["reasoning_effort"] = self.reasoning_effort
         if force_json:
             kwargs["response_format"] = {"type": "json_object"}
-        resp = self._client.chat.completions.create(**kwargs)
+        return kwargs
+
+    def _native_url(self) -> str:
+        root = self.base_url.rstrip("/")
+        if root.endswith("/v1"):
+            root = root[:-3]
+        return root + "/api/chat"
+
+    def _native_payload(self, messages: list[dict], force_json: bool) -> dict:
+        payload = {"model": self.model, "messages": messages, "stream": False,
+                   "options": {"temperature": 0.2, "num_ctx": self.num_ctx}}
+        if self.reasoning_effort:
+            payload["think"] = self.reasoning_effort != "none"
+        if force_json:
+            payload["format"] = "json"
+        return payload
+
+    # ---- 호출 ----
+
+    def _call(self, messages: list[dict], force_json: bool) -> tuple[str, dict]:
+        if self.num_ctx is not None:
+            return self._call_native(messages, force_json)
+        resp = self._client.chat.completions.create(**self._openai_kwargs(messages, force_json))
         usage = getattr(resp, "usage", None)
         return resp.choices[0].message.content or "", {
             "prompt_tokens": getattr(usage, "prompt_tokens", None),
             "completion_tokens": getattr(usage, "completion_tokens", None),
+        }
+
+    def _call_native(self, messages: list[dict], force_json: bool) -> tuple[str, dict]:
+        """Ollama 네이티브 /api/chat 호출 (num_ctx·think·format 지정)."""
+        import socket
+        import urllib.error
+        import urllib.request
+        body = json.dumps(self._native_payload(messages, force_json)).encode("utf-8")
+        req = urllib.request.Request(self._native_url(), data=body, headers={
+            "Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"})
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout_s) as r:
+                data = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", "replace")[:200]
+            raise LLMError(f"Ollama /api/chat HTTP {e.code}: {detail}") from e
+        except (urllib.error.URLError, socket.timeout, TimeoutError) as e:
+            raise LLMError(f"Ollama /api/chat 연결 실패 또는 타임아웃({self.timeout_s:.0f}s): {e}") from e
+        return (data.get("message") or {}).get("content") or "", {
+            "prompt_tokens": data.get("prompt_eval_count"),
+            "completion_tokens": data.get("eval_count"),
         }
 
     def generate(self, task: str, profile, attempt: int,
@@ -87,13 +175,13 @@ class OpenAICompatClient:
                 # 일부 로컬 모델은 response_format을 지원하지 않는다
                 text = call(force_json=False)
             try:
-                return json.loads(text)
+                return parse_json_text(text)
             except json.JSONDecodeError:
                 messages.append({"role": "assistant", "content": text})
                 messages.append({"role": "user", "content": "유효한 JSON 객체만 다시 출력하세요. 다른 텍스트를 포함하지 마세요."})
                 text = call(force_json=False)
                 try:
-                    return json.loads(text)
+                    return parse_json_text(text)
                 except json.JSONDecodeError as e:
                     raise LLMError(f"JSON 파싱 실패 (task={task}, attempt={attempt})") from e
         finally:
