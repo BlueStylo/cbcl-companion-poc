@@ -77,9 +77,9 @@ def test_template_mock_passes_guardrails_first_try(pid):
     """템플릿 목: 첫 시도 위반 0, 재생성 0, 폴백 0, 최종 잔존 위반 0. 근거는 준임상 이상 척도만."""
     profile = _profile(pid)
     client = TemplateMockClient()
-    for task in ("explain", "prep"):
-        assert check_output(profile, task, client.generate(task, profile, 0, "", "")) == []
+    assert check_output(profile, "prep", client.generate("prep", profile, 0, "", "")) == []
     results = generate_all(profile, client)
+    assert list(results) == ["prep"]
     for task, r in results.items():
         assert r.regen_count == 0 and r.fallback_blocks == []
         assert check_output(profile, task, r.output) == []
@@ -96,12 +96,17 @@ def test_template_mock_seed_is_caught_and_self_correction_drops_offending_quotes
     results = generate_all(p2, TemplateMockClient(seed_rules={"G1", "G7"}))
     first = {v.rule_id for r in results.values() for v in r.violations if v.attempt == 0}
     assert {"G1", "G7"} <= first
-    assert results["explain"].regen_count == 1 and results["explain"].fallback_blocks == []
     assert results["prep"].regen_count == 1 and results["prep"].fallback_blocks == []
+    # 새 규칙 시드(G3 숫자, G10 예시 오염, G11 방향)도 첫 시도에서 검출되고 재생성 1회로 회복된다
+    results = generate_all(p2, TemplateMockClient(seed_rules={"G3", "G11"}))
+    first = {v.rule_id for r in results.values() for v in r.violations if v.attempt == 0}
+    assert {"G3", "G11"} <= first and results["prep"].regen_count == 1
+    results = generate_all(_profile("p5a_paired_notes"), TemplateMockClient(seed_rules={"G10"}))
+    assert "G10" in {v.rule_id for r in results.values() for v in r.violations if v.attempt == 0}
     # 시드 지속: 재생성 2회 소진 → 안전 문구 폴백, 최종 출력은 깨끗하다 (fail-closed)
     persisted = generate_all(p2, TemplateMockClient(seed_rules={"G1"}, persist_seed=True))
-    assert persisted["explain"].regen_count == 2 and persisted["explain"].fallback_blocks == ["overview"]
-    assert check_output(p2, "explain", persisted["explain"].output) == []
+    assert persisted["prep"].regen_count == 2 and persisted["prep"].fallback_blocks == ["questions_for_counselor"]
+    assert check_output(p2, "prep", persisted["prep"].output) == []
     # A1: 보호자 의견 자체에 진단명·판정 요구 → 첫 시도 G1/G2, 재생성에서 그 인용을 빼고 통과
     a1 = _profile("a1_adversarial")
     results = generate_all(a1, TemplateMockClient())
@@ -112,6 +117,19 @@ def test_template_mock_seed_is_caught_and_self_correction_drops_offending_quotes
     # P1 전 척도 정상: 총 문제행동 근거의 예외 경로도 첫 시도 통과
     results = generate_all(_profile("p1_all_normal"), TemplateMockClient())
     assert all(r.regen_count == 0 and r.fallback_blocks == [] for r in results.values())
+
+
+def test_template_mock_output_has_no_digits_and_quotes_long_notes_partially():
+    """템플릿 목은 새 계약을 지킨다: 숫자 없음, 질문 25~90자, 긴 의견은 앞부분만 「」 인용해도 G10 (a)를 만족."""
+    import re
+    long_note = "학원 숙제를 앞에 두면 딴 데를 자주 보고, 저녁마다 숙제를 미루다가 밤늦게야 겨우 시작하는 날이 많아졌습니다"
+    profile = _profile("p2_partial_borderline").model_copy(update={"caregiver_notes": [long_note]})
+    out = TemplateMockClient().generate("prep", profile, 0, "", "")
+    assert check_output(profile, "prep", out) == []
+    texts = [q["question"] for q in out["questions_for_counselor"]] + [o["point"] for o in out["observation_points"]]
+    assert not any(re.search(r"\d", t) for t in texts)
+    assert all(25 <= len(q["question"]) <= 90 for q in out["questions_for_counselor"])
+    assert any("…」" in t for t in texts)
 
 
 def test_pending_report_renders_deterministic_parts_without_llm():

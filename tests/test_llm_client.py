@@ -70,7 +70,7 @@ def test_parse_json_text_accepts_markdown_fence_only():
 def _generate_with_fake_call(client, fake_call):
     client._call = fake_call
     return client.generate(
-        task="explain",
+        task="prep",
         profile=SimpleNamespace(profile_id="test-profile"),
         attempt=0,
         system_prompt="system",

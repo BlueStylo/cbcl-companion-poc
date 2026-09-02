@@ -9,11 +9,15 @@
 준임상·임상 카드에만 "이 점수만으로 진단하지 않아요" 한 줄. 결론과 구간
 이름은 밴드별 고정 문구라 LLM도 가드레일도 거치지 않는다.
 
-LLM 문장은 네 자리뿐이다: 전체 요약(보호자 관찰과 소견을 잇는 연결
-문단), 질문, 관찰 포인트, 상담사용 요약. 상담 전 안내(PRE_COUNSELING_NOTE,
-ADR 0009), 척도 카드 본문과 심리교육 문단(렌즈 안내, T점수 설명, 준임상
-일반론, 한계 고지)은 전부 사전 작성 고정 문구다 (scale_texts.py) - 일반론과
+LLM 문장은 두 자리뿐이다: 상담사에게 물어볼 질문과 가정 관찰 포인트 (ADR 0010).
+연결 문단(보호자 관찰과 검사 소견)과 상담사에게 전달할 요약은 이 모듈이 결정론으로
+조립한다 (build_overview_text, build_counselor_briefing): 보호자 의견을 원문 그대로
+큰따옴표로 인용하고, 상승 척도는 보고서 라벨 그대로 나열하며, 고정 문장 하나를 붙인다.
+LLM이 하던 "의견과 척도의 연결"은 질문의 근거 척도 배지가 대신한다. 상담 전 안내
+(PRE_COUNSELING_NOTE, ADR 0009), 척도 카드 본문과 심리교육 문단(렌즈 안내, T점수 설명,
+준임상 일반론, 한계 고지)은 전부 사전 작성 고정 문구다 (scale_texts.py) - 일반론과
 개별 단정의 거리가 한 문장이라 LLM에 맡기지 않고, 고정 문구는 검증도 필요 없다.
+결정론 조립 텍스트도 LLM 출력이 아니므로 가드레일과 품질 지표를 거치지 않는다.
 
 길이 원칙: 사람들은 긴 글을 읽지 않는다. 정상 범위 척도는 접힌 한 줄,
 준임상·임상 척도만 펼친 카드, 문단은 3문장 상한, 각주·메타는 접기,
@@ -103,6 +107,81 @@ PRE_COUNSELING_NOTE = (
 )
 # LLM 생성 자리의 자리표시 문구 (탐색 콘솔의 생성 전 미리보기용, 리포트 산출물에는 나가지 않음)
 PENDING_TEXT = "생성 대기 - '리포트 생성'을 누르면 보호자 문장을 인용한 생성 문구가 이 자리에 들어옵니다."
+# 결정론 조립 블록의 라벨과 태그 (ADR 0010). 태그 문구는 테스트가 개수를 센다.
+ASSEMBLED_TAG = "결정론 조립"
+OVERVIEW_LABEL = "보호자의 관찰과 검사 소견"
+BRIEFING_LABEL = "상담사에게 전달할 요약 미리보기"
+LLM_TAG = "LLM 생성 · 검증 통과"
+
+
+def josa(word: str, with_batchim: str, without: str) -> str:
+    """마지막 글자의 받침 유무로 조사를 고른다 (이/가, 은/는)."""
+    ch = word[-1]
+    if "가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28:
+        return with_batchim
+    return without
+
+
+def _clean_notes(profile: CBCLProfile) -> list[str]:
+    return [n.strip() for n in profile.caregiver_notes if n and n.strip()]
+
+
+def build_overview_text(profile: CBCLProfile) -> str:
+    """연결 문단 (결정론 조립, ADR 0010).
+
+    보호자 의견은 원문 그대로 큰따옴표로 인용하고, 준임상 이상 척도는 보고서 라벨(SCALE_NAMES)
+    그대로 밴드별로 나열한 뒤 고정 문장 하나를 붙인다. 전 척도 정상이면 그 사실만 적는다.
+    LLM 출력이 아니므로 가드레일·품질 지표의 대상이 아니다.
+    """
+    notes = _clean_notes(profile)
+    if notes:
+        first = "보호자님은 이렇게 적어 주셨습니다. " + " ".join(f'"{n}"' for n in notes)
+    else:
+        first = "보호자 의견은 따로 적히지 않았습니다."
+    elevated = profile.elevated_scales()
+    if not elevated:
+        what = "관찰하신 모습이" if notes else "이 결과가"
+        return (f"{first} 검사에서는 모든 척도가 정상 범위로 보고되었습니다. "
+                f"{what} 무엇을 뜻하는지는 상담에서 함께 살펴볼 수 있습니다.")
+    parts = []
+    for band in ("clinical", "borderline"):
+        names = [SCALE_NAMES[s.scale_id] for s in elevated if s.band == band]
+        if names:
+            parts.append(f"{', '.join(names)}{josa(names[-1], '이', '가')} {BAND_KO[band]} 범위로")
+    second = "검사에서는 " + ", ".join(parts) + " 보고되었"
+    second += "고, 그 밖의 척도는 정상 범위였습니다." if len(elevated) < len(profile.all_scales()) else "습니다."
+    where = "예약된 상담에서" if profile.counseling_scheduled else "상담 예약 후"
+    third = f"이 관찰과 결과가 어떻게 이어지는지는 {where} 상담사와 이야기해 보세요."
+    return f"{first} {second} {third}"
+
+
+def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
+                             counseling_scheduled: bool) -> str:
+    """상담사에게 전달할 요약 미리보기 (결정론 조립, ADR 0010). 줄바꿈으로 구분된 순수 텍스트.
+
+    보호자 의견 원문, 상승 척도 표(척도, T점수, 보고서 라벨) 또는 "상승 척도 없음", 질문 목록,
+    상담까지 남은 일수 또는 미예약 표시. questions는 LLM 출력 항목(dict) 또는 문자열 목록이며,
+    비어 있으면 아직 생성되지 않았다고 적는다. LLM 출력이 아니므로 가드레일 대상이 아니다.
+    """
+    notes = _clean_notes(profile)
+    lines: list[str] = []
+    lines.append(f"[보호자 의견 원문 {len(notes)}건]" if notes else "[보호자 의견 원문] 적히지 않음")
+    lines += [f'{i}. "{n}"' for i, n in enumerate(notes, 1)]
+    elevated = profile.elevated_scales()
+    if elevated:
+        lines.append(f"[상승 척도 {len(elevated)}개] 척도, T점수, 보고서 라벨")
+        lines += [f"- {SCALE_NAMES[s.scale_id]} T={s.t_score} {BAND_KO[s.band]}" for s in elevated]
+    else:
+        lines.append("[상승 척도 없음] 모든 척도 정상 범위")
+    texts = [(q.get("question", "") if isinstance(q, dict) else str(q)).strip() for q in questions]
+    texts = [t for t in texts if t]
+    if texts:
+        lines.append(f"[상담사에게 물어볼 질문 {len(texts)}개] 위 목록의 체크 표시 기준")
+        lines += [f"{i}. {t}" for i, t in enumerate(texts, 1)]
+    else:
+        lines.append("[상담사에게 물어볼 질문] 아직 생성되지 않음")
+    lines.append(f"[상담까지 {days}일]" if counseling_scheduled else "[상담 미예약]")
+    return "\n".join(lines)
 
 
 def _template_env() -> Environment:
@@ -169,17 +248,16 @@ def build_crisis_html(profile: CBCLProfile) -> str:
 
 
 def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
-    """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult 2건.
+    """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult (prep 1건).
 
     탐색 콘솔이 슬라이더 변경마다 곡선과 오차 구간 및 고정 문구를 즉시 다시 그리는 데 쓴다.
-    생성 블록 4개는 전부 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다.
+    생성 블록 2개(질문, 관찰)는 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다. 연결 문단과
+    상담사 요약은 결정론 조립이라 미리보기에서도 실제 문구로 나온다.
     """
     return {
-        "explain": SafeResult(task="explain", output={"overview": PENDING_TEXT}),
         "prep": SafeResult(task="prep", output={
             "questions_for_counselor": [{"question": PENDING_TEXT, "source_scale": None, "_pending": True}],
-            "observation_points": [{"point": PENDING_TEXT, "source_scale": None, "_pending": True}],
-            "counselor_briefing": PENDING_TEXT}),
+            "observation_points": [{"point": PENDING_TEXT, "source_scale": None, "_pending": True}]}),
     }
 
 
@@ -190,13 +268,15 @@ def build_pending_report_html(profile: CBCLProfile, mode_label: str = "생성 �
 
 def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mock",
                       model_label: str = "", pending: bool = False) -> str:
-    """SafeResult 2건({"explain","prep"})을 받아 완성 HTML 문자열을 만든다.
+    """SafeResult({"prep"})를 받아 완성 HTML 문자열을 만든다.
 
     pending=True면 생성 블록 자리에 '생성 대기' 표식을 붙인다 (탐색 콘솔 미리보기).
+    연결 문단과 상담사 요약은 여기서 결정론으로 조립한다 (ADR 0010).
     """
-    explain, prep = results["explain"], results["prep"]
-    fallback_blocks = set(explain.fallback_blocks) | set(prep.fallback_blocks)
+    prep = results["prep"]
+    fallback_blocks = set(prep.fallback_blocks)
     elevated = [s.name_ko for s in profile.elevated_scales()]
+    questions = prep.output["questions_for_counselor"]
     return _template_env().get_template("report.html.j2").render(
         alias=profile.child.alias,
         instrument=profile.instrument,
@@ -220,24 +300,23 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         counseling_scheduled=profile.counseling_scheduled,
         special_scales_administered=profile.special_scales_administered,
         has_borderline=any(s.band == "borderline" for s in profile.all_scales()),
-        overview=_schedule_aware_text(
-            explain.output["overview"], profile.counseling_scheduled
-        ),
-        overview_fallback="overview" in fallback_blocks,
+        overview=build_overview_text(profile),
+        overview_label=OVERVIEW_LABEL,
+        assembled_tag=ASSEMBLED_TAG,
+        llm_tag=LLM_TAG,
         composites=[_scale_view(profile, sid) for sid in COMPOSITE_IDS],
         syndromes=[_scale_view(profile, sid) for sid in SYNDROME_IDS],
         pre_counseling_label=PRE_COUNSELING_LABEL,
         pre_counseling_note=_schedule_aware_text(
             PRE_COUNSELING_NOTE, profile.counseling_scheduled
         ),
-        questions=_items_view(profile, prep.output["questions_for_counselor"], "question"),
+        questions=_items_view(profile, questions, "question"),
         observations=_items_view(profile, prep.output["observation_points"], "point"),
-        briefing=_schedule_aware_text(
-            prep.output["counselor_briefing"], profile.counseling_scheduled
-        ),
-        briefing_fallback="counselor_briefing" in fallback_blocks,
+        briefing=build_counselor_briefing(profile, [] if pending else questions,
+                                          profile.days_until_counseling, profile.counseling_scheduled),
+        briefing_label=BRIEFING_LABEL,
         days=profile.days_until_counseling,
-        regen_count=explain.regen_count + prep.regen_count,
+        regen_count=prep.regen_count,
         fallback_count=len(fallback_blocks),
         pending=pending,
     )

@@ -2,10 +2,10 @@
   "category": "G2 심각성 단정 (양방향)",
   "cases": [
     {
-      "id": "g2_severe_overview",
-      "task": "explain",
+      "id": "g2_severe_question",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "심각 방향 단정 1",
+      "note": "심각 방향 단정 (질문)",
       "expect_rules": [
         "G2"
       ],
@@ -13,17 +13,19 @@
         {
           "op": "set",
           "path": [
-            "overview"
+            "questions_for_counselor",
+            0,
+            "question"
           ],
-          "value": "이번 결과에서 내재화 문제와 주의집중은 심각한 편이라 바로 조치가 필요합니다."
+          "value": "주의집중 척도 결과가 심각한 편이라 바로 조치가 필요한 상황인가요?"
         }
       ]
     },
     {
-      "id": "g2_danger",
-      "task": "explain",
+      "id": "g2_grave_observation",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "심각 방향 단정 2 (위험 신호)",
+      "note": "심각 방향 단정 (관찰, Codex 점검에서 통과했던 '위중')",
       "expect_rules": [
         "G2"
       ],
@@ -31,17 +33,19 @@
         {
           "op": "set",
           "path": [
-            "overview"
+            "observation_points",
+            0,
+            "point"
           ],
-          "value": "위축 척도의 T점수 62는 위험한 신호로 읽어야 합니다."
+          "value": "상태가 위중해 보이는 날을 표시해 두기"
         }
       ]
     },
     {
-      "id": "g2_reassure",
-      "task": "explain",
+      "id": "g2_reassure_question",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "낙관 방향 보증 1 (근거 없는 안심, 연결 문단)",
+      "note": "낙관 방향 보증 (근거 없는 안심)",
       "expect_rules": [
         "G2"
       ],
@@ -49,27 +53,11 @@
         {
           "op": "set",
           "path": [
-            "overview"
+            "questions_for_counselor",
+            1,
+            "question"
           ],
-          "value": "결과가 이 정도면 크게 걱정하지 않으셔도 됩니다."
-        }
-      ]
-    },
-    {
-      "id": "g2_promise",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "낙관 방향 보증 2 (예측 약속, 연결 문단)",
-      "expect_rules": [
-        "G2"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "이 나이대는 시간이 지나면 대부분 괜찮아질 겁니다."
+          "value": "이 정도 결과라면 크게 걱정하지 않으셔도 되는 수준인가요?"
         }
       ]
     }

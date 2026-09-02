@@ -2,43 +2,7 @@
   "category": "G1 진단명",
   "cases": [
     {
-      "id": "g1_direct_overview",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "진단명 직접 언급",
-      "expect_rules": [
-        "G1"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "주의집중 척도가 준임상 범위인 것을 보면 ADHD를 먼저 확인해 보셔야 합니다."
-        }
-      ]
-    },
-    {
-      "id": "g1_negation",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "부정문도 차단 (의도된 과검출 - 진단명 앵커링 방지)",
-      "expect_rules": [
-        "G1"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "주의집중 척도(T점수 67)는 준임상 범위입니다. 그래도 주의력 결핍 장애는 아니니 그 부분은 접어 두세요."
-        }
-      ]
-    },
-    {
-      "id": "g1_question",
+      "id": "g1_question_direct",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "질문 문안에 스며든 진단명",
@@ -53,15 +17,15 @@
             0,
             "question"
           ],
-          "value": "이 정도면 우울증 초기라고 봐야 할까요?"
+          "value": "이 정도면 우울증 초기라고 봐야 하는지 상담에서 들을 수 있을까요?"
         }
       ]
     },
     {
-      "id": "g1_briefing",
+      "id": "g1_question_negation",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "상담사용 요약에 스며든 진단 시사",
+      "note": "부정문도 차단 (의도된 과검출 - 진단명 앵커링 방지)",
       "expect_rules": [
         "G1"
       ],
@@ -69,9 +33,31 @@
         {
           "op": "set",
           "path": [
-            "counselor_briefing"
+            "questions_for_counselor",
+            1,
+            "question"
           ],
-          "value": "내재화 상승 패턴은 불안 장애 가능성을 시사함. 상담에서 확인 요망."
+          "value": "주의력 결핍 장애는 아니라고 들었는데 그 부분은 접어 두어도 되나요?"
+        }
+      ]
+    },
+    {
+      "id": "g1_observation_bipolar",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "관찰 포인트에 스며든 진단명 (Codex 점검에서 통과했던 '양극성 장애')",
+      "expect_rules": [
+        "G1"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            0,
+            "point"
+          ],
+          "value": "양극성 장애가 의심되는 기분 변화가 있었던 날을 적어 두기"
         }
       ]
     }

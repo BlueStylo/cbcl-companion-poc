@@ -1,19 +1,19 @@
 """품질 지표 3종 (측정·표기 전용, 차단 아님).
 
-가드레일(G1~G9)은 안전 규칙이라 위반이면 블록을 폐기하지만, 아래 지표는
+가드레일(G1~G11)은 안전 규칙이라 위반이면 블록을 폐기하지만, 아래 지표는
 "이 기획의 척추"가 지켜지는지를 재는 관측값이다. 하네스 요약 표의 별도
 절과 main.py 실행 통계에 표기만 한다.
 
-  (i)   전문 용어 잔존율   - 용어 사전 등장 횟수, 용어가 등장한 블록 중
-                             같은 블록에 풀이 표현이 동반된 비율
+  (i)   전문 용어 잔존율   - 용어 사전 등장 횟수, 용어가 등장한 항목 중
+                             같은 항목에 풀이 표현이 동반된 비율 (권장 사항의 관측)
   (ii)  보호자 표현 반영률 - caregiver_notes의 토큰이 질문·관찰 텍스트에
                              등장하는 비율 (항목 단위 / 토큰 단위)
-  (iii) 질문 방향 경고     - 상담사가 보호자에게 되묻는 패턴을 WARN으로 집계.
-                             의미 판정이라 규칙으로는 한계가 있어 차단하지 않는다.
+  (iii) 질문 방향 경고     - 양방향 모두에 쓰이는 되묻기 의심 표현("설명해 주실 수
+                             있나요")을 WARN으로 집계. 명백한 역방향 문형은 G11이 차단한다.
 
-측정 대상은 보호자에게 노출되는 생성 텍스트다. 상담사용 사전 요약은
-전문 용어가 기대되는 문서라 (i)에서 제외하고, 폴백(사전 작성 안전 문구)은
-생성 품질이 아니므로 모든 지표에서 제외한다.
+측정 대상은 LLM이 생성한 질문과 관찰 항목이다 (ADR 0010: LLM 블록은 이 둘뿐).
+결정론 조립 텍스트(연결 문단, 상담사 요약)와 폴백(사전 작성 안전 문구)은
+생성이 아니므로 모든 지표에서 제외한다.
 """
 
 from __future__ import annotations
@@ -89,38 +89,33 @@ def note_tokens(notes: list[str]) -> list[str]:
 
 # ---------------------------------------------------------------- (iii) 질문 방향
 
-# 상담사가 보호자에게 되묻는 형태의 단서. 보호자→상담사 문장에도 쓰일 수 있는
-# 표현이 있어(예: "설명해 주실 수 있나요") 의미 판정은 규칙의 한계 - WARN만.
+# 되묻기가 의심되지만 보호자가 상담사에게 하는 말에도 쓰이는 표현. 의미 판정은 규칙의 한계라
+# WARN만 센다. 명백한 역방향 문형("알려주시겠", "말씀해 주세요", "사례를 더", "있으신가요",
+# "보호자님")은 guardrails.REVERSE_DIRECTION_BLOCK_PATTERNS(G11)가 차단하므로 최종 출력에 남지 않는다.
 REVERSE_DIRECTION_PATTERNS = [re.compile(p) for p in (
-    r"알려\s*주시겠",
-    r"말씀해\s*주시",
-    r"사례를\s*더",
-    r"사례를\s*몇",
     r"설명해\s*주실\s*수\s*있나요",
-    r"알려\s*주시면",
-    r"공유해\s*주실",
-    r"(?:관찰|언급|경험)하신",       # 읽는 사람(보호자)의 행동에 대한 존대 - 되묻는 방향
-    r"있으신가요",
-    r"보호자님",
-    r"어머님|아버님",
+    r"알려\s*주실\s*수\s*있",
+    r"들려\s*주실\s*수\s*있",
+    r"보내\s*주실",
 )]
 
 
 # ---------------------------------------------------------------- 텍스트 수집
 
 def caregiver_texts(task: str, output: dict) -> list[tuple[str, str]]:
-    """보호자 노출 생성 텍스트를 (블록, 텍스트)로 나열한다. 폴백·사전 요약 제외."""
+    """LLM 생성 텍스트를 (블록, 텍스트)로 나열한다. 폴백 제외.
+
+    LLM 블록은 prep의 질문·관찰 항목뿐이다. 다른 task 이름이 오면 빈 목록이다 (옛 explain 호출 방어).
+    """
     texts: list[tuple[str, str]] = []
-    if task == "explain":
-        if isinstance(output.get("overview"), str):
-            texts.append(("overview", output["overview"]))
-    else:
-        for key, text_key in (("questions_for_counselor", "question"),
-                              ("observation_points", "point")):
-            for i, item in enumerate(output.get(key, [])):
-                if isinstance(item, dict) and not item.get("_fallback") \
-                        and isinstance(item.get(text_key), str):
-                    texts.append((f"{key}[{i}]", item[text_key]))
+    if task != "prep" or not isinstance(output, dict):
+        return texts
+    for key, text_key in (("questions_for_counselor", "question"),
+                          ("observation_points", "point")):
+        for i, item in enumerate(output.get(key, [])):
+            if isinstance(item, dict) and not item.get("_fallback") \
+                    and isinstance(item.get(text_key), str):
+                texts.append((f"{key}[{i}]", item[text_key]))
     return texts
 
 
@@ -181,7 +176,7 @@ def reflection_metrics(profile: CBCLProfile, prep_output: dict) -> dict:
 
 
 def direction_warnings(prep_output: dict) -> list[dict]:
-    """(iii) 상담사→보호자 방향으로 읽히는 질문 (WARN)."""
+    """(iii) 상담사가 보호자에게 되묻는 것으로 읽힐 수 있는 질문 (WARN, 차단은 G11)."""
     warns = []
     for block, text in caregiver_texts("prep", prep_output):
         if not block.startswith("questions_for_counselor"):
@@ -195,10 +190,9 @@ def direction_warnings(prep_output: dict) -> list[dict]:
 
 
 def quality_summary(profile: CBCLProfile, outputs: dict[str, dict]) -> dict:
-    """프로파일 1건의 품질 지표 요약. outputs = {"explain": ..., "prep": ...}."""
-    texts = caregiver_texts("explain", outputs.get("explain", {})) \
-        + caregiver_texts("prep", outputs.get("prep", {}))
+    """프로파일 1건의 품질 지표 요약. outputs = {"prep": ...} (task별 최종 출력)."""
     prep = outputs.get("prep", {})
+    texts = caregiver_texts("prep", prep)
     return {
         "jargon": jargon_metrics(texts),
         "reflection": reflection_metrics(profile, prep),

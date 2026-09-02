@@ -1,0 +1,129 @@
+{
+  "category": "G10 근거 강제 (인용 또는 준임상 이상 척도, 척도명 일치)",
+  "cases": [
+    {
+      "id": "g10_no_grounding_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "근거 없음: 보호자 의견 인용도 없고 source_scale도 정상 척도",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0
+          ],
+          "value": {
+            "question": "이런 검사는 보통 얼마 간격으로 다시 해 보는 것이 좋은가요?",
+            "source_scale": "somatic"
+          }
+        }
+      ]
+    },
+    {
+      "id": "g10_no_grounding_observation",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "근거 없음: 인용 없는 일반 관찰에 정상 종합지표 근거",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            0
+          ],
+          "value": {
+            "point": "아이가 즐거워한 순간을 하루 하나씩 적어 두기",
+            "source_scale": "total_problems"
+          }
+        }
+      ]
+    },
+    {
+      "id": "g10_scale_mismatch_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "척도 불일치: 문장은 위축 척도를 말하는데 source_scale은 attention (Codex 점검의 G4 빈틈)",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 위축 척도 결과와 연결해서 보면 될까요?"
+        }
+      ]
+    },
+    {
+      "id": "g10_scale_mismatch_observation",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "척도 불일치: 문장은 주의집중을 말하는데 source_scale은 anxious_depressed",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "observation_points",
+            2,
+            "point"
+          ],
+          "value": "주의집중 척도와 관련해 숙제 중 자리를 뜬 횟수를 적어 두기"
+        }
+      ]
+    },
+    {
+      "id": "g10_fabricated_quote_claim",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "인용 주장인데 원문 조각이 없음 (보호자가 쓰지 않은 관찰 '밤마다 운다'를 인용처럼 서술)",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "question"
+          ],
+          "value": "밤마다 운다고 적어 주셨는데, 이 모습을 상담에서는 무엇부터 살펴보게 되나요?"
+        }
+      ]
+    },
+    {
+      "id": "g10_example_note_in_question",
+      "task": "prep",
+      "profile_id": "p5a_paired_notes",
+      "note": "프롬프트 예시의 관찰(학원 숙제)을 다른 프로파일 질문에 옮겨 적음 (실LLM 실측에서 관찰)",
+      "expect_rules": [
+        "G10"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "학원 숙제 앞에서 딴 곳을 자주 보는 모습은 위축 척도의 준임상 결과와 관련이 있을까요?"
+        }
+      ]
+    }
+  ]
+}

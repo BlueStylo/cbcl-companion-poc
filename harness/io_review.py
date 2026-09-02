@@ -2,8 +2,9 @@
 
 main.py(--api 또는 --mock)가 남기는 run_stats.json 여러 개와 프로파일 디렉토리를 받아,
 프로파일별로 왼쪽에 입력(가상 아동 정보, T점수와 밴드, 보호자 의견 원문, 상담까지 남은 날)을,
-오른쪽에 모델별 최종 출력 4블록을 격자로 놓은 정적 HTML 1개를 만든다. 보호자 의견의 어절이
-출력 어디에 등장했는지 색으로 표시해 "입력이 출력에 어떻게 반영됐는가"를 한눈에 보는 것이 목적.
+오른쪽에 모델별 최종 출력 2블록(질문, 관찰 포인트)을 격자로 놓은 정적 HTML 1개를 만든다. 보호자
+의견의 어절이 출력 어디에 등장했는지 색으로 표시해 "입력이 출력에 어떻게 반영됐는가"를 한눈에
+보는 것이 목적.
 
     python harness/io_review.py out/bench/*/run_stats.json --profiles data/profiles --out out/io_review.html
     python harness/io_review.py ... --md out/io_review.md          # 같은 내용의 마크다운도 함께
@@ -11,11 +12,11 @@ main.py(--api 또는 --mock)가 남기는 run_stats.json 여러 개와 프로파
 
 한계: run_stats에는 시도별 원문이 없고 규칙별 위반 건수만 있다(src/generator.py summarize_run).
 그래서 부록은 걸린 규칙과 통과한 최종 문장까지만 보여 준다. 반영률 수치는 하네스 정의대로
-질문·관찰 항목만 세지만(src/quality.py), 색 표시는 4블록 전체에 한다.
+질문·관찰 항목만 세고(src/quality.py), 색 표시도 같은 2블록에 한다.
 
-옛 run_stats(5블록 시절, explain에 before_counseling이 있던 산출물 - examples/api 등)도 읽는다.
-현행 스키마에 없는 옛 블록은 '구 스키마(고정 문구로 전환됨)'로 표기해 참고용으로만 보여 주고
-어절 집계와 폴백 분모에서는 빼며, 어느 런에도 없는 블록 행은 건너뛴다 (ADR 0009).
+옛 run_stats(4블록 시절의 explain overview와 prep counselor_briefing, 5블록 시절의
+before_counseling)도 읽는다. 현행 스키마에 없는 옛 블록은 '구 스키마'로 표기해 참고용으로만
+보여 주고 어절 집계와 폴백 분모에서는 빼며, 어느 런에도 없는 블록 행은 건너뛴다 (ADR 0009, 0010).
 """
 
 from __future__ import annotations
@@ -42,24 +43,26 @@ from src.quality import fmt_rate, note_tokens
 TEMPLATES_DIR = ROOT / "src" / "templates"
 TEMPLATE_NAME = "io_review.html.j2"
 
-# 출력 4블록 (리포트에 나가는 순서): (task, block, 라벨, 목록이면 항목 텍스트 키).
+# 출력 2블록 (리포트에 나가는 순서): (task, block, 라벨, 목록이면 항목 텍스트 키).
 # src/guardrails.TASK_BLOCKS와 같은 집합이어야 한다 (tests/test_io_review.py가 대조).
 BLOCKS = (
-    ("explain", "overview", "보호자의 관찰과 검사 소견", None),
     ("prep", "questions_for_counselor", "상담사에게 물어볼 질문", "question"),
     ("prep", "observation_points", "가정 관찰 포인트", "point"),
-    ("prep", "counselor_briefing", "상담사용 사전 요약", None),
 )
-# 현행 스키마에서 빠진 옛 블록 (task, block) → 라벨. 옛 run_stats를 넣으면 이 라벨과 LEGACY_NOTE로
+# 현행 스키마에서 빠진 옛 블록 (task, block) → (라벨, 표기). 옛 run_stats를 넣으면 이 라벨과 표기로
 # 나란히 보여 주되 어절 집계·폴백 분모에는 넣지 않는다. 그 밖의 알 수 없는 키는 표시하지 않는다.
-LEGACY_BLOCKS = {("explain", "before_counseling"): "상담 전 안내"}
-LEGACY_NOTE = "구 스키마(고정 문구로 전환됨)"
-TASK_KO = {"explain": "해설 호출 (explain)", "prep": "상담 준비 호출 (prep)"}
+LEGACY_BLOCKS = {
+    ("explain", "overview"): ("보호자의 관찰과 검사 소견", "구 스키마(결정론 조립으로 전환됨)"),
+    ("explain", "before_counseling"): ("상담 전 안내", "구 스키마(고정 문구로 전환됨)"),
+    ("prep", "counselor_briefing"): ("상담사용 사전 요약", "구 스키마(결정론 조립으로 전환됨)"),
+}
+LEGACY_NOTE = "구 스키마"
+TASK_KO = {"explain": "해설 호출 (explain, 구 스키마)", "prep": "상담 준비 호출 (prep)"}
 # README '가드레일 규칙' 표의 검사명을 짧게
 RULE_KO = {
-    "G1": "진단명", "G2": "심각성 단정", "G3": "수치 대조", "G4": "근거 링크",
-    "G5": "스키마", "G6": "처방·치료 권고", "G7": "형식 누출", "G8": "밴드 라벨 정합",
-    "G9": "정상 척도 근거", "G10": "예시 오염",
+    "G1": "진단명", "G2": "심각성 단정", "G3": "수치 금지", "G4": "근거 링크",
+    "G5": "스키마·문형", "G6": "처방·치료 권고", "G7": "형식 누출", "G8": "밴드 라벨 정합",
+    "G9": "정상 척도 근거", "G10": "근거 강제", "G11": "질문 방향",
 }
 STATE_KO = {"pass": "첫 시도 통과", "regen_pass": "재생성 후 통과", "fallback": "안전 문구 대체"}
 MOCK_MODELS = {"mock", "mock-template"}
@@ -220,7 +223,7 @@ def build_column(run: dict, tokens) -> dict:
         col["cells"][block] = cell
     # 옛 스키마 블록: 현행 블록에 없는 키가 outputs에 있으면 참고용으로만 싣는다 (어절 집계·폴백 분모 제외)
     col["legacy_blocks"] = []
-    for (task, block), _label in LEGACY_BLOCKS.items():
+    for (task, block), (_label, _note) in LEGACY_BLOCKS.items():
         if block not in (outputs.get(task) or {}):
             continue
         cell = _cell(outputs[task][block], None)
@@ -362,7 +365,7 @@ def block_rows(columns: list[dict]) -> list[dict]:
             if t == task and any(c["cells"][block]["kind"] != "missing" for c in columns):
                 rows.append({"task": task, "block": block, "label": label, "text_key": text_key,
                              "legacy": False, "note": ""})
-        for (t, block), label in LEGACY_BLOCKS.items():
+        for (t, block), (label, note) in LEGACY_BLOCKS.items():
             if t != task or not any((t, block) in c["legacy_blocks"] for c in columns):
                 continue
             for c in columns:
@@ -370,7 +373,7 @@ def block_rows(columns: list[dict]) -> list[dict]:
                                               "state_ko": "상태 기록 없음", "violations": [],
                                               "ambiguous": False, "legacy": True})
             rows.append({"task": task, "block": block, "label": label, "text_key": None,
-                         "legacy": True, "note": LEGACY_NOTE})
+                         "legacy": True, "note": note})
     return rows
 
 

@@ -2,6 +2,7 @@
 
 심사자가 JSON 파일 없이 슬라이더와 텍스트로 프로파일을 바꿔 가며 (1) 위계·밴드
 시각화 (2) 보호자 문장을 인용하는 질문 생성 (3) 가드레일 동작을 확인한다.
+LLM 호출은 prep 1회(질문·관찰 포인트 2블록)이고 연결 문단·상담사 요약은 결정론 조립이다 (ADR 0010).
 렌더러·규칙·생성기는 기존 파이프라인 모듈을 그대로 호출한다 (두 벌 금지):
 파서 → 위기 게이트 → generator → guardrails → report_html.
 
@@ -216,8 +217,8 @@ def _left_panel() -> tuple[bool, str, dict]:
                                            format_func=lambda r: f"{r} · {RULE_HINTS[r]}", key="seeds"))
         opts["persist"] = st.checkbox("재생성해도 계속 위반 (안전 문구 폴백까지 확인)", key="persist")
         if opts["seeds"]:
-            st.caption("시드는 첫 시도 출력에 들어갑니다. G9는 정상 척도와 준임상 이상 척도가 함께 있을 때, "
-                       "G10은 의견에 '학원 숙제'가 없을 때만 실제 위반이 됩니다.")
+            st.caption("시드는 첫 시도 질문 블록에 들어갑니다. G9는 정상 척도와 준임상 이상 척도가 함께 있을 때, "
+                       "G10은 의견에 '학원 숙제'가 없을 때만 실제 위반이 됩니다. G5는 질문 수 미달이라 다른 시드를 덮을 수 있습니다.")
     elif mode == "ollama":
         env_url = os.environ.get("LLM_BASE_URL", "")
         env_model = os.environ.get("LLM_MODEL", "")
@@ -284,7 +285,7 @@ def _run_panel(run: dict | None, stale: bool) -> None:
 
     left, right = st.columns([3, 2])
     with left:
-        st.markdown("**걸린 규칙 분포 (G1~G10, 전 시도 합산)**")
+        st.markdown("**걸린 규칙 분포 (G1~G11, 전 시도 합산)**")
         counts = _rule_counts(stats)
         if any(counts.values()):
             st.bar_chart(pd.DataFrame({"위반 수": [counts[r] for r in SEED_RULES]}, index=list(SEED_RULES)),
@@ -373,8 +374,8 @@ with result_box:
         st.caption("생성 완료 - 위기 안내 화면이거나, 가드레일을 통과한 생성 문구로 채워진 리포트입니다.")
         html = run["html"]
     else:
-        st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구는 실제 값이고, LLM 생성 자리(연결 문단·질문·관찰·요약)는 "
-                   "'생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
+        st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구·결정론 조립(연결 문단, 상담사 요약)은 실제 값이고, "
+                   "LLM 생성 자리(질문·관찰 포인트)는 '생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
         html = build_pending_report_html(profile)
     components.html(html, height=REPORT_HEIGHT, scrolling=True)
     _run_panel(run, stale)

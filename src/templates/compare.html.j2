@@ -45,7 +45,7 @@
 <main>
   <h1>같은 점수, 다른 의견</h1>
   <p class="meta"><span class="badge">자작 가상 데이터</span>
-    T점수 프로파일이 동일한 두 케이스에서 보호자 의견만 다를 때, 해설과 질문이 어떻게
+    T점수 프로파일이 동일한 두 케이스에서 보호자 의견만 다를 때, 질문과 관찰 포인트가 어떻게
     달라지는지의 비교 데모입니다. 생성 모드 {{ mode_label }}.</p>
 
   <div class="panel">
@@ -67,17 +67,17 @@
       <h3>보호자 의견 (유일하게 다른 입력)</h3>
       {% for note in c.notes %}<div class="note-quote">"{{ note }}"</div>{% endfor %}
 
-      <h3>생성된 전체 요약</h3>
+      <h3>연결 문단 <span class="src">결정론 조립</span></h3>
       <p>{{ c.overview }}</p>
 
-      <h3>생성된 질문 리스트</h3>
+      <h3>생성된 질문 리스트 <span class="src">LLM 생성, 검증 통과</span></h3>
       <ul>
         {% for q in c.questions %}
         <li>{{ q.text }} <span class="src">근거: {{ q.source_name }}</span></li>
         {% endfor %}
       </ul>
 
-      <h3>생성된 관찰 포인트</h3>
+      <h3>생성된 관찰 포인트 <span class="src">LLM 생성, 검증 통과</span></h3>
       <ul>
         {% for o in c.observations %}
         <li>{{ o.text }} <span class="src">근거: {{ o.source_name }}</span></li>

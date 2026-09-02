@@ -23,3 +23,12 @@ def test_env_file_is_loaded_at_startup_for_prefill():
 def test_console_states_it_does_not_edit_reports():
     """콘솔은 평가용 도구이며 실제 보고서를 수정하지 않는다는 문장이 화면 상단에 있어야 한다 (기획안 1.3 전제)."""
     assert "실제 검사 보고서를 수정하거나 새 판정을 만들지 않습니다" in SRC
+
+
+def test_console_reflects_two_llm_blocks_and_eleven_rules():
+    """콘솔 소스가 새 구조(ADR 0010)를 말한다: 규칙 분포는 G1~G11, LLM 생성 자리는 질문·관찰뿐, 옛 블록 이름은 없다."""
+    assert "G1~G11" in SRC and "G1~G10" not in SRC
+    assert "LLM 생성 자리(질문·관찰 포인트)" in SRC
+    assert "연결 문단·질문·관찰·요약" not in SRC
+    for absent in ("counselor_briefing", '"explain"', "overview"):
+        assert absent not in SRC, absent

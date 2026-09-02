@@ -17,15 +17,15 @@
             0,
             "question"
           ],
-          "value": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도(T점수 67)와 어떻게 연결해서 보면 될까요? (scale_id: 'attention')"
+          "value": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도와 어떻게 연결해서 보면 될까요? (scale_id: 'attention')"
         }
       ]
     },
     {
-      "id": "g7_english_id_in_overview",
-      "task": "explain",
+      "id": "g7_english_id_in_question",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "전체 요약에 영문 식별자 병기",
+      "note": "질문에 영문 식별자 병기",
       "expect_rules": [
         "G7"
       ],
@@ -33,9 +33,11 @@
         {
           "op": "set",
           "path": [
-            "overview"
+            "questions_for_counselor",
+            1,
+            "question"
           ],
-          "value": "위축(withdrawn) 척도의 T점수 62는 준임상 범위에 해당합니다."
+          "value": "위축(withdrawn) 척도가 준임상 범위라는 것은 어떤 뜻인가요?"
         }
       ]
     },

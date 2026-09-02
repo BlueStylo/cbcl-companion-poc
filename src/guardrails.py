@@ -1,35 +1,41 @@
 """출력 안전성 가드레일 (규칙 엔진, LLM 미사용).
 
-출력 규칙 10종:
+LLM이 쓰는 블록은 2개뿐이다 (ADR 0010): prep 태스크의 질문(questions_for_counselor)과
+관찰 포인트(observation_points). 연결 문단과 상담사 요약은 결정론 조립
+(report_html.build_overview_text, build_counselor_briefing), 척도 카드 해설과 한계
+고지(scale_texts.py), 상담 전 안내(report_html.PRE_COUNSELING_NOTE, ADR 0009)는 고정
+문구라 검사 대상이 아니다. 아래 규칙은 전부 질문과 관찰 항목의 문장에 적용된다.
+
+출력 규칙 11종:
   G1 진단명 사전         - 진단명 등장 자체를 위반 처리 (부정문 포함, 의도된 과검출)
   G2 심각성 단정(양방향) - 심각 쪽 단정과 근거 없는 낙관 보증을 모두 차단
-  G3 수치 대조           - 본문 수치를 입력 수치 집합과 대조
-  G4 근거 링크           - 질문·관찰 포인트의 source_scale 이 입력의 실제 척도와 매칭되는지
-  G5 스키마              - 출력 JSON 구조, 필수 필드, 항목 수
+  G3 수치 금지           - 문장에 아라비아 숫자, 그리고 점/T/퍼센트 앞의 한글 수사(일흔다섯 점,
+                           육십칠점)가 있으면 위반. 수치는 화면 카드가 보여주므로 질문에 쓸 이유가 없다
+  G4 근거 링크           - 항목의 source_scale 이 입력의 실제 척도와 매칭되는지
+  G5 스키마와 문형       - 출력 JSON 구조, 필수 필드, 항목 수. 질문은 1문장 의문형(요?/까?)
+                           25~90자, 관찰은 명사형 종결("~적어 두기")이며 질문형 금지
   G6 처방·치료 권고      - 약물, 치료 시작, 의료기관 방문 지시 차단
                            (허용 형태는 "예약된 상담에서 상담사와 이야기해 보세요" 하나뿐)
-  G7 형식 누출           - 보호자 노출 텍스트에 scale_id 값, 영문 소문자 식별자, "scale_id",
-                           괄호 안 영문 코드가 새면 위반 (상담사용 사전 요약은 대상 아님)
+  G7 형식 누출           - 문장에 scale_id 값, 영문 소문자 식별자, "scale_id", 괄호 안 영문 코드
   G8 밴드 라벨 정합      - 밴드 어휘는 보고서 라벨(정상/준임상/임상)만 허용하고, 언급된
                            척도(척도명 사전으로 매핑)의 실제 band와 일치해야 함.
                            "경계 수준", "경계성", "borderline", "위험군", "높은 편" 등은 위반
-  G9 정상 척도 근거 금지 - 질문·관찰 포인트의 source_scale band가 normal이면 위반
-                           (종합지표 포함). 정상 척도는 해설 카드에서만 다룬다.
-                           전 척도 정상 프로파일은 앵커가 없으므로 적용하지 않는다.
-  G10 예시 오염          - 프롬프트 작성 예시의 관찰 문구("학원 숙제", "놀이터" 등)가
-                           이 프로파일의 caregiver_notes에 없는데 질문·관찰·요약에
-                           등장하면 위반 (보호자가 하지 않은 말을 인용한 것)
+  G9 정상 척도 근거 금지 - source_scale band가 normal이면 위반 (종합지표 포함). 전 척도 정상
+                           프로파일에서는 total_problems만 허용한다 (프롬프트 계약과 동일)
+  G10 근거 강제          - 항목마다 (a) 어느 보호자 의견의 연속 6자 이상 조각(공백 제외)을 그대로
+                           포함하거나 (b) source_scale 이 준임상 이상 척도(전 척도 정상이면
+                           total_problems)여야 통과, 둘 다 아니면 위반. 문장에 척도명이 나오면 그
+                           척도가 source_scale 과 같아야 한다. "적어 주셨다"류 인용 주장과 따옴표
+                           인용은 (a)를 만족해야만 허용. 프롬프트 작성 예시의 관찰 문구("학원 숙제",
+                           "놀이터" 등)가 이 프로파일의 의견에 없는데 등장하면 위반
+  G11 질문 방향          - 질문은 보호자가 상담사에게 묻는 문형만. 보호자에게 되묻는 명백한 문형
+                           ("알려주시겠어요", "말씀해 주세요", "사례를 더", "있으신가요")은 차단
 
 위반 블록은 최대 2회 재생성하고, 그래도 실패하면 사전 작성 안전 문구로
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
 문장이 나가는 일도 없다.
 
-LLM이 쓰는 블록은 4개뿐이다: explain의 overview(보호자 관찰과 소견을 잇는
-연결 문단), prep의 질문·관찰 포인트·상담사용 요약. 척도 카드 해설과 한계
-고지(scale_texts.py), 상담 전 안내(report_html.PRE_COUNSELING_NOTE, ADR 0009)는
-고정 문구라 검사 대상이 아니다.
-
-G5는 필수 키 누락만 잡는다. 스키마 밖 키(옛 스키마의 before_counseling 등)는
+G5는 필수 키 누락만 잡는다. 스키마 밖 키(옛 스키마의 overview, counselor_briefing 등)는
 위반이 아니라 무시되며, split_blocks/rebuild가 버리므로 리포트에 닿지 않는다.
 
 입력 게이트 1종: 위기 신호 검출 (detect_crisis_signals). 보호자 의견에
@@ -48,24 +54,25 @@ from .parser import BAND_KO, SCALE_NAMES, CBCLProfile
 MAX_REGEN = 2  # 첫 생성 이후 블록 단위 재생성 횟수
 
 SAFE_GENERIC_TEXT = "이 부분의 자동 생성 문구는 검증을 통과하지 못했습니다. 예약된 상담에서 상담사에게 직접 들으시길 권합니다."
-SAFE_OVERVIEW = (
-    "보호자의 관찰과 검사 소견을 잇는 자동 요약이 검증을 통과하지 못했습니다. "
-    "각 척도의 라벨은 아래 카드에 원 보고서 그대로 표기되어 있으며, 그 의미는 예약된 상담에서 상담사와 이야기해 보세요."
-)
 SAFE_QUESTION = "이번 결과에서 무엇부터 살펴보면 좋을지, 예약된 상담에서 상담사에게 직접 여쭤보시길 권합니다."
 SAFE_OBSERVATION = "상담 전까지 아이의 하루 중 인상 깊었던 장면을 하루 한 줄로 적어 두시면 상담에서 쓸 수 있습니다."
-SAFE_BRIEFING = "자동 사전 요약 생성이 검증을 통과하지 못했습니다. 원 결과지의 수치를 직접 확인해 주세요."
+
+# 보호자 의견 안의 아동 이름을 가리는 대체어. LLM에는 마스킹된 의견이 들어가므로 (generator.profile_payload)
+# G10의 인용 대조도 원문과 마스킹본 양쪽을 본다.
+MASK_TOKEN = "아이"
 
 # --- G1: 진단명 사전 (부정문·완곡형 포함, 등장 자체를 위반 처리) ---
 DIAGNOSIS_PATTERN = re.compile(
     r"(ADHD|주의력\s*결핍|자폐|우울증|불안\s*장애|틱\s*장애|품행\s*장애"
-    r"|발달\s*장애|학습\s*장애|조현병|강박\s*장애|반항\s*장애|공황\s*장애)",
+    r"|발달\s*장애|학습\s*장애|조현병|강박\s*장애|반항\s*장애|공황\s*장애"
+    r"|양극성|조울|우울\s*장애|적응\s*장애)",
     re.IGNORECASE,
 )
 
 # --- G2: 심각성 단정 (양방향) ---
 SEVERITY_PATTERNS = [re.compile(p) for p in (
     r"심각",
+    r"위중",
     r"위험(?:한|이|합|해)",
     r"장애가\s*있",
     r"문제가\s*(?:크|많|심)",
@@ -86,20 +93,28 @@ OPTIMISM_PATTERNS = [re.compile(p) for p in (
 )]
 
 # --- G10: 예시 오염 ---
-# 프롬프트 작성 예시(prompts/*.md)에 쓴 관찰 문구. 예시는 p2 프로파일의 보호자 의견을
-# 재료로 썼는데, 초기 실험용 소형 로컬 모델이 다른 프로파일에서 이 문구를 그대로 질문에 옮겨 적는
-# 결함이 실측됐다 (보호자가 하지 않은 말을 인용). 입력 caregiver_notes에 같은 문구가
+# 프롬프트 작성 예시(prompts/counsel_prep_system.md)에 쓴 관찰 문구. 예시는 p2 프로파일의 보호자
+# 의견을 재료로 썼는데, 초기 실험용 소형 로컬 모델이 다른 프로파일에서 이 문구를 그대로 질문에
+# 옮겨 적는 결함이 실측됐다 (보호자가 하지 않은 말을 인용). 입력 caregiver_notes에 같은 문구가
 # 있으면 정당한 인용이므로 위반이 아니다.
 # "딴 데를" 같은 짧은 구는 보호자 문장의 정당한 바꿔 쓰기("딴 곳을")와 구분이 안 돼 제외한다.
 EXAMPLE_PHRASES = ("학원 숙제", "놀이터", "또래에게 먼저 말")
+# G10: 인용 주장. 이 표현이 있으면 문장 안에 보호자 의견의 원문 조각이 실제로 있어야 한다.
+QUOTE_CLAIM_PATTERNS = [re.compile(p) for p in (
+    r"적어\s*주(?:셨|신)",
+    r"라고\s*(?:적|하|말)",
+    r"[「」“”\"]",
+)]
+QUOTE_MIN_CHARS = 6  # (a) 인용으로 인정하는 연속 글자 수 (공백 제외)
 
 
 # --- G6: 처방·치료 권고 ---
 PRESCRIPTION_PATTERNS = [re.compile(p) for p in (
     r"약물",
     r"약을\s*(?:복용|먹)",
-    r"치료(?:를|가)?\s*(?:받|필요|시작)",
+    r"치료(?:를|가)?\s*(?:받|필요|시작|고려|권)",
     r"치료\s*프로그램",
+    r"(?:놀이|미술|음악|언어|인지\s*행동|심리|행동)\s*치료",
     r"병원(?:에|을)?\s*(?:가|방문)",
     r"처방",
     r"의료\s*기관",
@@ -110,17 +125,20 @@ PRESCRIPTION_PATTERNS = [re.compile(p) for p in (
     r"소아\s*정신",
 )]
 
-# --- G3: 본문 수치 추출 패턴 ---
-NUMBER_PATTERNS = [re.compile(p) for p in (
-    r"[Tt]\s*=\s*(\d{1,3})",
-    r"[Tt]\s*점수\s*(\d{1,3})",
-    r"(\d{1,3})\s*T",
-    r"(\d{1,3})\s*점(?!검)",
-    r"(\d{1,3})\s*백분위",
-    r"(\d{1,3})\s*%",
-)]
+# --- G3: 수치 금지 ---
+# 아라비아 숫자는 자리와 무관하게 위반이다. 한글 수사는 점/T/퍼센트 앞에 붙은 경우만 본다
+# ("이 점은", "매일 점심"처럼 수사가 아닌 흔한 음절과 겹치는 단독 음절은 제외한다).
+ARABIC_DIGIT_PATTERN = re.compile(r"\d")
+KOREAN_NUMERAL_SCORE_PATTERN = re.compile(
+    r"(?:"
+    r"(?:[일이삼사오육륙칠팔구]?십[일이삼사오육륙칠팔구]?|백)"                 # 육십칠, 칠십, 백
+    r"|(?:열|스물|스무|서른|마흔|쉰|예순|일흔|여든|아흔)"                       # 일흔다섯, 예순
+    r"(?:하나|한|둘|두|셋|세|넷|네|다섯|여섯|일곱|여덟|아홉)?"
+    r"|(?:다섯|여섯|일곱|여덟|아홉)"                                          # 다섯 점
+    r")\s*(?:점(?!검)|T(?![A-Za-z])|퍼센트|%)"
+)
 
-# --- G7: 형식 누출 (보호자 노출 텍스트에 코드·식별자가 새는 경우) ---
+# --- G7: 형식 누출 (문장에 코드·식별자가 새는 경우) ---
 # 한국어 본문에 영문 소문자 식별자가 나타날 정당한 이유는 없다. 대문자 약어
 # (T점수, K-CBCL, SEM, TRF)는 대상이 아니다. 한글 바로 옆에 붙은 경우도 잡도록
 # \b 대신 영숫자 lookaround를 쓴다.
@@ -139,7 +157,7 @@ BAND_WORD_PATTERN = re.compile(
     r"준임상|(?<!준)임상(?!적|가|\s*(?:심리|판단|해석|전문))|(?<!비)정상(?!적|화)")
 BAND_OF_WORD = {"정상": "normal", "준임상": "borderline", "임상": "clinical"}
 NONSTANDARD_BAND_PATTERNS = [re.compile(p) for p in (
-    r"경계\s*(?:수준|선|성|범위|구간|영역|점수|단계|상태)",
+    r"경계\s*(?:수준|선|성|범위|구간|영역|점수|단계|상태|군)",
     r"경계(?:에|로)\s*(?:해당|위치|속|있|가깝|걸)",
     r"준\s*임계",                       # "준임상"의 오기 (실측에서 관찰)
     r"임계\s*(?:범위|수준|구간)",
@@ -165,11 +183,31 @@ SCALE_NAME_ALIASES: dict[str, tuple[str, ...]] = {
 }
 _SENTENCE_END = re.compile(r"[.!?\n]")
 
+# --- G5: 문형 ---
+QUESTION_MIN_CHARS, QUESTION_MAX_CHARS = 25, 90
+QUESTION_END_PATTERN = re.compile(r"(?:요|까|죠)\s*\?$")     # 의문형 종결: ~나요? ~까요? ~습니까? ~죠?
+OBSERVATION_END_PATTERN = re.compile(r"기\s*\.?$")           # 명사형 종결: ~적어 두기, ~기록하기
+_TERMINATORS = re.compile(r"[.?!]")
+
+# --- G11: 질문 방향 ---
+# 상담사가 보호자에게 되묻는 명백한 문형. 양방향 모두에 쓰이는 표현("설명해 주실 수 있나요")은
+# 여기 넣지 않고 quality.REVERSE_DIRECTION_PATTERNS(WARN)에 남긴다.
+REVERSE_DIRECTION_BLOCK_PATTERNS = [re.compile(p) for p in (
+    r"알려\s*주시겠",
+    r"알려\s*주시면",
+    r"말씀해\s*주(?:시|세요)",
+    r"공유해\s*주(?:시|세요)",
+    r"사례를\s*(?:더|몇)",
+    r"(?:관찰|언급|경험|말씀)하신",
+    r"있으신가요",
+    r"보호자님|어머님|아버님|부모님께서",
+)]
+
 
 @dataclass
 class Violation:
-    rule_id: str          # "G1".."G9"
-    block: str            # 위반이 발견된 블록 id (예: "scale:attention")
+    rule_id: str          # "G1".."G11"
+    block: str            # 위반이 발견된 블록 id (예: "questions_for_counselor")
     matched: str          # 매칭된 문자열 또는 불일치 값 쌍
     attempt: int = -1     # 몇 번째 생성에서 발견됐는지 (run_with_guardrails가 기록)
 
@@ -250,9 +288,10 @@ def detect_crisis_signals(profile: CBCLProfile) -> list[str]:
 # ---------------------------------------------------------------- 블록 분해
 
 TASK_BLOCKS = {
-    "explain": ("overview",),
-    "prep": ("questions_for_counselor", "observation_points", "counselor_briefing"),
+    "prep": ("questions_for_counselor", "observation_points"),
 }
+ITEM_TEXT_KEY = {"questions_for_counselor": "question", "observation_points": "point"}
+ITEM_COUNT = {"questions_for_counselor": (5, 7), "observation_points": (3, 5)}
 
 
 def expected_blocks(profile: CBCLProfile, task: str) -> list[str]:
@@ -263,6 +302,48 @@ def expected_blocks(profile: CBCLProfile, task: str) -> list[str]:
 def split_blocks(profile: CBCLProfile, task: str, raw: dict) -> dict[str, object]:
     """출력 JSON을 블록 단위로 나눈다 (상위 스키마 통과 후에 호출)."""
     return {k: raw.get(k) for k in expected_blocks(profile, task)}
+
+
+# ---------------------------------------------------------------- 인용 대조 (G10)
+
+def mask_notes(notes: list[str], alias: str) -> list[str]:
+    """보호자 의견 안에 아동 이름이 적혀 있으면 MASK_TOKEN으로 바꾼다.
+
+    LLM 입력(generator.profile_payload)과 G10의 인용 대조가 같은 함수를 쓴다. 이름 뒤 조사는
+    그대로 둔다 ("민수가" 는 "아이가").
+    """
+    alias = (alias or "").strip()
+    if not alias:
+        return list(notes)
+    return [n.replace(alias, MASK_TOKEN) for n in notes]
+
+
+def _squash(text: str) -> str:
+    return re.sub(r"\s+", "", text or "")
+
+
+def quotable_notes(profile: CBCLProfile) -> list[str]:
+    """인용 대조 기준이 되는 보호자 의견: 원문과 마스킹본 (중복 제거)."""
+    raw = [n for n in profile.caregiver_notes if n and n.strip()]
+    masked = mask_notes(raw, profile.child.alias)
+    return list(dict.fromkeys(raw + masked))
+
+
+def quotes_caregiver_note(text: str, notes: list[str], min_chars: int = QUOTE_MIN_CHARS) -> bool:
+    """text가 어느 보호자 의견의 연속 min_chars자 이상 조각(공백 제외)을 그대로 담고 있는지."""
+    t = _squash(text)
+    for note in notes:
+        n = _squash(note)
+        if not n:
+            continue
+        if len(n) <= min_chars:
+            if n in t:
+                return True
+            continue
+        for i in range(len(n) - min_chars + 1):
+            if n[i:i + min_chars] in t:
+                return True
+    return False
 
 
 # ---------------------------------------------------------------- 검사기
@@ -277,12 +358,37 @@ def _check_example_contamination(block: str, text: str, profile: CBCLProfile) ->
     return []
 
 
+def _check_grounding(block: str, text: str, profile: CBCLProfile, sid, scale) -> list[Violation]:
+    """G10: 근거 강제. (a) 보호자 의견 인용 또는 (b) 준임상 이상 근거 척도, 척도명은 source_scale과 일치."""
+    found: list[Violation] = []
+    quoted = quotes_caregiver_note(text, quotable_notes(profile))
+    all_normal = not profile.elevated_scales()
+    anchored = scale is not None and (
+        (all_normal and sid == "total_problems") or (not all_normal and scale.band != "normal"))
+    if not quoted and not anchored:
+        found.append(Violation(
+            "G10", block,
+            f"근거 없음: 보호자 의견의 원문 조각(연속 {QUOTE_MIN_CHARS}자)도 없고 source_scale {sid!r}도 준임상 이상 척도가 아님"))
+    if not quoted and any(p.search(text) for p in QUOTE_CLAIM_PATTERNS):
+        found.append(Violation(
+            "G10", block, "인용 주장이 있으나 보호자 의견의 원문 조각이 없음 (보호자가 하지 않은 말을 인용)"))
+    mentioned = [s for _pos, s in scale_mentions(text)]
+    mismatched = [s for s in dict.fromkeys(mentioned) if s != sid]
+    if mismatched:
+        names = ", ".join(SCALE_NAMES[s] for s in mismatched)
+        found.append(Violation(
+            "G10", block,
+            f"척도 불일치: 문장은 {names}을(를) 말하는데 source_scale은 {sid!r}"))
+    found += _check_example_contamination(block, text, profile)
+    return found
+
+
 def _check_format_leak(block: str, text: str) -> list[Violation]:
-    """G7: 보호자 노출 텍스트의 코드 누출. 첫 매칭 1건만 보고한다 (피드백 간결성)."""
+    """G7: 문장의 코드 누출. 첫 매칭 1건만 보고한다 (피드백 간결성)."""
     for pat in FORMAT_LEAK_PATTERNS:
         m = pat.search(text)
         if m:
-            return [Violation("G7", block, f"보호자용 본문에 영문 코드 노출: {m.group(0)!r}")]
+            return [Violation("G7", block, f"본문에 영문 코드 노출: {m.group(0)!r}")]
     return []
 
 
@@ -306,8 +412,6 @@ def _check_band_labels(block: str, text: str, profile: CBCLProfile,
     비표준 밴드 표현은 그 자체로 위반. 표준 어휘(정상/준임상/임상)는 직전
     밴드 어휘 이후 같은 구간에 언급된 척도(없으면 같은 문장 뒤쪽의 척도,
     그래도 없으면 블록의 own_scale)의 실제 band와 대조한다.
-    own_dominates는 척도 해설 블록용: 구간에 자기 척도가 언급되면 자기
-    척도만 대조한다 (종합지표 해설이 하위 척도를 나열하는 문장 보호).
     귀속할 척도를 못 찾으면 대조하지 않는다 (규칙 한계, README 명시).
     """
     found: list[Violation] = []
@@ -342,13 +446,24 @@ def _check_band_labels(block: str, text: str, profile: CBCLProfile,
     return found
 
 
+def _check_numbers(block: str, text: str) -> list[Violation]:
+    """G3: 아라비아 숫자 금지 + 점/T/퍼센트 앞 한글 수사 금지."""
+    found: list[Violation] = []
+    m = ARABIC_DIGIT_PATTERN.search(text)
+    if m:
+        run = re.search(r"\d[\d.,%]*", text)
+        found.append(Violation("G3", block, f"아라비아 숫자: {run.group(0) if run else m.group(0)!r} (수치는 카드가 보여줌)"))
+    m = KOREAN_NUMERAL_SCORE_PATTERN.search(text)
+    if m:
+        found.append(Violation("G3", block, f"한글 수사 점수: {m.group(0)!r}"))
+    return found
+
+
 def _check_text(block: str, text: str, profile: CBCLProfile,
-                own_scale: str | None = None, own_dominates: bool = False,
-                caregiver_facing: bool = True) -> list[Violation]:
+                own_scale: str | None = None, own_dominates: bool = False) -> list[Violation]:
     """텍스트 1개에 대한 G1/G2/G3/G6/G7/G8 검사.
 
-    own_scale은 이 텍스트가 속한 척도(scale 블록의 scale_id, 항목의
-    source_scale). caregiver_facing=False(상담사용 사전 요약)는 G7을 건너뛴다.
+    own_scale은 이 텍스트가 속한 척도(항목의 source_scale). G8의 밴드 귀속에 쓴다.
     """
     found: list[Violation] = []
     m = DIAGNOSIS_PATTERN.search(text)
@@ -362,16 +477,46 @@ def _check_text(block: str, text: str, profile: CBCLProfile,
         m = pat.search(text)
         if m:
             found.append(Violation("G6", block, m.group(0)))
-    allowed = profile.allowed_numbers()
-    for pat in NUMBER_PATTERNS:
-        for m in pat.finditer(text):
-            if int(m.group(1)) not in allowed:
-                found.append(Violation("G3", block, m.group(0)))
-    if caregiver_facing:
-        found += _check_format_leak(block, text)
+    found += _check_numbers(block, text)
+    found += _check_format_leak(block, text)
     found += _check_band_labels(block, text, profile, own_scale, own_dominates)
-    found += _check_example_contamination(block, text, profile)
     return found
+
+
+def _check_question_form(block: str, text: str) -> list[Violation]:
+    """G5 문형: 질문은 1문장, 의문형 종결(요?/까?/죠?), 25~90자."""
+    found: list[Violation] = []
+    t = text.strip()
+    n = len(t)
+    if not (QUESTION_MIN_CHARS <= n <= QUESTION_MAX_CHARS):
+        found.append(Violation("G5", block, f"질문 길이 {n}자 (요구: {QUESTION_MIN_CHARS}~{QUESTION_MAX_CHARS}자)"))
+    if not QUESTION_END_PATTERN.search(t):
+        found.append(Violation("G5", block, f"질문이 의문형(요?/까?)으로 끝나지 않음: {t[-12:]!r}"))
+    if len(_TERMINATORS.findall(t)) != 1 or "\n" in t:
+        found.append(Violation("G5", block, "질문은 1문장이어야 함 (마침표·물음표가 둘 이상)"))
+    return found
+
+
+def _check_observation_form(block: str, text: str) -> list[Violation]:
+    """G5 문형: 관찰은 1문장 명사형 종결(~기), 질문형 금지."""
+    found: list[Violation] = []
+    t = text.strip()
+    if "?" in t or "!" in t:
+        found.append(Violation("G5", block, "관찰 포인트는 질문형·감탄형이 아니어야 함"))
+    if t.count(".") > 1 or (t.count(".") == 1 and not t.endswith(".")) or "\n" in t:
+        found.append(Violation("G5", block, "관찰 포인트는 1문장이어야 함"))
+    if not OBSERVATION_END_PATTERN.search(t):
+        found.append(Violation("G5", block, f"관찰 포인트가 명사형(~기)으로 끝나지 않음: {t[-12:]!r}"))
+    return found
+
+
+def _check_direction(block: str, text: str) -> list[Violation]:
+    """G11: 보호자에게 되묻는 명백한 문형 차단 (질문 블록만)."""
+    for pat in REVERSE_DIRECTION_BLOCK_PATTERNS:
+        m = pat.search(text)
+        if m:
+            return [Violation("G11", block, f"보호자에게 되묻는 문형: {m.group(0)!r} (질문은 보호자가 상담사에게 묻는 방향만)")]
+    return []
 
 
 def _require_str(block: str, value, name: str) -> list[Violation]:
@@ -384,7 +529,7 @@ def check_top_schema(task: str, raw) -> list[Violation]:
     """출력 최상위 구조 검사 (여기서 걸리면 전체 재생성).
 
     필수 키 누락만 본다. 스키마 밖 키는 위반이 아니라 무시된다 (split_blocks가
-    버리므로 리포트에 닿지 않는다). 옛 스키마의 before_counseling도 마찬가지다.
+    버리므로 리포트에 닿지 않는다). 옛 스키마의 overview, counselor_briefing도 마찬가지다.
     """
     if not isinstance(raw, dict):
         return [Violation("G5", "*", "출력이 JSON 객체가 아님")]
@@ -394,9 +539,10 @@ def check_top_schema(task: str, raw) -> list[Violation]:
     return []
 
 
-def _check_items_block(profile: CBCLProfile, block: str, items, text_key: str,
-                       lo: int, hi: int) -> list[Violation]:
+def _check_items_block(profile: CBCLProfile, block: str, items) -> list[Violation]:
     """questions_for_counselor / observation_points 공용 검사."""
+    text_key = ITEM_TEXT_KEY[block]
+    lo, hi = ITEM_COUNT[block]
     if not isinstance(items, list):
         return [Violation("G5", block, "배열이어야 함")]
     real_items = [it for it in items if not (isinstance(it, dict) and it.get("_fallback"))]
@@ -406,8 +552,7 @@ def _check_items_block(profile: CBCLProfile, block: str, items, text_key: str,
     if not (lo <= len(items) <= hi):
         found.append(Violation("G5", block, f"항목 수 {len(items)}건 (요구: {lo}~{hi})"))
     scale_map = profile.scale_map()
-    # G9는 앵커가 될 비정상 척도가 있을 때만 적용한다 (전 척도 정상 프로파일 예외)
-    apply_g9 = bool(profile.elevated_scales())
+    all_normal = not profile.elevated_scales()
     for i, it in enumerate(items):
         if not isinstance(it, dict):
             found.append(Violation("G5", f"{block}[{i}]", "항목은 객체여야 함"))
@@ -417,12 +562,22 @@ def _check_items_block(profile: CBCLProfile, block: str, items, text_key: str,
         vs = _require_str(f"{block}[{i}]", it.get(text_key), text_key)
         found += vs
         if not vs:
+            text = it[text_key]
             found += [Violation(v.rule_id, block, v.matched)
-                      for v in _check_text(block, it[text_key], profile,
-                                           own_scale=sid if scale else None)]
+                      for v in _check_text(block, text, profile, own_scale=sid if scale else None)]
+            if block == "questions_for_counselor":
+                found += _check_question_form(block, text)
+                found += _check_direction(block, text)
+            else:
+                found += _check_observation_form(block, text)
+            found += _check_grounding(block, text, profile, sid, scale)
         if scale is None:
             found.append(Violation("G4", block, f"source_scale 매칭 실패: {sid!r}"))
-        elif apply_g9 and scale.band == "normal":
+        elif all_normal and sid != "total_problems":
+            found.append(Violation(
+                "G9", block,
+                f"전 척도 정상 프로파일의 근거는 total_problems만 (source_scale {sid})"))
+        elif not all_normal and scale.band == "normal":
             found.append(Violation(
                 "G9", block,
                 f"source_scale {sid}({SCALE_NAMES[sid]})는 정상 범위 - 질문·관찰의 근거는 준임상/임상 척도만"))
@@ -433,17 +588,9 @@ def check_block(profile: CBCLProfile, task: str, block: str, content) -> list[Vi
     """블록 1개에 대한 전체 규칙 검사."""
     if isinstance(content, dict) and content.get("_fallback"):
         return []  # 사전 작성 고정 문구
-    if block == "questions_for_counselor":
-        return _check_items_block(profile, block, content, "question", 5, 7)
-    if block == "observation_points":
-        return _check_items_block(profile, block, content, "point", 3, 5)
-    # overview / counselor_briefing: 순수 텍스트
-    vs = _require_str(block, content, block)
-    if vs:
-        return vs
-    # 상담사용 사전 요약은 보호자에게 노출되지 않으므로 G7(형식 누출) 대상이 아니다
-    return _check_text(block, content, profile,
-                       caregiver_facing=(block != "counselor_briefing"))
+    if block in ITEM_TEXT_KEY:
+        return _check_items_block(profile, block, content)
+    return [Violation("G5", block, "알 수 없는 블록")]  # 방어용, 현행 스키마에서는 닿지 않음
 
 
 def check_output(profile: CBCLProfile, task: str, raw) -> list[Violation]:
@@ -461,14 +608,10 @@ def check_output(profile: CBCLProfile, task: str, raw) -> list[Violation]:
 
 def fallback_for(profile: CBCLProfile, task: str, block: str):
     """검증에 끝내 실패한 블록을 대체할 사전 작성 안전 문구 (fail-closed)."""
-    if block == "overview":
-        return SAFE_OVERVIEW
     if block == "questions_for_counselor":
         return [{"question": SAFE_QUESTION, "source_scale": "total_problems", "_fallback": True}]
     if block == "observation_points":
         return [{"point": SAFE_OBSERVATION, "source_scale": "total_problems", "_fallback": True}]
-    if block == "counselor_briefing":
-        return SAFE_BRIEFING
     return SAFE_GENERIC_TEXT  # 알 수 없는 블록 (방어용, 현행 스키마에서는 닿지 않음)
 
 
@@ -545,8 +688,8 @@ def run_with_guardrails(profile: CBCLProfile, task: str, generate_fn,
 def source_coverage(profile: CBCLProfile, task: str, output: dict) -> tuple[int, int]:
     """근거 커버리지: (유효 근거를 가진 항목 수, 근거가 필요한 항목 수).
 
-    근거 필드(source_scale)를 가진 것은 prep의 질문·관찰 포인트뿐이다
-    (explain은 0/0). 폴백으로 대체된 항목은 분모에서 제외한다.
+    근거 필드(source_scale)를 가진 것은 prep의 질문·관찰 포인트다. 폴백으로 대체된 항목은
+    분모에서 제외한다.
     """
     valid_ids = set(profile.scale_map())
     have, need = 0, 0

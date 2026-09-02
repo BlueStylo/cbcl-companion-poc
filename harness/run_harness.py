@@ -1,5 +1,8 @@
 """미니 평가 하네스: 프로파일 7종 실행 + 지표 표 출력.
 
+LLM 호출은 프로파일당 1회(prep), 블록은 질문과 관찰 포인트 2개다 (ADR 0010). 연결 문단과
+상담사 요약은 결정론 조립이라 하네스의 블록 분모에 들어가지 않는다.
+
 측정 지표 (검증 계획 9.2):
   1. 파서 정확도    - 정상 프로파일 통과 + 오류 주입(A2 축) 거부, 요구 100%
   2. 가드레일 검출률 - A1 fixture에 심은 위반 시드가 검출된 비율, 요구 100%
@@ -200,7 +203,7 @@ SEEDED_FILE_ORDER = [
     "g1_diagnosis", "g2_severity", "g3_numbers",
     "g4_source", "g5_schema", "g6_prescription",
     "g7_format_leak", "g8_band_label", "g9_normal_scale",
-    "g10_example_contamination", "bypass",
+    "g10_grounding", "g11_direction", "bypass",
 ]
 
 
@@ -341,7 +344,7 @@ def main() -> int:
     parser_pass, parser_total, rows = run_parser_check()
     print_table(["케이스", "기대", "결과", "판정"], rows)
 
-    print("## 2. 프로파일별 파이프라인 (explain + prep)\n")
+    print("## 2. 프로파일별 파이프라인 (prep 1회, 블록 2개)\n")
     client = make_client(mode_label)
     rows, agg = run_pipeline(client)
     print_table(["프로파일", "위반 검출", "재생성", "폴백 블록",
@@ -409,7 +412,7 @@ def main() -> int:
         ["보호자 표현 반영률", f"항목 {q_tot['items_reflected']}/{q_tot['items']} ({fmt_rate(item_rate)})"
          f" · 토큰 {q_tot['tokens_hit']}/{q_tot['tokens']} ({fmt_rate(token_rate)})",
          "기획의 척추 지표 (caregiver_notes 토큰 → 질문·관찰)"],
-        ["질문 방향 경고", f"{q_tot['warns']}건", "WARN만 (의미 판정은 규칙 한계)"],
+        ["질문 방향 경고", f"{q_tot['warns']}건", "양방향 표현만 WARN (명백한 역방향은 G11이 차단)"],
     ])
 
     clean_ok = fp_blocks == 0 and agg["clean_fallback"] == 0
