@@ -18,15 +18,17 @@
 | [0007](decisions/0007-explorer-console.md) | 평가자용 탐색 콘솔: 슬라이더 입력, 즉시 결정론 렌더, 템플릿 목 (입력/결과 패널 분리 추가 결정 포함) |
 | [0008](decisions/0008-scale-card-order.md) | 척도 카드 정보 순서(결론 → 쉬운 구간 → 수치 → 곡선 → 해설 → 진단 아님 한 줄), 곡선 아래만 채색과 SEM 가로 범위선, 곡선 읽는 법 블록 1회 |
 | [0009](decisions/0009-fixed-before-counseling.md) | 상담 전 안내는 고정 문구로: LLM 범위에서 제외 (explain 스키마는 overview 하나, 검증 블록 5개에서 4개) |
+| [0010](decisions/0010-llm-questions-only.md) | LLM 범위를 질문과 관찰 포인트로 축소: 연결 문단과 상담사 요약은 결정론 조립 (호출 1회, 블록 2개, G3 수치 금지와 G10 근거 강제 재정의, G11 질문 방향 신설) |
 
 새 결정은 다음 번호로 파일을 추가하고 이 표에 한 줄을 더합니다. 규칙·지표·프롬프트 계약을
 바꾸는 PR은 해당 ADR 번호를 본문에 적습니다.
 
 ## 예시 산출물
 
-mock 모드 산출물(HTML)은 `examples/` 아래에 커밋합니다. 아직 없다면 #10 이 그 작업이며,
-커밋되면 이 절을 링크로 바꿉니다. 그 전까지는 `python main.py --profile <json> --mock` 으로
-직접 생성합니다 (`out/`, gitignore).
+mock 모드 산출물(HTML)은 [`examples/mock`](../examples/mock)에 커밋되어 있습니다 (프로파일 8종과
+동점 페어 비교 뷰). 직접 만들려면 `python main.py --profile <json> --mock` 입니다 (`out/`, gitignore).
+실LLM 산출물 [`examples/api`](../examples/api)는 4블록 시절 값이며 호출 1회 구조(ADR 0010)로
+재실측한 뒤 교체합니다.
 
 ## 운영 규칙
 
