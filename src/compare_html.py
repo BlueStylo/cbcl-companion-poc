@@ -11,17 +11,26 @@ from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile
 from .report_html import _items_view, _template_env
 
 
+def _comparison_input(profile: CBCLProfile) -> dict:
+    """비교에서 달라도 되는 식별자와 보호자 의견만 제거한 입력을 만든다."""
+    data = profile.model_dump()
+    data.pop("profile_id")
+    data.pop("caregiver_notes")
+    data["child"].pop("alias")
+    return data
+
+
 def build_compare_html(profile_a: CBCLProfile, results_a: dict,
                        profile_b: CBCLProfile, results_b: dict,
                        mode_label: str = "mock") -> str:
     """두 프로파일과 생성 결과를 받아 비교 HTML 문자열을 만든다.
 
-    두 프로파일의 T점수가 실제로 같은지 먼저 확인한다 (다르면 비교 의미가 없다).
+    식별자와 보호자 의견을 제외한 생성 입력이 같은지 먼저 확인한다.
     """
-    t_a = {s.scale_id: s.t_score for s in profile_a.all_scales()}
-    t_b = {s.scale_id: s.t_score for s in profile_b.all_scales()}
-    if t_a != t_b:
-        raise ValueError("비교 대상 두 프로파일의 T점수가 동일하지 않습니다")
+    if _comparison_input(profile_a) != _comparison_input(profile_b):
+        raise ValueError(
+            "비교 대상은 profile_id, alias, caregiver_notes를 제외한 입력이 동일해야 합니다"
+        )
 
     m = profile_a.scale_map()
     shared_scales = [{"name": m[sid].name_ko, "t": m[sid].t_score,

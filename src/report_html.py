@@ -22,6 +22,7 @@ ADR 0009), 척도 카드 본문과 심리교육 문단(렌즈 안내, T점수 �
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -43,7 +44,7 @@ LENS_QUOTE = (
 TSCORE_EXPLAIN = (
     "T점수는 또래 평균을 50, 표준편차를 10으로 맞춘 점수입니다. "
     "또래 100명을 줄 세우면 50은 한가운데, 60은 위에서 16번째쯤, 70은 위에서 2~3번째쯤입니다. "
-    "점수는 점이 아니라 구간으로 읽는 것이 정확하며, 2페이지 곡선에서 마커 좌우로 뻗은 오차 범위선이 그 구간입니다."
+    "점수는 점이 아니라 구간으로 읽는 것이 정확하며, 2페이지 곡선 위에 굵게 표시한 오차 구간이 그 범위입니다."
 )
 FOOTNOTES_SUMMARY = "보호자와 교사의 평가 상관은 평균 r=.28 (메타분석 2건) - 불일치는 오류가 아니라 정보입니다."
 FOOTNOTES = [
@@ -58,8 +59,8 @@ FOOTNOTES = [
 ]
 SEM_NOTE = (
     f"곡선 아래 색은 원 보고서 기준표의 구간(정상, 준임상, 임상)이고, 점선은 그 기준선입니다. "
-    f"마커 좌우로 뻗은 가로 범위선은 측정의 표준오차(SEM)로 계산한 대칭 구간입니다. "
-    f"신뢰도 예시값 {EXAMPLE_RELIABILITY} 기준 SEM {DEFAULT_SEM}T이며, 반복 측정 시 점수가 이 범위에 들어올 확률은 약 68%입니다. "
+    f"마커 주변에서 굵게 표시한 곡선 구간은 측정의 표준오차(SEM)를 나타냅니다. "
+    f"예시 신뢰도({str(EXAMPLE_RELIABILITY).lstrip('0')})로 계산한 ±1 표준오차 범위이며, SEM은 {DEFAULT_SEM}T입니다. "
     f"실제 서비스는 검사 매뉴얼의 척도별 신뢰도 계수를 씁니다."
 )
 # 1페이지 '곡선 읽는 법' 블록 (곡선의 의미는 여기서 한 번만 가르치고 카드마다 반복하지 않는다)
@@ -111,6 +112,17 @@ def _template_env() -> Environment:
     )
 
 
+def _schedule_aware_text(text: str, counseling_scheduled: bool) -> str:
+    """미예약 상태에서는 남은 날짜와 예약 사실을 전제하지 않는 문구로 바꾼다."""
+    if counseling_scheduled:
+        return text
+    text = re.sub(r"상담까지\s*남은\s*\d+일\s*동안", "상담 예약 후 상담 전까지", text)
+    text = re.sub(r"상담까지\s*\d+일\s*남은\s*시점의", "상담 예약 후 사용할", text)
+    text = re.sub(r"상담까지\s*남은\s*\d+일", "상담 예약 후", text)
+    text = re.sub(r"상담까지\s*\d+일", "상담 예약 후", text)
+    return text.replace("예약된 상담에서", "상담 예약 후").replace("예약된 상담", "상담 예약 후")
+
+
 def _scale_view(profile: CBCLProfile, sid: str) -> dict:
     """템플릿에 넘길 척도 카드 1개 분량의 데이터 (본문은 고정 문구)."""
     scale = profile.scale_map()[sid]
@@ -124,13 +136,17 @@ def _scale_view(profile: CBCLProfile, sid: str) -> dict:
         "verdict": CARD_VERDICT[scale.band],
         "plain_range": CARD_PLAIN_RANGE[scale.band],
         "svg": bell_curve_svg(scale.t_score, profile.criteria_for(sid), clip_id=f"clip-{sid}"),
-        "text": scale_card_text(sid, scale.band),
+        "text": _schedule_aware_text(
+            scale_card_text(sid, scale.band), profile.counseling_scheduled
+        ),
     }
 
 
 def _items_view(profile: CBCLProfile, items: list, text_key: str) -> list[dict]:
     names = SCALE_NAMES
-    return [{"text": it.get(text_key, ""),
+    return [{"text": _schedule_aware_text(
+                 it.get(text_key, ""), profile.counseling_scheduled
+             ),
              "source_name": names.get(it.get("source_scale"), "원 보고서"),
              "fallback": bool(it.get("_fallback")),
              "pending": bool(it.get("_pending"))}
@@ -155,7 +171,7 @@ def build_crisis_html(profile: CBCLProfile) -> str:
 def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
     """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult 2건.
 
-    탐색 콘솔이 슬라이더 변경마다 곡선·오차 범위선·고정 문구를 즉시 다시 그리는 데 쓴다.
+    탐색 콘솔이 슬라이더 변경마다 곡선과 오차 구간 및 고정 문구를 즉시 다시 그리는 데 쓴다.
     생성 블록 4개는 전부 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다.
     """
     return {
@@ -199,18 +215,26 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         sem_note=SEM_NOTE,
         borderline_note=BORDERLINE_NOTE,
         caution=CAUTION,
-        limits=LIMITS_TEXT,
+        limits=_schedule_aware_text(LIMITS_TEXT, profile.counseling_scheduled),
         elevated_names=elevated,
+        counseling_scheduled=profile.counseling_scheduled,
+        special_scales_administered=profile.special_scales_administered,
         has_borderline=any(s.band == "borderline" for s in profile.all_scales()),
-        overview=explain.output["overview"],
+        overview=_schedule_aware_text(
+            explain.output["overview"], profile.counseling_scheduled
+        ),
         overview_fallback="overview" in fallback_blocks,
         composites=[_scale_view(profile, sid) for sid in COMPOSITE_IDS],
         syndromes=[_scale_view(profile, sid) for sid in SYNDROME_IDS],
         pre_counseling_label=PRE_COUNSELING_LABEL,
-        pre_counseling_note=PRE_COUNSELING_NOTE,
+        pre_counseling_note=_schedule_aware_text(
+            PRE_COUNSELING_NOTE, profile.counseling_scheduled
+        ),
         questions=_items_view(profile, prep.output["questions_for_counselor"], "question"),
         observations=_items_view(profile, prep.output["observation_points"], "point"),
-        briefing=prep.output["counselor_briefing"],
+        briefing=_schedule_aware_text(
+            prep.output["counselor_briefing"], profile.counseling_scheduled
+        ),
         briefing_fallback="counselor_briefing" in fallback_blocks,
         days=profile.days_until_counseling,
         regen_count=explain.regen_count + prep.regen_count,

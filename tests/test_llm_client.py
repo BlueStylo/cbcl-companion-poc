@@ -3,20 +3,23 @@
 사고(thinking) 기본 off와 Ollama 네이티브 경로의 페이로드를 고정한다.
 """
 
+import json
+from types import SimpleNamespace
+
 import pytest
 
-import json
-
-from src.llm_client import OpenAICompatClient, parse_json_text
+from src.llm_client import LLMError, OpenAICompatClient, parse_json_text
 
 ENV_KEYS = ("LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY", "LLM_REASONING_EFFORT",
             "LLM_NUM_CTX", "LLM_TIMEOUT_S")
 MSGS = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
 
 
-def make(monkeypatch, **env):
+def make(monkeypatch, with_default_key=True, **env):
     for key in ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+    if with_default_key and "LLM_API_KEY" not in env:
+        env["LLM_API_KEY"] = "test-key"
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     return OpenAICompatClient()
@@ -62,3 +65,134 @@ def test_parse_json_text_accepts_markdown_fence_only():
         parse_json_text('여기 결과입니다: {"a": 1}')
     with pytest.raises(json.JSONDecodeError):
         parse_json_text('```json\n{"a": 1}\n``` 끝')
+
+
+def _generate_with_fake_call(client, fake_call):
+    client._call = fake_call
+    return client.generate(
+        task="explain",
+        profile=SimpleNamespace(profile_id="test-profile"),
+        attempt=0,
+        system_prompt="system",
+        user_message="user",
+    )
+
+
+def test_generate_returns_first_json_mode_success(monkeypatch):
+    pytest.importorskip("openai")
+    client = make(monkeypatch)
+    calls = []
+
+    def fake_call(_messages, force_json):
+        calls.append(force_json)
+        return '{"ok": true}', {"prompt_tokens": 1, "completion_tokens": 2}
+
+    assert _generate_with_fake_call(client, fake_call) == {"ok": True}
+    assert calls == [True]
+
+
+def test_generate_retries_without_json_mode_only_for_format_error(monkeypatch):
+    pytest.importorskip("openai")
+    client = make(monkeypatch)
+    calls = []
+
+    class FormatError(RuntimeError):
+        status_code = 400
+
+    def fake_call(_messages, force_json):
+        calls.append(force_json)
+        if len(calls) == 1:
+            raise FormatError("response_format json_object is not supported")
+        return '{"ok": true}', {"prompt_tokens": 1, "completion_tokens": 2}
+
+    assert _generate_with_fake_call(client, fake_call) == {"ok": True}
+    assert calls == [True, False]
+
+
+def test_generate_timeout_fails_after_one_low_level_call(monkeypatch):
+    pytest.importorskip("openai")
+    client = make(monkeypatch)
+    calls = []
+
+    def fake_call(_messages, force_json):
+        calls.append(force_json)
+        raise TimeoutError("timed out")
+
+    with pytest.raises(LLMError, match="LLM 호출 실패"):
+        _generate_with_fake_call(client, fake_call)
+    assert calls == [True]
+
+
+def test_generate_final_json_parse_failure_is_llm_error(monkeypatch):
+    pytest.importorskip("openai")
+    client = make(monkeypatch)
+    calls = []
+
+    def fake_call(_messages, force_json):
+        calls.append(force_json)
+        return "not json", {"prompt_tokens": 1, "completion_tokens": 2}
+
+    with pytest.raises(LLMError, match="JSON 파싱 실패"):
+        _generate_with_fake_call(client, fake_call)
+    assert calls == [True, False]
+
+
+def test_generate_format_fallback_final_call_failure_is_llm_error(monkeypatch):
+    pytest.importorskip("openai")
+    client = make(monkeypatch)
+    calls = []
+
+    class FormatError(RuntimeError):
+        status_code = 400
+
+    def fake_call(_messages, force_json):
+        calls.append(force_json)
+        if len(calls) == 1:
+            raise FormatError("json_object response_format is not supported")
+        raise TimeoutError("retry timed out")
+
+    with pytest.raises(LLMError, match="LLM 호출 실패"):
+        _generate_with_fake_call(client, fake_call)
+    assert calls == [True, False]
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (ConnectionError("network down"), "LLM 호출 실패"),
+        (type("AuthError", (RuntimeError,), {"status_code": 401})("authentication failed"), "LLM 호출 실패"),
+        (type("BadRequest", (RuntimeError,), {"status_code": 400})("model is unavailable"), "LLM 호출 실패"),
+    ],
+)
+def test_generate_non_format_failures_do_not_retry(monkeypatch, error, message):
+    pytest.importorskip("openai")
+    client = make(monkeypatch)
+    calls = []
+
+    def fake_call(_messages, force_json):
+        calls.append(force_json)
+        raise error
+
+    with pytest.raises(LLMError, match=message):
+        _generate_with_fake_call(client, fake_call)
+    assert calls == [True]
+
+
+@pytest.mark.parametrize("api_key", [None, "", "ollama", " OLLAMA "])
+def test_remote_endpoint_requires_real_api_key(monkeypatch, api_key):
+    for key in ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    if api_key is not None:
+        monkeypatch.setenv("LLM_API_KEY", api_key)
+    with pytest.raises(LLMError, match="실제 LLM_API_KEY"):
+        OpenAICompatClient(base_url="https://api.openai.com/v1")
+
+
+def test_local_ollama_endpoint_allows_dummy_key(monkeypatch):
+    client = make(
+        monkeypatch,
+        with_default_key=False,
+        LLM_BASE_URL="http://localhost:11434/v1",
+        LLM_NUM_CTX="8192",
+    )
+    assert client.api_key == "ollama"

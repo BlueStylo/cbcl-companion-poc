@@ -133,3 +133,43 @@ def test_normal_cards_have_single_line_header():
     assert "보고서 표기" in internalizing and CARD_PLAIN_RANGE["borderline"] in internalizing
     p1 = build_pending_report_html(_profile("p1_all_normal"))
     assert "보고서 표기" not in p1
+
+
+def test_question_checkboxes_describe_local_use_not_transmission():
+    html = build_pending_report_html(_profile("p2_partial_borderline"))
+    assert "상담 때 보여줄 질문에 체크해 두세요" in html
+    assert "체크한 질문이 상담사에게 전달됩니다" not in html
+
+
+def test_unscheduled_report_uses_booking_neutral_phrases():
+    profile = _profile("p2_partial_borderline").model_copy(
+        update={"counseling_scheduled": False, "days_until_counseling": 17}
+    )
+    results = generate_all(profile, make_client("mock"))
+    html = build_report_html(profile, results)
+
+    assert "상담 예약 후" in html
+    assert "상담 예약 후 사용" in html
+    assert "상담 예약 후 상담 전까지 살펴볼 가정 관찰 포인트" in html
+    assert "예약된 상담" not in html
+    assert not re.search(r"상담까지\s*(?:남은\s*)?\d+일", html)
+
+
+def test_special_scale_scope_is_shown_only_when_not_administered():
+    profile = _profile("p1_all_normal")
+    scoped = build_report_html(profile, generate_all(profile, make_client("mock")))
+    assert "이번 가이드에 포함된 문제행동 척도 기준입니다" in scoped
+
+    administered = profile.model_copy(update={"special_scales_administered": True})
+    administered_html = build_report_html(
+        administered, generate_all(administered, make_client("mock"))
+    )
+    assert "이번 가이드에 포함된 문제행동 척도 기준입니다" not in administered_html
+
+
+def test_sem_copy_names_example_assumption_without_probability_claim():
+    html = build_pending_report_html(_profile("p2_partial_borderline"))
+    assert "예시 신뢰도(.84)로 계산한 ±1 표준오차 범위" in html
+    assert "가로 범위선" not in html
+    assert "반복 측정 시" not in html
+    assert "약 68%" not in html

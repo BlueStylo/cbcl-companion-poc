@@ -55,6 +55,13 @@ SCALE_DEFINITIONS = {
 }
 
 T_MIN, T_MAX = 30, 100
+BAND_CRITERIA_MIN_T, BAND_CRITERIA_MAX_T = 50, 90
+
+# K-CBCL 기준표 기본값. 종합지표는 59/62, 개별 척도는 59/69를 사용한다.
+KCBCL_DEFAULT_BAND_CRITERIA = {
+    "composite": {"normal_max_t": 59, "borderline_max_t": 62},
+    "syndrome": {"normal_max_t": 59, "borderline_max_t": 69},
+}
 
 
 class ProfileError(ValueError):
@@ -73,8 +80,8 @@ class ScaleScore(BaseModel):
 
 
 class BandCriteria(BaseModel):
-    normal_max_t: int
-    borderline_max_t: int
+    normal_max_t: int = Field(ge=BAND_CRITERIA_MIN_T, le=BAND_CRITERIA_MAX_T)
+    borderline_max_t: int = Field(ge=BAND_CRITERIA_MIN_T, le=BAND_CRITERIA_MAX_T)
 
     @model_validator(mode="after")
     def check_order(self):
