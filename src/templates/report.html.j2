@@ -200,11 +200,11 @@
       {% endfor %}
     </ul>
 
-    <h3 style="margin-top:16px">{% if counseling_scheduled %}상담까지 남은 {{ days }}일, 가정 관찰 포인트{% else %}상담 예약 후 상담 전까지 살펴볼 가정 관찰 포인트{% endif %} {% if pending %}<span class="tag pending">생성 대기</span>{% else %}<span class="tag">{{ llm_tag }}</span>{% endif %}</h3>
-    <ul class="qlist">
+    <h3 style="margin-top:16px">{% if counseling_scheduled %}상담까지 남은 {{ days }}일, 가정 관찰 포인트{% else %}상담 예약 후 상담 전까지 살펴볼 가정 관찰 포인트{% endif %} <span class="tag">{{ assembled_tag }}</span></h3>
+    <ul class="qlist" id="observation-list">
       {% for o in observations %}
-      <li><span>·</span> <span{% if o.pending %} class="pending-text"{% endif %}>{{ o.text }}{% if o.pending %}<span class="tag pending">생성 대기</span>{% elif o.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
-          {% if not o.pending %}<span class="src-badge">근거: {{ o.source_name }}</span>{% endif %}</li>
+      <li><span>·</span> <span>{{ o.text }}</span>
+          <span class="src-badge">근거: {{ o.source_name }}</span></li>
       {% endfor %}
     </ul>
 
@@ -218,7 +218,7 @@
     <details>
       <summary>생성 정보</summary>
       {% if pending %}생성 전 미리보기 (LLM 미호출){% else %}가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건{% endif %} ·
-      수치와 그림은 결정론 코드가, 질문과 관찰 포인트는 LLM이, 연결 문단과 상담사 요약은 결정론 조립이, 척도 해설과 상담 전 안내는 고정 문구가, 임상 판단은 상담사가 담당합니다.
+      수치와 그림은 결정론 코드가, 질문은 LLM이, 연결 문단과 관찰 포인트와 상담사 요약은 결정론 조립이, 척도 해설과 상담 전 안내는 고정 문구가, 임상 판단은 상담사가 담당합니다.
     </details>
   </footer>
 </main>

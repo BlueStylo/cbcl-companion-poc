@@ -77,7 +77,7 @@ def print_run_stats(stats: dict) -> None:
         j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]
         print(f"[품질 지표] 용어 {j['term_hits']}회 (용어 블록 {j['blocks_with_term']}/{j['blocks_total']}, "
               f"풀이 동반 {fmt_rate(j['gloss_rate'])}) · "
-              f"표현 반영 항목 {r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])}), "
+              f"표현 반영 질문 {r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])}), "
               f"토큰 {len(r['tokens_hit'])}/{len(r['tokens'])} ({fmt_rate(r['token_rate'])}) · "
               f"방향 경고 {len(w)}건")
         for warn in w:

@@ -42,7 +42,7 @@
       ]
     },
     {
-      "id": "g8_boundary_group_observation",
+      "id": "g8_boundary_group_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "비표준 밴드 표현 '경계군' (Codex 점검에서 통과)",
@@ -53,11 +53,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             1,
-            "point"
+            "question"
           ],
-          "value": "위축 척도가 경계군에 해당하는 날의 행동을 적어 두기"
+          "value": "위축 척도가 경계군에 해당한다는 것은 어떤 뜻으로 읽으면 되나요?"
         }
       ]
     }

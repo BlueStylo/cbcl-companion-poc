@@ -27,24 +27,6 @@
             "question": "비행 척도가 준임상 범위로 보고되었는데, 이 척도는 어떤 행동을 묻는 문항으로 이루어져 있나요?",
             "source_scale": "delinquent"
           }
-        ],
-        "observation_points": [
-          {
-            "point": "화가 시작된 계기와 진정하는 데 걸린 시간을 사건 단위로 적어 두기",
-            "source_scale": "aggressive"
-          },
-          {
-            "point": "친구를 밀어서 연락을 받은 일처럼 다툼이 있었던 날, 앞뒤 상황을 아이의 말로 적어 두기",
-            "source_scale": "aggressive"
-          },
-          {
-            "point": "숙제나 정리처럼 끝맺음이 필요한 일을 끝까지 마친 날을 표시해 두기",
-            "source_scale": "attention"
-          },
-          {
-            "point": "아이가 스스로 화를 가라앉힌 순간이 있으면 그때 무엇을 했는지 적어 두기",
-            "source_scale": "aggressive"
-          }
         ]
       }
     ]

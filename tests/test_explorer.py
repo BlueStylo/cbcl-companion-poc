@@ -85,8 +85,9 @@ def test_template_mock_passes_guardrails_first_try(pid):
         assert check_output(profile, task, r.output) == []
     prep = results["prep"].output
     elevated = {s.scale_id for s in profile.elevated_scales()}
-    assert {it["source_scale"] for it in prep["questions_for_counselor"] + prep["observation_points"]} <= elevated
-    assert 5 <= len(prep["questions_for_counselor"]) <= 7 and 3 <= len(prep["observation_points"]) <= 5
+    assert set(prep) == {"questions_for_counselor"}                # 관찰 포인트는 목이 만들지 않는다 (결정론 조립)
+    assert {it["source_scale"] for it in prep["questions_for_counselor"]} <= elevated
+    assert 5 <= len(prep["questions_for_counselor"]) <= 7
     assert reflection_metrics(profile, prep)["item_rate"] >= 0.5   # 보호자 문장을 인용한다
 
 
@@ -126,18 +127,20 @@ def test_template_mock_output_has_no_digits_and_quotes_long_notes_partially():
     profile = _profile("p2_partial_borderline").model_copy(update={"caregiver_notes": [long_note]})
     out = TemplateMockClient().generate("prep", profile, 0, "", "")
     assert check_output(profile, "prep", out) == []
-    texts = [q["question"] for q in out["questions_for_counselor"]] + [o["point"] for o in out["observation_points"]]
+    texts = [q["question"] for q in out["questions_for_counselor"]]
     assert not any(re.search(r"\d", t) for t in texts)
     assert all(25 <= len(q["question"]) <= 90 for q in out["questions_for_counselor"])
     assert any("…」" in t for t in texts)
 
 
 def test_pending_report_renders_deterministic_parts_without_llm():
-    """생성 전 미리보기: 곡선·오차 범위선·수치는 실제 값, 생성 자리는 '생성 대기', 검증 통과 배지는 없다."""
+    """생성 전 미리보기: 곡선·오차 범위선·수치·관찰 포인트는 실제 값, 질문 자리는 '생성 대기', 검증 통과 배지는 없다."""
     html = build_pending_report_html(_profile("p2_partial_borderline"))
     assert "생성 대기" in html and "검증 통과" not in html and "안전 문구" not in html
     assert "이번 검사 결과 67T" in html and "<svg" in html and "준임상" in html
-    assert "근거:" not in html   # 자리표시 항목에는 근거 배지를 붙이지 않는다
+    questions = html[html.index('id="question-list"'):html.index("</ul>", html.index('id="question-list"'))]
+    assert "근거:" not in questions                                  # 자리표시 항목에는 근거 배지를 붙이지 않는다
+    assert html.count("근거:") == 3                                  # 결정론 관찰 포인트 3개에는 붙는다
 
 
 def test_preview_gate_shows_crisis_screen_before_generation():

@@ -1,8 +1,9 @@
-"""척도 x 밴드 고정 문구 (결정론, LLM 미사용).
+"""척도 x 밴드 고정 문구와 척도별 관찰 포인트 문구 (결정론, LLM 미사용).
 
 척도 카드의 해설은 LLM이 생성하지 않는다. 실측에서 척도 카드 해설이
 11/11 폴백(ADR 0005 실측 요약)으로 사실상 고정 문구로 나가고 있었고, 고정 문구는 검증이 필요
-없으며, LLM은 보호자의 말을 인용하는 질문과 관찰 포인트에 집중시킨다 (ADR 0005, 0010).
+없으며, LLM은 보호자의 말을 인용하는 질문에 집중시킨다 (ADR 0005, 0010). 가정 관찰 포인트도
+척도별 고정 문구를 위계 순서로 조립한다 (OBSERVATION_TEXT, report_html.build_observation_points).
 
 문구 수준은 심리교육이다. 각 척도가 무엇을 보는지와 그 밴드가 일상에서
 어떤 뜻인지를 2문장으로 쓰고, 진단·판정·처방은 하지 않는다. 밴드 어휘는
@@ -127,6 +128,29 @@ SCALE_BAND_TEXT: dict[tuple[str, str], str] = {
         "행동 자체보다 계기와 진정까지의 과정이 상담에서 더 중요한 정보가 되며, 예약된 상담에서 상담사와 이야기해 보세요.",
 }
 
+# 척도별 가정 관찰 포인트 고정 문구 (결정론 조립, ADR 0010 보강). report_html.build_observation_points가
+# 준임상 이상 척도를 위계 순서로 골라 이 문구를 붙인다. 기록 부담이 작은 구체 행동 단위, 명사형 종결("~기"),
+# 평가 형용사·수치·진단·처방 없음. LLM 출력이 아니므로 가드레일 대상이 아니지만 같은 어휘 규칙을 테스트로 고정한다.
+OBSERVATION_TEXT: dict[str, str] = {
+    "total_problems": "그날 신경 쓰였던 행동이 있었다면 앞뒤 상황을 한 줄로 적어 두기",
+    "internalizing": "말수가 줄거나 표정이 가라앉은 날이 있으면 그날 있었던 일을 적어 두기",
+    "externalizing": "큰 소리나 다툼이 있었던 날, 그 앞뒤 상황을 적어 두기",
+    "withdrawn": "또래와 함께 있는 자리에서 아이가 놀이에 들어가기까지의 모습을 한 줄로 적어 두기",
+    "somatic": "몸이 불편하다고 말한 날의 요일과 그때 상황을 적어 두기",
+    "anxious_depressed": "아이가 걱정거리를 이야기하면 주제만 메모해 두기",
+    "social_immaturity": "또래와 놀 때 막히는 장면이 있으면 그 상황을 한 줄로 적어 두기",
+    "thought_problems": "반복되는 행동이 나온 상황과 시각을 한 줄로 적어 두기",
+    "attention": "숙제를 시작한 뒤 자리를 뜨기까지 걸린 시간을 적어 두기",
+    "delinquent": "어떤 규칙이 어떤 상황에서 어겨졌는지 적어 두기",
+    "aggressive": "화가 시작된 계기와 가라앉기까지 걸린 시간을 적어 두기",
+}
+# 총 문제행동 기준 일반 관찰 문구. 상승 척도가 셋 미만이면 이것으로 채우고, 전 척도 정상이면 이 셋이 전부다.
+GENERAL_OBSERVATION_TEXTS = (
+    "상담 전까지 하루 한 번, 아이가 즐거워한 순간을 적어 두기",
+    "아이가 편안해 보였던 활동과 그때 함께 있던 사람을 적어 두기",
+    "하루 중 아이가 스스로 시작한 놀이나 활동을 하나씩 적어 두기",
+)
+
 # 고정 심리교육 문구 (LLM 출력 스키마에서 제거된 limits의 대체)
 LIMITS_TEXT = (
     "이 검사는 보호자의 보고를 바탕으로 한 선별 도구이며, 단일 검사만으로는 어떤 것도 확정되지 않습니다. "
@@ -144,11 +168,19 @@ def scale_one_liner(scale_id: str, band: str) -> str:
     return f"{SCALE_NAMES[scale_id]} · {BAND_KO[band]} · {BAND_ONE_LINER[band]}"
 
 
+def observation_text(scale_id: str) -> str:
+    """척도별 가정 관찰 포인트 고정 문구 (명사형 종결)."""
+    return OBSERVATION_TEXT[scale_id]
+
+
 def _check_complete() -> None:
     missing = [(sid, b) for sid in (*COMPOSITE_IDS, *SYNDROME_IDS) for b in BANDS
                if (sid, b) not in SCALE_BAND_TEXT]
     if missing:
         raise RuntimeError(f"척도 x 밴드 고정 문구 누락: {missing}")
+    missing_obs = [sid for sid in (*COMPOSITE_IDS, *SYNDROME_IDS) if sid not in OBSERVATION_TEXT]
+    if missing_obs or len(GENERAL_OBSERVATION_TEXTS) != 3:
+        raise RuntimeError(f"관찰 포인트 고정 문구 누락: {missing_obs}")
 
 
 _check_complete()

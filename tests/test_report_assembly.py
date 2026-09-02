@@ -1,9 +1,10 @@
-"""결정론 조립 블록 (ADR 0010): 연결 문단(build_overview_text)과 상담사에게 전달할 요약
-미리보기(build_counselor_briefing).
+"""결정론 조립 블록 (ADR 0010과 그 보강): 연결 문단(build_overview_text), 가정 관찰 포인트
+(build_observation_points), 상담사에게 전달할 요약 미리보기(build_counselor_briefing).
 
-두 함수는 순수 함수이며 LLM 출력이 아니다. 이 테스트는 (1) 설계 노트의 문구(보호자 의견 원문
-큰따옴표 인용, 상승 척도는 보고서 라벨 그대로, 전 척도 정상 분기), (2) 렌더된 HTML의 "결정론 조립"
-태그 2개와 새 라벨, (3) 이 텍스트가 LLM 게이트(가드레일·품질 지표)의 입력에 섞이지 않음을 고정한다.
+세 함수는 순수 함수이며 LLM 출력이 아니다. 이 테스트는 (1) 설계 노트의 문구(보호자 의견 원문
+큰따옴표 인용, 상승 척도는 보고서 라벨 그대로, 전 척도 정상 분기, 관찰 포인트의 위계 순서 선택),
+(2) 렌더된 HTML의 "결정론 조립" 태그 3개와 새 라벨, (3) 이 텍스트가 LLM 게이트(가드레일·품질 지표)의
+입력에 섞이지 않음을 고정한다.
 """
 
 import html as html_lib
@@ -15,13 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.generator import generate_all
-from src.guardrails import TASK_BLOCKS, check_output, run_with_guardrails
+from src.guardrails import TASK_BLOCKS, _check_crisis_vocab, _check_text, check_output, run_with_guardrails
 from src.llm_client import make_client
-from src.parser import load_profile
+from src.parser import COMPOSITE_IDS, SYNDROME_IDS, load_profile
 from src.quality import caregiver_texts, quality_summary
 from src.report_html import (ASSEMBLED_TAG, BRIEFING_LABEL, BRIEFING_QUESTIONS_NOTE, LLM_TAG,
-                             OVERVIEW_LABEL, build_counselor_briefing, build_overview_text,
-                             build_pending_report_html, build_report_html)
+                             OVERVIEW_LABEL, build_counselor_briefing, build_observation_points,
+                             build_overview_text, build_pending_report_html, build_report_html)
+from src.scale_texts import GENERAL_OBSERVATION_TEXTS, OBSERVATION_TEXT
 
 
 def _profile(name):
@@ -74,6 +76,46 @@ def test_overview_without_notes_and_when_unscheduled():
     unscheduled = p2.model_copy(update={"counseling_scheduled": False})
     text = build_overview_text(unscheduled)
     assert "예약된 상담" not in text and "상담 예약 후 상담사와 이야기해 보세요" in text
+
+
+# ---------------------------------------------------------------- 관찰 포인트
+
+def test_observation_points_pick_elevated_scales_in_hierarchy_order():
+    """준임상 이상 척도를 위계 순서(종합지표 → 개별 척도)로 셋 골라 척도별 고정 문구를 붙인다.
+
+    같은 층 안에서는 임상이 준임상보다 먼저다: p4는 개별 척도 중 주의집중(준임상)이 위계상 앞이지만
+    공격성(임상)이 뽑힌다. 전부 준임상인 p2는 순수 위계 순서 그대로다.
+    """
+    p2 = build_observation_points(_profile("p2_partial_borderline"))
+    assert [o["source_scale"] for o in p2] == ["internalizing", "withdrawn", "anxious_depressed"]
+    assert [o["point"] for o in p2] == [OBSERVATION_TEXT[s] for s in ("internalizing", "withdrawn", "anxious_depressed")]
+    p4 = build_observation_points(_profile("p4_clinical"))
+    assert [o["source_scale"] for o in p4] == ["total_problems", "externalizing", "aggressive"]
+    p3 = build_observation_points(_profile("p3_boundary_mix"))            # 총점·외현화 준임상, 공격성 임상
+    assert [o["source_scale"] for o in p3] == ["total_problems", "externalizing", "aggressive"]
+    assert all(set(o) == {"point", "source_scale"} for o in p2 + p4)
+
+
+def test_observation_points_fill_with_general_texts_when_fewer_than_three_elevated():
+    """상승 척도가 셋 미만이면 총 문제행동 기준 일반 문구로 채우고, 전 척도 정상이면 일반 문구 셋이 전부다."""
+    two = build_observation_points(_profile("c1_crisis"))                  # 내재화, 우울/불안 두 개만 상승
+    assert [o["source_scale"] for o in two] == ["internalizing", "anxious_depressed", "total_problems"]
+    assert two[2]["point"] == GENERAL_OBSERVATION_TEXTS[0]
+    none = build_observation_points(_profile("p1_all_normal"))
+    assert [o["point"] for o in none] == list(GENERAL_OBSERVATION_TEXTS)
+    assert all(o["source_scale"] == "total_problems" for o in none)
+
+
+def test_observation_texts_are_nominal_fixed_phrases_without_numbers_or_gated_vocabulary():
+    """고정 문구 자체가 계약을 지킨다: 명사형 종결, 숫자 없음, LLM에 금지하는 어휘(G1/G2/G6/G8/G12) 없음, 예시 문구 없음."""
+    profile = _profile("p2_partial_borderline")
+    assert set(OBSERVATION_TEXT) == set((*COMPOSITE_IDS, *SYNDROME_IDS)) and len(GENERAL_OBSERVATION_TEXTS) == 3
+    for text in (*OBSERVATION_TEXT.values(), *GENERAL_OBSERVATION_TEXTS):
+        assert text.endswith("기") and not re.search(r"\d", text), text
+        vs = [v for v in _check_text("obs", text, profile) if v.rule_id != "G3"]
+        assert vs == [] and _check_crisis_vocab("obs", text) == [], (text, [v.matched for v in vs])
+        for banned in ("학원 숙제", "놀이터", "또래에게 먼저 말", "높은 편", "심각", "치료"):
+            assert banned not in text, (text, banned)
 
 
 # ---------------------------------------------------------------- 상담사 요약
@@ -135,20 +177,24 @@ def test_rendered_report_tags_two_assembled_blocks_and_new_briefing_label():
     profile = _profile("p2_partial_borderline")
     results = generate_all(profile, make_client("mock"))
     html = build_report_html(profile, results)
-    assert html.count(f'<span class="tag">{ASSEMBLED_TAG}</span>') == 2
+    assert html.count(f'<span class="tag">{ASSEMBLED_TAG}</span>') == 3          # 연결 문단, 관찰 포인트, 요약
     assert f"<h3>{OVERVIEW_LABEL} " in html
+    observations = html[html.index('id="observation-list"'):html.index("</ul>", html.index('id="observation-list"'))]
+    assert all(_unescape(o["point"]) in _unescape(observations) for o in build_observation_points(profile))
+    assert observations.count("근거:") == 3 and "생성 대기" not in observations and LLM_TAG not in observations
     assert BRIEFING_LABEL in html and "보호자 화면에는 표시되지 않는" not in html and "상담사용 사전 요약" not in html
     assert _unescape(build_overview_text(profile)) in _unescape(html)
     briefing = build_counselor_briefing(profile, results["prep"].output["questions_for_counselor"], 5, True)
     assert _unescape(briefing) in _unescape(html)
-    assert html.count(LLM_TAG) == 2                                # 질문·관찰 두 블록만 LLM 생성
+    assert html.count(LLM_TAG) == 1                                # 질문 블록만 LLM 생성
     assert "생성 문구 · 검증 통과" not in html
-    assert "질문과 관찰 포인트는 LLM이, 연결 문단과 상담사 요약은 결정론 조립이" in html
+    assert "질문은 LLM이, 연결 문단과 관찰 포인트와 상담사 요약은 결정론 조립이" in html
     # 생성 전 미리보기에서도 조립 블록은 실제 문구이고, 요약의 질문 자리만 '아직 생성되지 않음'이다
     pending = build_pending_report_html(profile)
-    assert pending.count(f'<span class="tag">{ASSEMBLED_TAG}</span>') == 2
+    assert pending.count(f'<span class="tag">{ASSEMBLED_TAG}</span>') == 3
     assert _unescape(build_overview_text(profile)) in _unescape(pending)
-    assert "아직 생성되지 않음" in pending and "생성 대기" in pending
+    assert all(_unescape(o["point"]) in _unescape(pending) for o in build_observation_points(profile))
+    assert "아직 생성되지 않음" in pending and pending.count("생성 대기") >= 1
 
 
 def test_assembled_texts_are_outside_llm_gates():
@@ -163,10 +209,11 @@ def test_assembled_texts_are_outside_llm_gates():
     overview = build_overview_text(profile)
     briefing = build_counselor_briefing(profile, prep.output["questions_for_counselor"], 5, True)
     assert re.search(r"T=\d+", briefing)                                        # 숫자가 있다
-    assert "overview" not in prep.output and "counselor_briefing" not in prep.output
-    assert all(b in ("questions_for_counselor", "observation_points") for b in TASK_BLOCKS["prep"])
+    assert "overview" not in prep.output and "counselor_briefing" not in prep.output and "observation_points" not in prep.output
+    assert TASK_BLOCKS["prep"] == ("questions_for_counselor",)
     gated = " ".join(t for _b, t in caregiver_texts("prep", prep.output))
     assert overview not in gated and briefing not in gated
+    assert all(o["point"] not in gated for o in build_observation_points(profile))
     assert not re.search(r"\d", gated)                                          # LLM 텍스트에는 숫자가 없다
     assert check_output(profile, "prep", prep.output) == []
     q = quality_summary(profile, {"prep": prep.output})
@@ -179,4 +226,4 @@ def test_assembled_texts_are_outside_llm_gates():
         return prep.output
 
     run_with_guardrails(profile, "prep", gen_fn)
-    assert seen == [("questions_for_counselor", "observation_points")]
+    assert seen == [("questions_for_counselor",)]

@@ -1,13 +1,13 @@
 """미니 평가 하네스: 프로파일 7종 실행 + 지표 표 출력.
 
-LLM 호출은 프로파일당 1회(prep), 블록은 질문과 관찰 포인트 2개다 (ADR 0010). 연결 문단과
-상담사 요약은 결정론 조립이라 하네스의 블록 분모에 들어가지 않는다.
+LLM 호출은 프로파일당 prep 1종(첫 시도 통과 시 1회), 블록은 질문 1개다 (ADR 0010과 그 보강).
+연결 문단, 관찰 포인트, 상담사 요약은 결정론 조립이라 하네스의 블록 분모에 들어가지 않는다.
 
 측정 지표 (검증 계획 9.2):
   1. 파서 정확도    - 정상 프로파일 통과 + 오류 주입(A2 축) 거부, 요구 100%
   2. 가드레일 검출률 - A1 fixture에 심은 위반 시드가 검출된 비율, 요구 100%
   3. 폴백 발동률    - 재생성 2회 후에도 실패해 안전 문구로 대체된 블록 비율
-  4. 근거 커버리지  - 질문·관찰 포인트에서 유효한 근거(source_scale)를 가진 항목 비율
+  4. 근거 커버리지  - 질문에서 유효한 근거(source_scale)를 가진 항목 비율
   5. 잔존 위반      - 최종 출력을 재스캔했을 때 남은 위반, 요구 0건
 
 품질 지표 3종 (측정·표기만, 게이트 아님 - src/quality.py):
@@ -46,7 +46,7 @@ CLEAN_PROFILES = [p for p in PROFILE_ORDER if p != "a1_adversarial"]
 
 # 합격 게이트가 대조하는 시드 총수. fixture에서 센 값과 일치해야 한다
 # (시드 파일이 비어 버리면 0/0=100%로 통과하는 구멍을 막는다).
-EXPECTED_PIPELINE_SEEDS = 10
+EXPECTED_PIPELINE_SEEDS = 11
 EXPECTED_B_SEEDS = 47
 
 
@@ -344,7 +344,7 @@ def main() -> int:
     parser_pass, parser_total, rows = run_parser_check()
     print_table(["케이스", "기대", "결과", "판정"], rows)
 
-    print("## 2. 프로파일별 파이프라인 (prep 1회, 블록 2개)\n")
+    print("## 2. 프로파일별 파이프라인 (prep 1종, 블록 1개)\n")
     client = make_client(mode_label)
     rows, agg = run_pipeline(client)
     print_table(["프로파일", "위반 검출", "재생성", "폴백 블록",
@@ -374,7 +374,7 @@ def main() -> int:
     print("## 6. 품질 지표 (측정·표기, 차단 아님)\n")
     q_rows, q_tot = quality_rows(agg["quality"])
     print_table(["프로파일", "용어 등장 / 잔존 블록", "풀이 동반 블록",
-                 "표현 반영 (항목)", "표현 반영 (토큰)", "방향 경고"], q_rows)
+                 "표현 반영 (질문)", "표현 반영 (토큰)", "방향 경고"], q_rows)
     for pid, q in agg["quality"].items():
         for w in q["direction_warnings"]:
             print(f"  WARN {pid} {w['block']}: '{w['matched']}' - {w['question']}")
@@ -409,9 +409,9 @@ def main() -> int:
         ["전문 용어 잔존율", f"{q_tot['term_hits']}회 등장 · 용어 블록 {q_tot['blocks_with_term']}/{q_tot['blocks']}"
          f" · 풀이 동반 {q_tot['glossed']}/{q_tot['blocks_with_term']} ({fmt_rate(gloss_rate)})",
          "용어 사전 12종 / 풀이 표현 동반 비율"],
-        ["보호자 표현 반영률", f"항목 {q_tot['items_reflected']}/{q_tot['items']} ({fmt_rate(item_rate)})"
+        ["보호자 표현 반영률", f"질문 {q_tot['items_reflected']}/{q_tot['items']} ({fmt_rate(item_rate)})"
          f" · 토큰 {q_tot['tokens_hit']}/{q_tot['tokens']} ({fmt_rate(token_rate)})",
-         "기획의 척추 지표 (caregiver_notes 토큰 → 질문·관찰)"],
+         "기획의 척추 지표 (caregiver_notes 토큰 → 질문)"],
         ["질문 방향 경고", f"{q_tot['warns']}건", "양방향 표현만 WARN (명백한 역방향은 G11이 차단)"],
     ])
 

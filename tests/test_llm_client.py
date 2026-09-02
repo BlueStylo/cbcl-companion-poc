@@ -219,7 +219,7 @@ def test_template_mock_quotes_notes_ending_with_period_without_tripping_g5():
                                                           "놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다!"]})
     out = TemplateMockClient().generate("prep", profile, 0, "", "")
     assert check_output(profile, "prep", out) == []
-    texts = [q["question"] for q in out["questions_for_counselor"]] + [o["point"] for o in out["observation_points"]]
+    texts = [q["question"] for q in out["questions_for_counselor"]]
     quoted = [t for t in texts if "「" in t]
     assert len(quoted) >= 4 and all("」" in t for t in quoted)
     assert not any(".」" in t or "!」" in t for t in texts)          # 종결 부호는 떼고 인용한다

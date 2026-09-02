@@ -1,7 +1,8 @@
-"""상담 준비(질문과 관찰 포인트) 생성.
+"""상담 준비(상담사에게 물어볼 질문) 생성.
 
-LLM 호출은 프로파일당 1회(prep)이고 블록은 질문과 관찰 포인트 2개다 (ADR 0010). 연결
-문단과 상담사 요약은 report_html이 결정론으로 조립하므로 여기서 만들지 않는다.
+LLM 호출은 프로파일당 prep 1종이고 블록은 질문 1개다 (ADR 0010과 그 보강). 첫 시도가 통과하면
+호출 1회, 위반이 있으면 블록당 최대 2회 재생성이 더해진다. 연결 문단, 관찰 포인트, 상담사
+요약은 report_html이 결정론으로 조립하므로 여기서 만들지 않는다.
 프롬프트 계약의 정본은 prompts/ 아래 파일이다. LLM에는 파서가 검증한
 구조화 JSON만 넘기고(아동 이름은 제외 - 식별자 마스킹), 출력은
 guardrails의 블록 단위 재생성 루프를 거친 SafeResult로 돌려준다.
@@ -51,7 +52,7 @@ RULE_HINTS = {
     "G2": "심각성 단정·근거 없는 안심 금지",
     "G3": "문장에 아라비아 숫자와 한글 수사 점수 금지 (수치는 화면 카드가 보여줌)",
     "G4": "source_scale은 입력에 있는 척도의 scale_id만",
-    "G5": "출력 스키마·항목 수·문형 준수 (질문은 1문장 의문형 25~90자, 관찰은 명사형 '~기' 종결이며 질문형 금지)",
+    "G5": "출력 스키마·항목 수·문형 준수 (질문 5~7개, 각각 1문장 의문형 25~90자)",
     "G6": "약물·치료·병원 방문 권고 금지",
     "G7": "사람이 읽는 문장에 scale_id·영문 식별자·괄호 코드 금지 (JSON 필드에만)",
     "G8": "밴드 어휘는 입력 band 라벨 그대로(정상/준임상/임상)만, 척도별 라벨 정확히",
@@ -96,7 +97,7 @@ def generate_safe(profile: CBCLProfile, task: str, client) -> guardrails.SafeRes
 
 
 def generate_all(profile: CBCLProfile, client) -> dict[str, guardrails.SafeResult]:
-    """LLM 태스크 전부를 생성한다. 현행 구조에서는 prep 하나(호출 1회)다."""
+    """LLM 태스크 전부를 생성한다. 현행 구조에서는 prep 하나(첫 시도 통과 시 호출 1회)다."""
     return {task: generate_safe(profile, task, client) for task in TASKS}
 
 
@@ -105,7 +106,7 @@ def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
 
     시도별 위반 규칙 분포, 블록별 최종 상태(pass / regen_pass / fallback),
     LLM 호출별 usage 토큰과 소요 시간, 품질 지표 3종(측정용), 최종 출력
-    원문(오프라인 재측정용)을 담는다. 결정론 조립 텍스트(연결 문단, 상담사 요약)는
+    원문(오프라인 재측정용)을 담는다. 결정론 조립 텍스트(연결 문단, 관찰 포인트, 상담사 요약)는
     LLM 출력이 아니므로 여기 들어가지 않는다.
     """
     tasks = {}

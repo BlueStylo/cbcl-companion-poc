@@ -6,13 +6,13 @@
 
   (i)   전문 용어 잔존율   - 용어 사전 등장 횟수, 용어가 등장한 항목 중
                              같은 항목에 풀이 표현이 동반된 비율 (권장 사항의 관측)
-  (ii)  보호자 표현 반영률 - caregiver_notes의 토큰이 질문·관찰 텍스트에
-                             등장하는 비율 (항목 단위 / 토큰 단위)
+  (ii)  보호자 표현 반영률 - caregiver_notes의 토큰이 질문 텍스트에
+                             등장하는 비율 (질문 단위 / 토큰 단위)
   (iii) 질문 방향 경고     - 양방향 모두에 쓰이는 되묻기 의심 표현("설명해 주실 수
                              있나요")을 WARN으로 집계. 명백한 역방향 문형은 G11이 차단한다.
 
-측정 대상은 LLM이 생성한 질문과 관찰 항목이다 (ADR 0010: LLM 블록은 이 둘뿐).
-결정론 조립 텍스트(연결 문단, 상담사 요약)와 폴백(사전 작성 안전 문구)은
+측정 대상은 LLM이 생성한 질문 항목이다 (ADR 0010과 그 보강: LLM 블록은 질문뿐).
+결정론 조립 텍스트(연결 문단, 관찰 포인트, 상담사 요약)와 폴백(사전 작성 안전 문구)은
 생성이 아니므로 모든 지표에서 제외한다.
 """
 
@@ -105,13 +105,13 @@ REVERSE_DIRECTION_PATTERNS = [re.compile(p) for p in (
 def caregiver_texts(task: str, output: dict) -> list[tuple[str, str]]:
     """LLM 생성 텍스트를 (블록, 텍스트)로 나열한다. 폴백 제외.
 
-    LLM 블록은 prep의 질문·관찰 항목뿐이다. 다른 task 이름이 오면 빈 목록이다 (옛 explain 호출 방어).
+    LLM 블록은 prep의 질문 항목뿐이다. 다른 task 이름이 오면 빈 목록이고, 옛 스키마의
+    observation_points 키가 섞여 와도 세지 않는다 (관찰 포인트는 결정론 조립).
     """
     texts: list[tuple[str, str]] = []
     if task != "prep" or not isinstance(output, dict):
         return texts
-    for key, text_key in (("questions_for_counselor", "question"),
-                          ("observation_points", "point")):
+    for key, text_key in (("questions_for_counselor", "question"),):
         for i, item in enumerate(output.get(key, [])):
             if isinstance(item, dict) and not item.get("_fallback") \
                     and isinstance(item.get(text_key), str):
@@ -150,7 +150,7 @@ def jargon_metrics(texts: list[tuple[str, str]]) -> dict:
 
 
 def reflection_metrics(profile: CBCLProfile, prep_output: dict) -> dict:
-    """(ii) 보호자 표현 반영률 (질문·관찰 항목 단위 + 토큰 단위)."""
+    """(ii) 보호자 표현 반영률 (질문 단위 + 토큰 단위). items_*는 질문 항목을 센다."""
     tokens = note_tokens(list(profile.caregiver_notes))
     items = caregiver_texts("prep", prep_output)
     reflected = 0

@@ -29,7 +29,7 @@ def test_note_tokens_strip_particles_and_keep_stems():
 def test_reflection_rate_on_clean_fixture_is_high():
     """mock 픽스처는 보호자 문장을 그대로 인용하므로 반영률이 높아야 한다."""
     r = reflection_metrics(PROFILE, FIXTURE["prep"]["attempts"][0])
-    assert r["items_total"] == 10
+    assert r["items_total"] == r["questions_total"] == 6                  # 질문만 센다 (관찰 포인트는 결정론 조립)
     assert r["item_rate"] >= 0.5
     assert {"숙제", "또래"} <= set(r["tokens_hit"])
 
@@ -38,8 +38,6 @@ def test_reflection_rate_drops_for_generic_questions():
     out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
     for it in out["questions_for_counselor"]:
         it["question"] = "이 결과를 어떻게 보면 될까요?"
-    for it in out["observation_points"]:
-        it["point"] = "하루 한 줄 메모하기"
     assert reflection_metrics(PROFILE, out)["items_reflected"] == 0
 
 
@@ -81,8 +79,12 @@ def test_quality_summary_excludes_fallback_items_and_only_measures_llm_blocks():
                                        "source_scale": "total_problems", "_fallback": True}]
     q = quality_summary(PROFILE, {"prep": out})
     assert q["direction_warnings"] == []
-    assert q["reflection"]["items_total"] == 4       # 관찰 포인트만 남는다
-    assert q["jargon"]["blocks_total"] == 4          # 용어 지표도 같은 4항목 (결정론 조립 텍스트는 대상 아님)
-    # 옛 explain 호출 이름이나 스키마 밖 키(overview 등)는 측정 대상이 아니다
+    assert q["reflection"]["items_total"] == 0       # 폴백뿐이면 측정 대상이 없다
+    assert q["jargon"]["blocks_total"] == 0          # 결정론 조립 텍스트(연결 문단, 관찰 포인트, 요약)는 대상 아님
+    # 옛 explain 호출 이름이나 스키마 밖 키(overview, observation_points 등)는 측정 대상이 아니다
     assert caregiver_texts("explain", {"overview": "T점수 67 준임상"}) == []
-    assert caregiver_texts("prep", dict(out, overview="T점수 67", counselor_briefing="T=67")) == caregiver_texts("prep", out)
+    clean = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
+    legacy = dict(clean, overview="T점수 67", counselor_briefing="T=67",
+                  observation_points=[{"point": "학원 숙제 중 자리를 뜬 횟수 적어 두기", "source_scale": "attention"}])
+    assert caregiver_texts("prep", legacy) == caregiver_texts("prep", clean)
+    assert reflection_metrics(PROFILE, legacy)["items_total"] == 6

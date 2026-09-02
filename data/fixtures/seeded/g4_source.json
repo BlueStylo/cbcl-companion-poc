@@ -52,8 +52,8 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
-            1,
+            "questions_for_counselor",
+            2,
             "source_scale"
           ],
           "value": null

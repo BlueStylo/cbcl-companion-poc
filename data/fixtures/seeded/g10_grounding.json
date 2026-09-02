@@ -24,10 +24,10 @@
       ]
     },
     {
-      "id": "g10_no_grounding_observation",
+      "id": "g10_no_grounding_question_2",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "근거 없음: 인용 없는 일반 관찰에 정상 종합지표 근거",
+      "note": "근거 없음: 인용 없는 일반 질문에 정상 종합지표 근거",
       "expect_rules": [
         "G10"
       ],
@@ -35,11 +35,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0
           ],
           "value": {
-            "point": "아이가 즐거워한 순간을 하루 하나씩 적어 두기",
+            "question": "아이가 즐거워한 순간을 적어 두는 것이 상담에 도움이 되나요?",
             "source_scale": "total_problems"
           }
         }
@@ -66,7 +66,7 @@
       ]
     },
     {
-      "id": "g10_scale_mismatch_observation",
+      "id": "g10_scale_mismatch_question_2",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "척도 불일치: 문장은 주의집중을 말하는데 source_scale은 anxious_depressed",
@@ -77,11 +77,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             2,
-            "point"
+            "question"
           ],
-          "value": "주의집중 척도와 관련해 숙제 중 자리를 뜬 횟수를 적어 두기"
+          "value": "주의집중 척도와 관련해 숙제 중 자리를 뜬 횟수를 적어 두면 도움이 될까요?"
         }
       ]
     },

@@ -2,7 +2,8 @@
 
 심사자가 JSON 파일 없이 슬라이더와 텍스트로 프로파일을 바꿔 가며 (1) 위계·밴드
 시각화 (2) 보호자 문장을 인용하는 질문 생성 (3) 가드레일 동작을 확인한다.
-LLM 호출은 prep 1회(질문·관찰 포인트 2블록)이고 연결 문단·상담사 요약은 결정론 조립이다 (ADR 0010).
+LLM 호출은 prep 1종(질문 1블록, 첫 시도 통과 시 1회)이고 연결 문단·관찰 포인트·상담사 요약은
+결정론 조립이다 (ADR 0010과 그 보강).
 렌더러·규칙·생성기는 기존 파이프라인 모듈을 그대로 호출한다 (두 벌 금지):
 파서 → 위기 게이트 → generator → guardrails → report_html.
 
@@ -203,7 +204,7 @@ def _left_panel() -> tuple[bool, str, dict]:
                  key="sex", horizontal=True)
         c2.number_input("만 나이", 4, 18, key="age_years")
 
-    _section("in", "보호자 의견", "질문과 관찰 포인트가 이 문장을 인용합니다", idx="03")
+    _section("in", "보호자 의견", "질문이 이 문장을 인용합니다", idx="03")
     for i in range(NOTE_SLOTS):
         st.text_input(f"의견 {i + 1}", key=f"note_{i}", label_visibility="collapsed",
                       placeholder=f"보호자 의견 {i + 1} (비우면 제외)")
@@ -309,7 +310,7 @@ def _run_panel(run: dict | None, stale: bool, preview_crisis: list[str]) -> None
     j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]
     _section("out", "품질 지표", "측정만, 게이트 아님")
     qc = st.columns(3)
-    qc[0].metric("보호자 표현 반영률 (항목 · 토큰)",
+    qc[0].metric("보호자 표현 반영률 (질문 · 토큰)",
                  f"{r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])})",
                  help=f"토큰 {len(r['tokens_hit'])}/{len(r['tokens'])} ({fmt_rate(r['token_rate'])})")
     qc[1].metric("용어 잔존 (등장 · 용어 블록 · 풀이 동반)",
@@ -386,7 +387,7 @@ with result_box:
         if preview_crisis:
             st.caption(f"{CRISIS_CAPTION} - 생성 전 미리보기에서도 점수 리포트 대신 상담 연결 안내를 보여 줍니다.")
         else:
-            st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구·결정론 조립(연결 문단, 상담사 요약)은 실제 값이고, "
-                       "LLM 생성 자리(질문·관찰 포인트)는 '생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
+            st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구·결정론 조립(연결 문단, 관찰 포인트, 상담사 요약)은 "
+                       "실제 값이고, LLM 생성 자리(질문)는 '생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
     components.html(html, height=REPORT_HEIGHT, scrolling=True)
     _run_panel(run, stale, preview_crisis)

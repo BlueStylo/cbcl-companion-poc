@@ -9,10 +9,11 @@
 준임상·임상 카드에만 "이 점수만으로 진단하지 않아요" 한 줄. 결론과 구간
 이름은 밴드별 고정 문구라 LLM도 가드레일도 거치지 않는다.
 
-LLM 문장은 두 자리뿐이다: 상담사에게 물어볼 질문과 가정 관찰 포인트 (ADR 0010).
-연결 문단(보호자 관찰과 검사 소견)과 상담사에게 전달할 요약은 이 모듈이 결정론으로
-조립한다 (build_overview_text, build_counselor_briefing): 보호자 의견을 원문 그대로
-큰따옴표로 인용하고, 상승 척도는 보고서 라벨 그대로 나열하며, 고정 문장 하나를 붙인다.
+LLM 문장은 한 자리뿐이다: 상담사에게 물어볼 질문 (ADR 0010과 그 보강).
+연결 문단(보호자 관찰과 검사 소견), 가정 관찰 포인트, 상담사에게 전달할 요약은 이 모듈이
+결정론으로 조립한다 (build_overview_text, build_observation_points, build_counselor_briefing):
+보호자 의견을 원문 그대로 큰따옴표로 인용하고, 상승 척도는 보고서 라벨 그대로 나열하며,
+관찰 포인트는 준임상 이상 척도를 위계 순서로 골라 척도별 고정 문구를 붙인다.
 LLM이 하던 "의견과 척도의 연결"은 질문의 근거 척도 배지가 대신한다. 상담 전 안내
 (PRE_COUNSELING_NOTE, ADR 0009), 척도 카드 본문과 심리교육 문단(렌즈 안내, T점수 설명,
 준임상 일반론, 한계 고지)은 전부 사전 작성 고정 문구다 (scale_texts.py) - 일반론과
@@ -35,7 +36,7 @@ from .guardrails import SafeResult, detect_crisis_signals
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, SCALE_NAMES
 from .renderer import (DEFAULT_SEM, EXAMPLE_RELIABILITY, bell_curve_svg, concept_curve_svg,
                        curve_explainer_svg)
-from .scale_texts import LIMITS_TEXT, scale_card_text
+from .scale_texts import GENERAL_OBSERVATION_TEXTS, LIMITS_TEXT, observation_text, scale_card_text
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -159,6 +160,30 @@ def build_overview_text(profile: CBCLProfile) -> str:
     return f"{first} {second} {third}"
 
 
+OBSERVATION_COUNT = 3
+
+
+def build_observation_points(profile: CBCLProfile) -> list[dict]:
+    """가정 관찰 포인트 3개 (결정론 조립, ADR 0010 보강). 항목은 {"point", "source_scale"}.
+
+    준임상 이상 척도를 위계 순서(종합지표 먼저, 그다음 개별 척도)로 고르되 같은 층 안에서는 임상을
+    준임상보다 먼저 두고(임상 척도가 준임상 척도에 밀려 빠지지 않도록), 척도별 고정 문구
+    (scale_texts.OBSERVATION_TEXT)를 붙인다. 상승 척도가 셋 미만이면 총 문제행동 기준 일반 문구로
+    채우고, 전 척도 정상이면 일반 문구 셋이 전부다. 근거 배지는 그 척도명이다. LLM 출력이
+    아니므로 가드레일도 품질 지표도 거치지 않으며, 보호자 의견을 인용하지 않는다 (인용은 질문의 몫).
+    """
+    order = [*COMPOSITE_IDS, *SYNDROME_IDS]
+    ranked = sorted(profile.elevated_scales(),
+                    key=lambda s: (s.scale_id not in COMPOSITE_IDS, s.band != "clinical", order.index(s.scale_id)))
+    items = [{"point": observation_text(s.scale_id), "source_scale": s.scale_id}
+             for s in ranked[:OBSERVATION_COUNT]]
+    for text in GENERAL_OBSERVATION_TEXTS:
+        if len(items) >= OBSERVATION_COUNT:
+            break
+        items.append({"point": text, "source_scale": "total_problems"})
+    return items
+
+
 def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
                              counseling_scheduled: bool) -> str:
     """상담사에게 전달할 요약 미리보기 (결정론 조립, ADR 0010). 줄바꿈으로 구분된 순수 텍스트.
@@ -259,13 +284,12 @@ def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
     """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult (prep 1건).
 
     탐색 콘솔이 슬라이더 변경마다 곡선과 오차 구간 및 고정 문구를 즉시 다시 그리는 데 쓴다.
-    생성 블록 2개(질문, 관찰)는 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다. 연결 문단과
+    생성 블록(질문)은 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다. 연결 문단, 관찰 포인트,
     상담사 요약은 결정론 조립이라 미리보기에서도 실제 문구로 나온다.
     """
     return {
         "prep": SafeResult(task="prep", output={
-            "questions_for_counselor": [{"question": PENDING_TEXT, "source_scale": None, "_pending": True}],
-            "observation_points": [{"point": PENDING_TEXT, "source_scale": None, "_pending": True}]}),
+            "questions_for_counselor": [{"question": PENDING_TEXT, "source_scale": None, "_pending": True}]}),
     }
 
 
@@ -293,12 +317,13 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
     """SafeResult({"prep"})를 받아 완성 HTML 문자열을 만든다.
 
     pending=True면 생성 블록 자리에 '생성 대기' 표식을 붙인다 (탐색 콘솔 미리보기).
-    연결 문단과 상담사 요약은 여기서 결정론으로 조립한다 (ADR 0010).
+    연결 문단, 관찰 포인트, 상담사 요약은 여기서 결정론으로 조립한다 (ADR 0010).
     """
     prep = results["prep"]
     fallback_blocks = set(prep.fallback_blocks)
     elevated = [s.name_ko for s in profile.elevated_scales()]
     questions = prep.output["questions_for_counselor"]
+    observations = build_observation_points(profile)
     return _template_env().get_template("report.html.j2").render(
         alias=profile.child.alias,
         instrument=profile.instrument,
@@ -333,7 +358,7 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
             PRE_COUNSELING_NOTE, profile.counseling_scheduled
         ),
         questions=_items_view(profile, questions, "question"),
-        observations=_items_view(profile, prep.output["observation_points"], "point"),
+        observations=_items_view(profile, observations, "point"),
         briefing=build_counselor_briefing(profile, [] if pending else questions,
                                           profile.days_until_counseling, profile.counseling_scheduled),
         briefing_label=BRIEFING_LABEL,

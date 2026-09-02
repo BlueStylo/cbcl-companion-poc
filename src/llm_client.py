@@ -9,7 +9,7 @@ LLM 생성이 아니며 하네스는 계속 픽스처 목을 쓴다.
 
 두 클라이언트의 공통 인터페이스:
     generate(task, profile, attempt, system_prompt, user_message) -> dict
-task는 "prep"(질문과 관찰 포인트, ADR 0010), attempt는 0(첫 생성)부터 시작하는 재생성 회차.
+task는 "prep"(상담사에게 물어볼 질문, ADR 0010과 그 보강), attempt는 0(첫 생성)부터 시작하는 재생성 회차.
 """
 
 from __future__ import annotations
@@ -299,22 +299,6 @@ NOTE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "total_problems": (),
 }
 
-# 척도별 가정 관찰 포인트 고정 문구 (보호자 의견에 안 잡힌 준임상 이상 척도용). 숫자를 쓰지 않고(G3)
-# 명사형 "~기"로 끝낸다(G5). G10 예시 문구("학원 숙제", "놀이터", "또래에게 먼저 말")는 쓰지 않는다.
-OBSERVATION_BY_SCALE: dict[str, str] = {
-    "attention": "숙제나 책 읽기를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기",
-    "withdrawn": "또래와 함께 있는 자리에서 아이가 어떻게 놀이에 들어가는지 한 줄로 적어 두기",
-    "anxious_depressed": "아이가 걱정거리를 이야기하면 주제만 메모해 두기",
-    "somatic": "몸이 불편하다고 말한 날의 요일과 그때 상황을 적어 두기",
-    "social_immaturity": "또래와 놀 때 막히는 장면이 있으면 그 상황을 한 줄로 적어 두기",
-    "thought_problems": "반복되는 행동이 나온 상황과 시각을 한 줄로 적어 두기",
-    "delinquent": "어떤 규칙이 어떤 상황에서 어겨졌는지 적어 두기",
-    "aggressive": "화가 시작된 계기와 가라앉기까지 걸린 시간을 적어 두기",
-    "internalizing": "말수가 줄거나 표정이 가라앉은 날이 있으면 그날 있었던 일을 적어 두기",
-    "externalizing": "큰 소리나 다툼이 있었던 날, 그 앞뒤 상황을 적어 두기",
-    "total_problems": "상담 전까지 하루 한 번, 아이가 즐거워한 순간을 적기",
-}
-
 # 규칙별 위반 시드 (하네스 B축 시드와 같은 계열의 문장). 탐색 콘솔에서 가드레일이
 # 실제로 막는 모습을 보여 주기 위해 목 출력에 주입한다.
 SEED_RULES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12")
@@ -376,8 +360,8 @@ def _pad_questions(anchor: ScaleScore, all_normal: bool) -> list[dict]:
 
 
 def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
-    """질문 5~7개와 관찰 3~5개를 조립한다. 질문은 1문장 의문형 25~90자, 관찰은 "~기" 종결,
-    숫자 없음, 문장 안의 척도명은 근거 척도 하나뿐 (가드레일 G3/G5/G10 계약과 같은 규칙)."""
+    """질문 5~7개를 조립한다. 1문장 의문형 25~90자, 숫자 없음, 문장 안의 척도명은 근거 척도 하나뿐
+    (가드레일 G3/G5/G10 계약과 같은 규칙). 관찰 포인트는 report_html이 결정론으로 조립하므로 없다."""
     candidates = _anchor_candidates(profile)
     all_normal = not profile.elevated_scales()
     pairs = [(n, _match_scale(n, candidates)) for n in notes]
@@ -408,25 +392,7 @@ def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
             break
         questions.append(q)
     questions = questions[:7]
-
-    # 관찰 포인트: 의견 장면 → 척도 고정 문구 → 3개 미만이면 보충
-    observations: list[dict] = []
-    for note, s in pairs[:3]:
-        observations.append({"point": f"{_quote(note)} 같은 장면이 있었던 날, 앞뒤 상황을 한 줄로 적어 두기",
-                             "source_scale": s.scale_id})
-    obs_covered = {s.scale_id for _, s in pairs}
-    for s in candidates:
-        if len(observations) >= 5:
-            break
-        if s.scale_id not in obs_covered:
-            observations.append({"point": OBSERVATION_BY_SCALE[s.scale_id], "source_scale": s.scale_id})
-            obs_covered.add(s.scale_id)
-    pads = ["아이가 편안해 보였던 활동과 그때 함께 있던 사람을 적어 두기",
-            "하루 중 아이가 스스로 시작한 놀이나 활동을 하나씩 적어 두기"]
-    while len(observations) < 3 and pads:
-        observations.append({"point": pads.pop(0), "source_scale": anchor.scale_id})
-    observations = observations[:5]
-    return {"questions_for_counselor": questions, "observation_points": observations}
+    return {"questions_for_counselor": questions}
 
 
 def compose_template_output(task: str, profile: CBCLProfile, notes: list[str]) -> dict:
@@ -479,7 +445,7 @@ class TemplateMockClient:
 
     픽스처 목은 프로파일 8종에 고정된 응답이라 슬라이더로 바꾼 임의 프로파일에
     맞지 않는다. 이 클라이언트는 입력 프로파일만 보고 보호자 의견을 「」로 인용해
-    질문과 관찰 포인트를 조립한다. 규칙은 단순하다: 근거 척도는 준임상 이상
+    질문을 조립한다. 규칙은 단순하다: 근거 척도는 준임상 이상
     척도만(전부 정상이면 총 문제행동), 의견→척도는 키워드 사전, 밴드 어휘는 입력
     라벨 그대로, 숫자 없음.
 

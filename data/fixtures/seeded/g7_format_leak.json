@@ -42,10 +42,10 @@
       ]
     },
     {
-      "id": "g7_identifier_in_observation",
+      "id": "g7_identifier_in_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "관찰 포인트 끝에 소문자 식별자 누출 (괄호 없음)",
+      "note": "질문 안에 소문자 식별자 누출 (괄호 없음)",
       "expect_rules": [
         "G7"
       ],
@@ -53,11 +53,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기 - attention 영역"
+          "value": "숙제 앞에서 딴 데를 보는 모습은 attention 영역에서 어떻게 보면 될까요?"
         }
       ]
     }

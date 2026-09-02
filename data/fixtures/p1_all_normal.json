@@ -23,20 +23,6 @@
             "question": "이런 검사는 얼마 간격으로 다시 해 보는 것이 좋은가요?",
             "source_scale": "total_problems"
           }
-        ],
-        "observation_points": [
-          {
-            "point": "잠자리에 누운 시각과 잠든 시각을 하루 한 줄로 적어 두기",
-            "source_scale": "total_problems"
-          },
-          {
-            "point": "동생이 태어난 뒤로 달라졌다고 느낀 장면이 있으면 그 상황을 한 줄로 적어 두기",
-            "source_scale": "total_problems"
-          },
-          {
-            "point": "상담 전까지 아이가 즐거워한 순간을 하루 하나씩 적어 두기",
-            "source_scale": "total_problems"
-          }
         ]
       }
     ]

@@ -23,24 +23,6 @@
             "question": "준비물 챙기기 같은 일과를 아이가 스스로 관리하도록 돕는 방법을 상담에서 다룰 수 있을까요?",
             "source_scale": "attention"
           }
-        ],
-        "observation_points": [
-          {
-            "point": "알림장 확인부터 가방 챙기기까지 아이가 스스로 한 단계를 적어 두기",
-            "source_scale": "attention"
-          },
-          {
-            "point": "책을 읽다가 다른 놀이로 옮겨 가기까지 이어진 시간을 적어 두기",
-            "source_scale": "attention"
-          },
-          {
-            "point": "또래 모임에서 아이가 먼저 참여한 순간을 한 줄로 적어 두기",
-            "source_scale": "withdrawn"
-          },
-          {
-            "point": "아이가 스스로 놀이를 마무리한 날을 표시해 두기",
-            "source_scale": "attention"
-          }
         ]
       }
     ]

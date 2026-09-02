@@ -1,5 +1,5 @@
 {
-  "category": "G9 정상 척도 질문·관찰 금지",
+  "category": "G9 정상 척도 질문 금지",
   "cases": [
     {
       "id": "g9_question_on_normal_syndrome",
@@ -24,10 +24,10 @@
       ]
     },
     {
-      "id": "g9_observation_on_normal_composite",
+      "id": "g9_question_on_normal_composite",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "정상 범위 종합지표(총 문제행동 T=57)를 근거로 한 관찰 포인트",
+      "note": "정상 범위 종합지표(총 문제행동 T=57)를 근거로 한 질문",
       "expect_rules": [
         "G9"
       ],
@@ -35,11 +35,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0
           ],
           "value": {
-            "point": "하루 동안 문제행동이 몇 번 있었는지 세어 두기",
+            "question": "하루 동안 문제행동이 몇 번 있었는지 상담에서 어떻게 정리해 보게 되나요?",
             "source_scale": "total_problems"
           }
         }

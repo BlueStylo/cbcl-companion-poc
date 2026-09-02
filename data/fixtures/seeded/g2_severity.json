@@ -22,10 +22,10 @@
       ]
     },
     {
-      "id": "g2_grave_observation",
+      "id": "g2_grave_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "심각 방향 단정 (관찰, Codex 점검에서 통과했던 '위중')",
+      "note": "심각 방향 단정 (Codex 점검에서 통과했던 '위중')",
       "expect_rules": [
         "G2"
       ],
@@ -33,11 +33,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "상태가 위중해 보이는 날을 표시해 두기"
+          "value": "상태가 위중해 보이는 날이 있는데 상담에서 어떻게 봐야 하나요?"
         }
       ]
     },

@@ -77,11 +77,12 @@ def test_raw_vs_final_coverage_are_different_metrics():
 
 
 def test_seed_inventory_matches_gate_constants():
-    """시드 파일 재고: B축 47건(G1~G12 + 우회), 파이프라인 10건, expect_rules 공백 없음, task는 prep뿐.
+    """시드 파일 재고: B축 47건(G1~G12 + 우회), 파이프라인 11건, expect_rules 공백 없음, task는 prep뿐.
 
     새 규칙(G3 숫자·한글 수사, G5 문형, G10 근거 없음·척도 불일치, G11 방향)에는 각각 2건 이상이 있어야 한다.
     검토 반영분(G10 인용 주장 변형 2, G3 점수 어휘 뒤 수사 1, G6 조사 변형 1)으로 41건에서 45건이 됐고,
-    외부 리뷰 반영(G12 위기 어휘 출력 2)으로 47건이 됐다.
+    외부 리뷰 반영(G12 위기 어휘 출력 2)으로 47건이 됐다. 관찰 포인트가 결정론 조립이 되면서 관찰 표적
+    시드는 전부 질문으로 옮겼고, 파이프라인 시드(A1)는 관찰 블록의 G4·G6·G2를 질문으로 옮기고 G12를 더해 11건이다.
     """
     total = 0
     by_file = {}
@@ -104,11 +105,14 @@ def test_seed_inventory_matches_gate_constants():
     assert sum(1 for i in notes if i.startswith("g10_no_grounding")) >= 2
     assert sum(1 for i in notes if i.startswith("g10_scale_mismatch")) >= 2
     assert sum(1 for i in notes if i in ("g5_question_not_interrogative", "g5_question_too_long",
-                                          "g5_observation_question_form")) >= 2
+                                          "g5_question_two_sentences")) >= 2
+    assert not any("observation" in i for i in notes)                     # 관찰 표적 시드는 남아 있지 않다
 
     manifest = json.loads(
         (rh.FIXTURES_DIR / "a1_adversarial.json").read_text(encoding="utf-8"))
-    assert len(manifest["seeded_violations"]) == rh.EXPECTED_PIPELINE_SEEDS == 10
+    assert len(manifest["seeded_violations"]) == rh.EXPECTED_PIPELINE_SEEDS == 11
+    assert {s["block"] for s in manifest["seeded_violations"]} == {"questions_for_counselor"}
+    assert {s["rule"] for s in manifest["seeded_violations"]} == {f"G{i}" for i in range(1, 13) if i not in (8, 9)}
 
 
 def test_all_seeds_detected():
@@ -120,12 +124,14 @@ def test_all_seeds_detected():
 
 
 def test_pipeline_uses_single_prep_call_per_profile():
-    """프로파일당 LLM 호출 1회(prep), 블록 2개 (ADR 0010). A1은 관찰 블록이 재생성 2회 소진 후 폴백된다."""
+    """프로파일당 LLM 호출은 prep 1종(첫 시도 통과 시 1회), 블록 1개. A1은 질문 블록이 재생성 2회 소진 후 폴백된다."""
     client = MockLLMClient()
     profile = load_profile(ROOT / "data/profiles/p2_partial_borderline.json")
     results = generate_all(profile, client)
-    assert list(results) == ["prep"] and results["prep"].block_count == 2
+    assert list(results) == ["prep"] and results["prep"].block_count == 1
     assert [c["task"] for c in client.calls] == ["prep"]
     a1 = load_profile(ROOT / "data/profiles/a1_adversarial.json")
-    r = generate_all(a1, MockLLMClient())["prep"]
-    assert r.regen_count == 2 and r.fallback_blocks == ["observation_points"]
+    a1_client = MockLLMClient()
+    r = generate_all(a1, a1_client)["prep"]
+    assert r.regen_count == 2 and r.fallback_blocks == ["questions_for_counselor"]
+    assert [c["attempt"] for c in a1_client.calls] == [0, 1, 2]          # 위반 시 블록당 최대 2회 재생성으로 호출 3회

@@ -1,10 +1,10 @@
 """출력 안전성 가드레일 (규칙 엔진, LLM 미사용).
 
-LLM이 쓰는 블록은 2개뿐이다 (ADR 0010): prep 태스크의 질문(questions_for_counselor)과
-관찰 포인트(observation_points). 연결 문단과 상담사 요약은 결정론 조립
-(report_html.build_overview_text, build_counselor_briefing), 척도 카드 해설과 한계
-고지(scale_texts.py), 상담 전 안내(report_html.PRE_COUNSELING_NOTE, ADR 0009)는 고정
-문구라 검사 대상이 아니다. 아래 규칙은 전부 질문과 관찰 항목의 문장에 적용된다.
+LLM이 쓰는 블록은 1개뿐이다 (ADR 0010과 그 보강): prep 태스크의 질문(questions_for_counselor).
+연결 문단, 가정 관찰 포인트, 상담사 요약은 결정론 조립(report_html.build_overview_text,
+build_observation_points, build_counselor_briefing), 척도 카드 해설과 한계 고지(scale_texts.py),
+상담 전 안내(report_html.PRE_COUNSELING_NOTE, ADR 0009)는 고정 문구라 검사 대상이 아니다.
+아래 규칙은 전부 질문 항목의 문장에 적용된다.
 
 출력 규칙 12종:
   G1 진단명 사전         - 진단명 등장 자체를 위반 처리 (부정문 포함, 의도된 과검출)
@@ -13,9 +13,9 @@ LLM이 쓰는 블록은 2개뿐이다 (ADR 0010): prep 태스크의 질문(quest
                            점수 어휘 뒤 "T점수가 육십칠", 단독 십 단위 "예순일곱")가 있으면 위반.
                            수치는 화면 카드가 보여주므로 질문에 쓸 이유가 없다
   G4 근거 링크           - 항목의 source_scale 이 입력의 실제 척도와 매칭되는지
-  G5 스키마와 문형       - 출력 JSON 구조, 필수 필드, 항목 수. 질문은 1문장 의문형(요?/까?)
-                           25~90자, 관찰은 명사형 종결("~적어 두기")이며 질문형 금지. 문장 수는
-                           따옴표 밖에서만 센다 (마침표까지 원문 그대로 인용한 「」는 1문장)
+  G5 스키마와 문형       - 출력 JSON 구조, 필수 필드, 항목 수(질문 5~7). 질문은 1문장 의문형
+                           (요?/까?) 25~90자. 문장 수는 따옴표 밖에서만 센다 (마침표까지 원문 그대로
+                           인용한 「」는 1문장)
   G6 처방·치료 권고      - 약물·약 복용, 치료 받기·시작·고려(조사 무관), 병원·진료·상담센터 방문
                            지시, 정신건강의학과·소아청소년과·전문의 의뢰 시사 차단
                            (허용 형태는 "예약된 상담에서 상담사와 이야기해 보세요" 하나뿐)
@@ -44,8 +44,8 @@ LLM이 쓰는 블록은 2개뿐이다 (ADR 0010): prep 태스크의 질문(quest
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
 문장이 나가는 일도 없다.
 
-G5는 필수 키 누락만 잡는다. 스키마 밖 키(옛 스키마의 overview, counselor_briefing 등)는
-위반이 아니라 무시되며, split_blocks/rebuild가 버리므로 리포트에 닿지 않는다.
+G5는 필수 키 누락만 잡는다. 스키마 밖 키(옛 스키마의 overview, counselor_briefing,
+observation_points 등)는 위반이 아니라 무시되며, split_blocks/rebuild가 버리므로 리포트에 닿지 않는다.
 
 입력 게이트 1종: 위기 신호 검출 (detect_crisis_signals). 보호자 의견에
 긴급 키워드가 있으면 LLM 호출 자체를 하지 않는다 (generator가 이 함수로
@@ -66,7 +66,6 @@ MAX_REGEN = 2  # 첫 생성 이후 블록 단위 재생성 횟수
 
 SAFE_GENERIC_TEXT = "이 부분의 자동 생성 문구는 검증을 통과하지 못했습니다. 예약된 상담에서 상담사에게 직접 들으시길 권합니다."
 SAFE_QUESTION = "이번 결과에서 무엇부터 살펴보면 좋을지, 예약된 상담에서 상담사에게 직접 여쭤보시길 권합니다."
-SAFE_OBSERVATION = "상담 전까지 아이의 하루 중 인상 깊었던 장면을 하루 한 줄로 적어 두시면 상담에서 쓸 수 있습니다."
 
 # 보호자 의견 안의 아동 이름을 가리는 대체어. LLM에는 마스킹된 의견이 들어가므로 (generator.profile_payload)
 # G10의 인용 대조도 원문과 마스킹본 양쪽을 본다.
@@ -232,7 +231,6 @@ _TERM_QUOTE = re.compile(
 # --- G5: 문형 ---
 QUESTION_MIN_CHARS, QUESTION_MAX_CHARS = 25, 90
 QUESTION_END_PATTERN = re.compile(r"(?:요|까|죠)\s*\?$")     # 의문형 종결: ~나요? ~까요? ~습니까? ~죠?
-OBSERVATION_END_PATTERN = re.compile(r"기\s*\.?$")           # 명사형 종결: ~적어 두기, ~기록하기
 _TERMINATORS = re.compile(r"[.?!]")
 
 # --- G11: 질문 방향 ---
@@ -357,10 +355,10 @@ def detect_crisis_signals(profile: CBCLProfile) -> list[str]:
 # ---------------------------------------------------------------- 블록 분해
 
 TASK_BLOCKS = {
-    "prep": ("questions_for_counselor", "observation_points"),
+    "prep": ("questions_for_counselor",),
 }
-ITEM_TEXT_KEY = {"questions_for_counselor": "question", "observation_points": "point"}
-ITEM_COUNT = {"questions_for_counselor": (5, 7), "observation_points": (3, 5)}
+ITEM_TEXT_KEY = {"questions_for_counselor": "question"}
+ITEM_COUNT = {"questions_for_counselor": (5, 7)}
 
 
 def expected_blocks(profile: CBCLProfile, task: str) -> list[str]:
@@ -624,20 +622,6 @@ def _check_question_form(block: str, text: str) -> list[Violation]:
     return found
 
 
-def _check_observation_form(block: str, text: str) -> list[Violation]:
-    """G5 문형: 관찰은 1문장 명사형 종결(~기), 질문형 금지. 문장 수와 물음표는 따옴표 밖에서만 센다."""
-    found: list[Violation] = []
-    t = text.strip()
-    outside = strip_quoted(t)
-    if "?" in outside or "!" in outside:
-        found.append(Violation("G5", block, "관찰 포인트는 질문형·감탄형이 아니어야 함"))
-    if outside.count(".") > 1 or (outside.count(".") == 1 and not outside.endswith(".")) or "\n" in t:
-        found.append(Violation("G5", block, "관찰 포인트는 1문장이어야 함"))
-    if not OBSERVATION_END_PATTERN.search(t):
-        found.append(Violation("G5", block, f"관찰 포인트가 명사형(~기)으로 끝나지 않음: {t[-12:]!r}"))
-    return found
-
-
 def _check_direction(block: str, text: str) -> list[Violation]:
     """G11: 보호자에게 되묻는 명백한 문형 차단 (질문 블록만)."""
     for pat in REVERSE_DIRECTION_BLOCK_PATTERNS:
@@ -668,7 +652,7 @@ def check_top_schema(task: str, raw) -> list[Violation]:
 
 
 def _check_items_block(profile: CBCLProfile, block: str, items) -> list[Violation]:
-    """questions_for_counselor / observation_points 공용 검사."""
+    """항목 목록 블록(questions_for_counselor) 검사: 항목 수, 항목별 문장 규칙, 근거 척도."""
     text_key = ITEM_TEXT_KEY[block]
     lo, hi = ITEM_COUNT[block]
     if not isinstance(items, list):
@@ -693,11 +677,8 @@ def _check_items_block(profile: CBCLProfile, block: str, items) -> list[Violatio
             text = it[text_key]
             found += [Violation(v.rule_id, block, v.matched)
                       for v in _check_text(block, text, profile, own_scale=sid if scale else None)]
-            if block == "questions_for_counselor":
-                found += _check_question_form(block, text)
-                found += _check_direction(block, text)
-            else:
-                found += _check_observation_form(block, text)
+            found += _check_question_form(block, text)
+            found += _check_direction(block, text)
             found += _check_grounding(block, text, profile, sid, scale)
         if scale is None:
             found.append(Violation("G4", block, f"source_scale 매칭 실패: {sid!r}"))
@@ -708,7 +689,7 @@ def _check_items_block(profile: CBCLProfile, block: str, items) -> list[Violatio
         elif not all_normal and scale.band == "normal":
             found.append(Violation(
                 "G9", block,
-                f"source_scale {sid}({SCALE_NAMES[sid]})는 정상 범위 - 질문·관찰의 근거는 준임상/임상 척도만"))
+                f"source_scale {sid}({SCALE_NAMES[sid]})는 정상 범위 - 질문의 근거는 준임상/임상 척도만"))
     return found
 
 
@@ -738,8 +719,6 @@ def fallback_for(profile: CBCLProfile, task: str, block: str):
     """검증에 끝내 실패한 블록을 대체할 사전 작성 안전 문구 (fail-closed)."""
     if block == "questions_for_counselor":
         return [{"question": SAFE_QUESTION, "source_scale": "total_problems", "_fallback": True}]
-    if block == "observation_points":
-        return [{"point": SAFE_OBSERVATION, "source_scale": "total_problems", "_fallback": True}]
     return SAFE_GENERIC_TEXT  # 알 수 없는 블록 (방어용, 현행 스키마에서는 닿지 않음)
 
 
@@ -821,14 +800,14 @@ def run_with_guardrails(profile: CBCLProfile, task: str, generate_fn,
 def source_coverage(profile: CBCLProfile, task: str, output: dict) -> tuple[int, int]:
     """근거 커버리지: (유효 근거를 가진 항목 수, 근거가 필요한 항목 수).
 
-    근거 필드(source_scale)를 가진 것은 prep의 질문·관찰 포인트다. 폴백으로 대체된 항목은
-    분모에서 제외한다.
+    근거 필드(source_scale)를 가진 LLM 항목은 prep의 질문뿐이다 (관찰 포인트는 결정론 조립).
+    폴백으로 대체된 항목은 분모에서 제외한다.
     """
     valid_ids = set(profile.scale_map())
     have, need = 0, 0
     if task != "prep":
         return have, need
-    for key in ("questions_for_counselor", "observation_points"):
+    for key in ("questions_for_counselor",):
         for item in output.get(key, []):
             if isinstance(item, dict) and item.get("_fallback"):
                 continue

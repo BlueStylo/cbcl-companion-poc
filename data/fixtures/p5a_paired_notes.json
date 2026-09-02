@@ -23,20 +23,6 @@
             "question": "속상한 일을 말로 꺼내기까지 걸리는 시간을 줄이도록 돕는 방법을 상담에서 배울 수 있을까요?",
             "source_scale": "anxious_depressed"
           }
-        ],
-        "observation_points": [
-          {
-            "point": "속상한 일이 있었던 날과 아이가 그 일을 이야기한 날 사이의 간격을 적어 두기",
-            "source_scale": "anxious_depressed"
-          },
-          {
-            "point": "낯선 어른이 말을 걸었을 때 아이가 보인 반응을 한 줄로 적어 두기",
-            "source_scale": "withdrawn"
-          },
-          {
-            "point": "숙제 중 멍하게 있는 시간이 길었던 날을 표시해 두기",
-            "source_scale": "attention"
-          }
         ]
       }
     ]

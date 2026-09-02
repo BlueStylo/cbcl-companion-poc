@@ -27,24 +27,6 @@
             "question": "위축 척도가 준임상 범위로 보고된 것은 밖으로 드러나는 행동과 함께 봐야 하는 이유가 있을까요?",
             "source_scale": "withdrawn"
           }
-        ],
-        "observation_points": [
-          {
-            "point": "큰 소리를 내기 직전에 있었던 일과 시간대를 한 줄로 적어 두기",
-            "source_scale": "aggressive"
-          },
-          {
-            "point": "게임을 끄라고 한 시각과 실제로 끈 시각을 적어 두기",
-            "source_scale": "aggressive"
-          },
-          {
-            "point": "화가 난 뒤 평소 상태로 돌아오기까지 걸린 시간을 적어 두기",
-            "source_scale": "aggressive"
-          },
-          {
-            "point": "혼자 방에 머무는 시간이 길었던 날을 표시해 두기",
-            "source_scale": "withdrawn"
-          }
         ]
       }
     ]

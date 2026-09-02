@@ -22,10 +22,10 @@
       ]
     },
     {
-      "id": "g6_play_therapy_observation",
+      "id": "g6_play_therapy_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "관찰 포인트를 가장한 특정 치료 권고 (Codex 점검에서 통과했던 '놀이치료')",
+      "note": "질문을 가장한 특정 치료 권고 (Codex 점검에서 통과했던 '놀이치료')",
       "expect_rules": [
         "G6"
       ],
@@ -33,11 +33,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "놀이치료 기관 후보를 알아보고 이름을 적어 두기"
+          "value": "놀이치료 기관을 알아보는 것이 지금 단계에서 맞는 일일까요?"
         }
       ]
     },

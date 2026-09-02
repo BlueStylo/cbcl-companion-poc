@@ -26,11 +26,11 @@ def test_console_states_it_does_not_edit_reports():
 
 
 def test_console_reflects_two_llm_blocks_and_eleven_rules():
-    """콘솔 소스가 새 구조(ADR 0010)를 말한다: 규칙 분포는 G1~G12, LLM 생성 자리는 질문·관찰뿐, 옛 블록 이름은 없다."""
+    """콘솔 소스가 새 구조(ADR 0010과 그 보강)를 말한다: 규칙 분포는 G1~G12, LLM 생성 자리는 질문뿐, 옛 블록 이름은 없다."""
     assert "G1~G12" in SRC and "G1~G11" not in SRC and "G1~G10" not in SRC
-    assert "LLM 생성 자리(질문·관찰 포인트)" in SRC
+    assert "LLM 생성 자리(질문)" in SRC and "LLM 생성 자리(질문·관찰 포인트)" not in SRC
     assert "연결 문단·질문·관찰·요약" not in SRC
-    for absent in ("counselor_briefing", '"explain"', "overview"):
+    for absent in ("counselor_briefing", '"explain"', "overview", "observation_points"):
         assert absent not in SRC, absent
 
 

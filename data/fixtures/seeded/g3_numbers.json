@@ -22,10 +22,10 @@
       ]
     },
     {
-      "id": "g3_arabic_days_in_observation",
+      "id": "g3_arabic_days_in_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "관찰 포인트에 남은 날수 숫자",
+      "note": "질문에 남은 날수 숫자",
       "expect_rules": [
         "G3"
       ],
@@ -33,11 +33,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "상담까지 남은 5일 동안 하루 한 번 집중이 오래 유지된 활동을 적어 두기"
+          "value": "상담까지 남은 5일 동안 무엇을 적어 두면 상담에 도움이 되나요?"
         }
       ]
     },
@@ -62,7 +62,7 @@
       ]
     },
     {
-      "id": "g3_korean_numeral_observation",
+      "id": "g3_korean_numeral_question_2",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "한글 수사 점수 (#1의 '육십칠점')",
@@ -73,11 +73,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             1,
-            "point"
+            "question"
           ],
-          "value": "육십칠점을 넘는 날이 있는지 기록해 두기"
+          "value": "위축 척도가 육십칠점을 넘는다는 것은 어떤 뜻으로 읽으면 되나요?"
         }
       ]
     },

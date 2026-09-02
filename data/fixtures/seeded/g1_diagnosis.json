@@ -42,10 +42,10 @@
       ]
     },
     {
-      "id": "g1_observation_bipolar",
+      "id": "g1_question_bipolar",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "관찰 포인트에 스며든 진단명 (Codex 점검에서 통과했던 '양극성 장애')",
+      "note": "질문에 스며든 진단명 (Codex 점검에서 통과했던 '양극성 장애')",
       "expect_rules": [
         "G1"
       ],
@@ -53,11 +53,11 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "양극성 장애가 의심되는 기분 변화가 있었던 날을 적어 두기"
+          "value": "양극성 장애가 의심되는 기분 변화는 상담에서 어떻게 살펴보게 되나요?"
         }
       ]
     }

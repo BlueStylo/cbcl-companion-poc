@@ -1,14 +1,15 @@
 """동점-상이의견 페어(P5a/P5b) 나란히 비교 HTML.
 
-동일한 T점수 프로파일에서 보호자 의견 텍스트만 다를 때 질문과 관찰 포인트가
-실제로 달라지는지를 한 화면에서 보여준다. "LLM이 템플릿으로 대체되지
-않는 지점"의 실증이 곧 데모다. 연결 문단은 결정론 조립(ADR 0010)이라 의견 인용만 다르다.
+동일한 T점수 프로파일에서 보호자 의견 텍스트만 다를 때 질문이 실제로 달라지는지를
+한 화면에서 보여준다. "LLM이 템플릿으로 대체되지 않는 지점"의 실증이 곧 데모다.
+연결 문단은 결정론 조립(ADR 0010)이라 의견 인용만 다르고, 관찰 포인트는 점수만으로
+조립하므로 두 케이스에서 같다 (그 사실을 화면에 적는다).
 """
 
 from __future__ import annotations
 
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile
-from .report_html import _items_view, _template_env, build_overview_text
+from .report_html import _items_view, _template_env, build_observation_points, build_overview_text
 
 
 def _comparison_input(profile: CBCLProfile) -> dict:
@@ -43,7 +44,8 @@ def build_compare_html(profile_a: CBCLProfile, results_a: dict,
             "notes": list(profile.caregiver_notes),
             "overview": build_overview_text(profile),   # 결정론 조립 (ADR 0010)
             "questions": _items_view(profile, results["prep"].output["questions_for_counselor"], "question"),
-            "observations": _items_view(profile, results["prep"].output["observation_points"], "point"),
+            # 관찰 포인트는 점수만으로 조립하므로 동점 페어에서는 같다 (ADR 0010 보강). 달라지는 것은 질문뿐이다.
+            "observations": _items_view(profile, build_observation_points(profile), "point"),
         }
 
     return _template_env().get_template("compare.html.j2").render(

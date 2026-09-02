@@ -1,8 +1,8 @@
 """가드레일 결정론 테스트 (LLM 호출 없음).
 
-기준 출력은 mock fixture의 클린 응답(prep, 질문·관찰 2블록)을 쓰고, 규칙별로 위반을
-주입해 검출되는지, 정당한 문장은 통과하는지(양성·음성)를 확인한다. LLM 블록은 이 둘뿐이다
-(ADR 0010): 연결 문단과 상담사 요약은 결정론 조립이라 여기서 다루지 않는다.
+기준 출력은 mock fixture의 클린 응답(prep, 질문 1블록)을 쓰고, 규칙별로 위반을
+주입해 검출되는지, 정당한 문장은 통과하는지(양성·음성)를 확인한다. LLM 블록은 질문뿐이다
+(ADR 0010과 그 보강): 연결 문단, 관찰 포인트, 상담사 요약은 결정론 조립이라 여기서 다루지 않는다.
 """
 
 import copy
@@ -43,20 +43,13 @@ def _q(prep_out, i, text, source=None):
     return prep_out
 
 
-def _o(prep_out, i, text, source=None):
-    prep_out["observation_points"][i]["point"] = text
-    if source:
-        prep_out["observation_points"][i]["source_scale"] = source
-    return prep_out
-
-
 # ---------------------------------------------------------------- 구조
 
-def test_llm_schema_is_prep_with_two_blocks(prep_out):
-    """LLM 태스크는 prep 하나, 블록은 질문·관찰 2개 (ADR 0010). 옛 explain 태스크는 없다."""
-    assert TASK_BLOCKS == {"prep": ("questions_for_counselor", "observation_points")}
+def test_llm_schema_is_prep_with_question_block_only(prep_out):
+    """LLM 태스크는 prep 하나, 블록은 질문 1개 (ADR 0010과 그 보강). 옛 explain 태스크와 observation_points 블록은 없다."""
+    assert TASK_BLOCKS == {"prep": ("questions_for_counselor",)}
     assert TASKS == ("prep",)
-    assert set(prep_out) == {"questions_for_counselor", "observation_points"}
+    assert set(prep_out) == {"questions_for_counselor"}
     assert check_output(PROFILE, "prep", prep_out) == []
     with pytest.raises(KeyError):
         load_system_prompt("explain")
@@ -72,24 +65,26 @@ def test_all_clean_fixtures_pass(pid):
 
 
 def test_legacy_keys_are_ignored_and_dropped(prep_out):
-    """스키마 밖 키 정책: 옛 스키마의 overview·counselor_briefing이 와도 위반이 아니라 무시되며, rebuild가
-    버려 리포트에 닿지 않는다. G5는 필수 키 누락만 잡는다."""
+    """스키마 밖 키 정책: 옛 스키마의 overview·counselor_briefing·observation_points가 와도 위반이 아니라
+    무시되며, rebuild가 버려 리포트에 닿지 않는다. G5는 필수 키 누락만 잡는다."""
     legacy = dict(prep_out, overview="ADHD로 보입니다. 병원에 가 보세요.",
-                  counselor_briefing="총 문제행동 T=57(정상). 약물 치료 권고.")
+                  counselor_briefing="총 문제행동 T=57(정상). 약물 치료 권고.",
+                  observation_points=[{"point": "약물 치료 후보를 적어 두기", "source_scale": "somatic"}])
     assert check_output(PROFILE, "prep", legacy) == []
     result = run_with_guardrails(PROFILE, "prep", lambda a, p, f: copy.deepcopy(legacy))
-    assert set(result.output) == {"questions_for_counselor", "observation_points"}
-    assert result.violations == [] and result.fallback_blocks == [] and result.block_count == 2
-    del legacy["observation_points"]
+    assert set(result.output) == {"questions_for_counselor"}
+    assert result.violations == [] and result.fallback_blocks == [] and result.block_count == 1
+    del legacy["questions_for_counselor"]
     assert "G5" in rules(check_output(PROFILE, "prep", legacy))
 
 
 def test_prompt_has_no_trace_of_removed_blocks():
-    """프롬프트 계약에 explain·연결 문단·상담사 요약·상담 전 안내 키가 없고, 출력 키는 2개뿐이다."""
+    """프롬프트 계약에 explain·연결 문단·상담사 요약·상담 전 안내·관찰 포인트 키가 없고, 출력 키는 1개뿐이다."""
     system = load_system_prompt("prep")
-    for absent in ("overview", "counselor_briefing", "before_counseling", "explainer", "explain", "마음가짐"):
+    for absent in ("overview", "counselor_briefing", "before_counseling", "observation_points", "explainer", "explain", "마음가짐"):
         assert absent not in system, absent
-    assert '"questions_for_counselor"' in system and '"observation_points"' in system
+    assert '"questions_for_counselor"' in system and system.count('"question"') >= 5
+    assert "위기 표현을 쓰지 않습니다" in system                     # G12 계약
     assert "절대 규칙" in system and "권장 사항" in system
     # 예시 질문에 숫자가 없다 (G3 계약과 일치)
     import re
@@ -107,7 +102,7 @@ def test_prompt_has_no_trace_of_removed_blocks():
 def test_g1_diagnosis_detected_even_in_negation(prep_out):
     """R1은 예외 없음: 'ADHD가 아닙니다'도 차단 (의도된 과검출). Codex 점검의 '양극성 장애'도 잡는다."""
     assert "G1" in rules(check_output(PROFILE, "prep", _q(prep_out, 0, "이 결과만으로 보면 ADHD가 아니라고 봐도 되나요?")))
-    assert "G1" in rules(check_output(PROFILE, "prep", _o(prep_out, 0, "양극성 장애가 의심되는 기분 변화가 있었던 날을 적어 두기")))
+    assert "G1" in rules(check_output(PROFILE, "prep", _q(prep_out, 0, "양극성 장애가 의심되는 기분 변화는 상담에서 어떻게 살펴보게 되나요?")))
 
 
 def test_g2_severity_both_directions(prep_out):
@@ -134,7 +129,7 @@ def test_g6_prescription_detected_and_counsel_guidance_allowed(prep_out):
                 "학원 숙제 앞에서 딴 데를 보는 정도면 진료 예약을 해야 하나요?",
                 "학원 숙제 앞에서 딴 데를 보는 정도면 상담센터에 등록해야 하나요?"):
         assert "G6" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, bad))), bad
-    assert "G6" in rules(check_output(PROFILE, "prep", _o(copy.deepcopy(prep_out), 0, "딴 데를 자주 보는 날이 이어지면 병원에 데려가기")))
+    assert "G6" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, "딴 데를 자주 보는 날이 이어지면 병원에 데려가야 하는 단계인가요?")))
     for ok in ("궁금한 점은 예약된 상담에서 상담사와 이야기해 보면 되는 것으로 알면 될까요?",
                "상담 예약 후 상담 전까지 학원 숙제 앞에서 딴 데를 보는 모습을 어떻게 적어 두면 될까요?",
                "학원 숙제 앞에서 딴 데를 보는 모습에 대한 약속을 아이와 어떻게 정하면 될까요?"):
@@ -147,8 +142,8 @@ def test_g3_arabic_digits_are_banned_even_if_they_match_input(prep_out):
     """새 G3: 입력값 그대로인 T점수(주의집중 67)라도 문장에 숫자가 있으면 위반. 수치는 카드가 보여준다."""
     vs = check_output(PROFILE, "prep", _q(prep_out, 0, "주의집중 척도(T점수 67)가 준임상 범위로 보고된 것은 어떻게 읽으면 될까요?"))
     assert "G3" in rules(vs) and any("아라비아 숫자" in v.matched for v in vs)
-    assert "G3" in rules(check_output(PROFILE, "prep", _o(copy.deepcopy(FIXTURE["prep"]["attempts"][0]), 0,
-                                                          "상담까지 남은 5일 동안 집중이 오래 유지된 활동을 적어 두기")))
+    assert "G3" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(FIXTURE["prep"]["attempts"][0]), 0,
+                                                          "상담까지 남은 5일 동안 집중이 오래 유지된 활동을 적어 두면 도움이 되나요?")))
     assert "G3" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(FIXTURE["prep"]["attempts"][0]), 1,
                                                           "결과지에 적힌 상위 15%라는 숫자는 어떤 뜻인가요?")))
 
@@ -200,7 +195,7 @@ def test_g9_normal_scale_cannot_anchor_question_or_observation(prep_out):
         "source_scale": "somatic"}
     assert "G9" in rules(check_output(PROFILE, "prep", prep_out))
     prep_out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
-    prep_out["observation_points"][0]["source_scale"] = "total_problems"  # 종합지표도 포함
+    prep_out["questions_for_counselor"][1]["source_scale"] = "total_problems"  # 종합지표도 포함
     assert "G9" in rules(check_output(PROFILE, "prep", prep_out))
 
 
@@ -208,7 +203,7 @@ def test_g9_all_normal_profile_allows_only_total_problems():
     """전 척도 정상 프로파일(P1)의 근거는 total_problems뿐이다 (프롬프트 계약과 코드 일치, Codex 지적)."""
     profile = load_profile(ROOT / "data/profiles/p1_all_normal.json")
     out = json.loads((ROOT / "data/fixtures/p1_all_normal.json").read_text(encoding="utf-8"))["prep"]["attempts"][0]
-    assert all(it["source_scale"] == "total_problems" for it in out["questions_for_counselor"] + out["observation_points"])
+    assert all(it["source_scale"] == "total_problems" for it in out["questions_for_counselor"])
     assert check_output(profile, "prep", out) == []
     out["questions_for_counselor"][0]["source_scale"] = "anxious_depressed"
     assert "G9" in rules(check_output(profile, "prep", out))
@@ -220,10 +215,10 @@ def test_g5_schema_count_and_types(prep_out):
     prep_out["questions_for_counselor"] = prep_out["questions_for_counselor"][:2]
     assert "G5" in rules(check_output(PROFILE, "prep", prep_out))
     prep_out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
-    prep_out["observation_points"][1] = "그냥 문자열 항목"
+    prep_out["questions_for_counselor"][1] = "그냥 문자열 항목"
     assert "G5" in rules(check_output(PROFILE, "prep", prep_out))
     prep_out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
-    del prep_out["observation_points"]
+    del prep_out["questions_for_counselor"]
     assert "G5" in rules(check_output(PROFILE, "prep", prep_out))
 
 
@@ -247,34 +242,15 @@ def test_g5_question_form_accepts_interrogative_endings(prep_out, ok):
     assert "G5" not in rules(check_output(PROFILE, "prep", _q(prep_out, 0, ok)))
 
 
-@pytest.mark.parametrize("bad, why", [
-    ("숙제를 시작한 뒤 자리에서 일어나기까지 얼마나 걸리나요?", "질문형"),
-    ("숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두세요.", "명령형 종결"),
-    ("숙제를 시작한 뒤 걸린 시간을 적어 두기. 그리고 요일도 함께 적기.", "두 문장"),
-    ("숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기 - attention 영역", "꼬리"),
-])
-def test_g5_observation_form_violations(prep_out, bad, why):
-    assert "G5" in rules(check_output(PROFILE, "prep", _o(prep_out, 0, bad))), why
-
-
 def test_g5_counts_sentences_outside_quotes_only(prep_out):
-    """보호자 의견을 마침표까지 원문 그대로 「」로 인용한 질문·관찰은 1문장이다 (TemplateMock과 실 LLM 모두 이렇게 인용한다)."""
+    """보호자 의견을 마침표까지 원문 그대로 「」로 인용한 질문은 1문장이다 (TemplateMock과 실 LLM 모두 이렇게 인용한다)."""
     quoted_q = "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다.」라고 적으셨는데, 이 모습은 주의집중 척도의 준임상 결과와 이어서 보면 될까요?"
     assert check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, quoted_q)) == []
     quoted_q2 = "\"학원 숙제를 앞에 두면 딴 데를 자주 봅니다.\" 이 모습은 상담에서 무엇부터 살펴보게 되나요?"
     assert "G5" not in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, quoted_q2)))
-    quoted_o = "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다.」 같은 장면이 있었던 날, 앞뒤 상황을 한 줄로 적어 두기"
-    assert check_output(PROFILE, "prep", _o(copy.deepcopy(prep_out), 0, quoted_o)) == []
     # 따옴표 밖의 두 번째 문장은 여전히 위반이다
     two = "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다.」라고 적으셨습니다. 이 모습은 어떻게 보면 될까요?"
     assert "G5" in rules(check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0, two)))
-
-
-def test_g5_observation_form_accepts_nominal_endings(prep_out):
-    for ok in ("학원 숙제를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기",
-               "학원 숙제를 시작한 시각을 기록하기.",
-               "학원 숙제 중 자리를 뜬 횟수를 하루 한 줄로 세어 두기"):
-        assert "G5" not in rules(check_output(PROFILE, "prep", _o(copy.deepcopy(prep_out), 0, ok))), ok
 
 
 # ---------------------------------------------------------------- G7 / G8
@@ -334,8 +310,8 @@ def test_g10_item_passes_with_quote_or_elevated_source_and_fails_with_neither(pr
     neither = _q(copy.deepcopy(prep_out), 0, "이런 검사는 보통 얼마 간격으로 다시 해 보는 것이 좋은가요?", "somatic")
     vs = check_output(PROFILE, "prep", neither)
     assert "G10" in rules(vs) and any("근거 없음" in v.matched for v in vs)
-    neither_obs = _o(copy.deepcopy(prep_out), 0, "아이가 즐거워한 순간을 하루 하나씩 적어 두기", "total_problems")
-    assert "G10" in rules(check_output(PROFILE, "prep", neither_obs))
+    neither_generic = _q(copy.deepcopy(prep_out), 1, "아이가 즐거워한 순간을 적어 두는 것이 상담에 도움이 되나요?", "total_problems")
+    assert "G10" in rules(check_output(PROFILE, "prep", neither_generic))
 
 
 def test_g10_scale_name_in_text_must_match_source_scale(prep_out):
@@ -343,7 +319,7 @@ def test_g10_scale_name_in_text_must_match_source_scale(prep_out):
     vs = check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0,
                                           "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 위축 척도 결과와 연결해서 보면 될까요?"))
     assert "G10" in rules(vs) and any("척도 불일치" in v.matched for v in vs)
-    vs = check_output(PROFILE, "prep", _o(copy.deepcopy(prep_out), 2, "주의집중 척도와 관련해 숙제 중 자리를 뜬 횟수를 적어 두기"))
+    vs = check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 2, "주의집중 척도와 관련해 숙제 중 자리를 뜬 횟수를 적어 두면 도움이 될까요?"))
     assert "G10" in rules(vs)
     # 본문은 정상 척도(신체증상)를 말하고 source는 준임상(attention): G9는 못 잡지만 G10이 잡는다
     vs = check_output(PROFILE, "prep", _q(copy.deepcopy(prep_out), 0,
@@ -404,10 +380,10 @@ def test_scale_mentions_require_context_for_everyday_words():
     assert scale_mentions("비행이 준임상") == [(0, "delinquent")]
     assert scale_mentions("위축과 우울/불안") == [(0, "withdrawn"), (4, "anxious_depressed")]
     assert scale_mentions("위축, 비행 결과") == [(0, "withdrawn"), (4, "delinquent")]
-    # 실 LLM 산출물(gemma4:12b p2)의 정당한 관찰 항목이 척도 불일치로 막히지 않는다
+    # 실 LLM 산출물(gemma4:12b p2)에서 본 일상어 '위축된'이 척도 불일치로 막히지 않는다
     out = copy.deepcopy(FIXTURE["prep"]["attempts"][0])
-    out["observation_points"][2] = {"point": "아이가 말수가 적어지거나 위축된 듯한 행동을 보이는 상황 기록하기",
-                                    "source_scale": "anxious_depressed"}
+    out["questions_for_counselor"][2] = {"question": "아이가 말수가 적어지거나 위축된 듯한 행동을 보이는 상황은 상담에서 어떻게 보게 되나요?",
+                                         "source_scale": "anxious_depressed"}
     assert check_output(PROFILE, "prep", out) == []
     # 보호자 의견에 '비행기'가 있어도 TemplateMock의 attempt 0이 통째로 재생성되지 않는다
     profile = PROFILE.model_copy(update={"caregiver_notes": ["비행기 소리만 나면 깜짝 놀라 웁니다", PROFILE.caregiver_notes[0]]})
@@ -460,10 +436,6 @@ def test_g11_reverse_direction_questions_are_blocked(prep_out, bad):
 def test_g11_caregiver_to_counselor_requests_pass(prep_out, ok):
     """보호자가 상담사에게 하는 요청문은 방향이 같으므로 차단하지 않는다 (양방향 표현은 quality WARN)."""
     assert "G11" not in rules(check_output(PROFILE, "prep", _q(prep_out, 1, ok, "withdrawn")))
-
-
-def test_g11_applies_to_questions_only(prep_out):
-    assert "G11" not in rules(check_output(PROFILE, "prep", _o(prep_out, 0, "보호자님이 놀이터에서 본 장면을 한 줄로 적어 두기")))
 
 
 # ---------------------------------------------------------------- G12 위기 어휘 출력
@@ -527,9 +499,9 @@ def test_pending_flag_from_llm_output_is_stripped(prep_out):
     """_pending은 생성 전 미리보기 전용 표식이다. LLM 출력에 섞여 오면 화면의 '생성 대기' 태그와 근거 배지 숨김을
     위조하므로 _fallback과 같은 입구에서 벗긴다."""
     prep_out["questions_for_counselor"][0]["_pending"] = True
-    prep_out["observation_points"][0]["_pending"] = "yes"
+    prep_out["questions_for_counselor"][1]["_pending"] = "yes"
     stripped = _strip_fallback_flags(prep_out)
-    assert not any("_pending" in it or "_fallback" in it for it in stripped["questions_for_counselor"] + stripped["observation_points"])
+    assert not any("_pending" in it or "_fallback" in it for it in stripped["questions_for_counselor"])
     result = run_with_guardrails(PROFILE, "prep", lambda a, p, f: copy.deepcopy(prep_out))
     assert result.violations == [] and result.fallback_blocks == []
     assert not any("_pending" in it for block in result.output.values() for it in block)
@@ -550,5 +522,5 @@ def test_fail_closed_fallback_after_two_regens_with_feedback(prep_out):
     result = run_with_guardrails(PROFILE, "prep", gen_fn)
     assert calls == [0, 1, 2] and result.regen_count == 2
     assert result.fallback_blocks == ["questions_for_counselor"]
-    assert result.output["observation_points"] == prep_out["observation_points"]   # 통과한 블록은 유지
+    assert list(result.output) == ["questions_for_counselor"]
     assert check_output(PROFILE, "prep", result.output) == []
