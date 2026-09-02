@@ -1,0 +1,28 @@
+# 검증 체계의 가시화: PR 전 로컬에서 도는 두 명령을 CI가 같은 순서로 다시 돈다.
+# 하네스는 합격 게이트 미달 시 exit 1을 돌려주므로 그대로 CI 실패가 된다.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 결정론 테스트 (LLM 미호출)
+        run: pytest -q
+      - name: 미니 평가 하네스 (mock) - 합격 게이트
+        run: python harness/run_harness.py --mock
