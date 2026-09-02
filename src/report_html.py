@@ -21,6 +21,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from .guardrails import SafeResult
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, SCALE_NAMES
 from .renderer import DEFAULT_SEM, EXAMPLE_RELIABILITY, bell_curve_svg, concept_curve_svg
 from .scale_texts import LIMITS_TEXT, scale_card_text, scale_one_liner
@@ -60,6 +61,8 @@ BORDERLINE_NOTE = (
 )
 CAUTION = ("이 보고서는 선별 도구이며 진단이 아닙니다. 검사 한 번의 결과는 "
            "아이를 이해하는 출발점일 뿐, 그 자체로 어떤 판정도 확정하지 않습니다.")
+# LLM 생성 자리의 자리표시 문구 (탐색 콘솔의 생성 전 미리보기용, 리포트 산출물에는 나가지 않음)
+PENDING_TEXT = "생성 대기 - '리포트 생성'을 누르면 보호자 문장을 인용한 생성 문구가 이 자리에 들어옵니다."
 
 
 def _template_env() -> Environment:
@@ -89,7 +92,8 @@ def _items_view(profile: CBCLProfile, items: list, text_key: str) -> list[dict]:
     names = SCALE_NAMES
     return [{"text": it.get(text_key, ""),
              "source_name": names.get(it.get("source_scale"), "원 보고서"),
-             "fallback": bool(it.get("_fallback"))}
+             "fallback": bool(it.get("_fallback")),
+             "pending": bool(it.get("_pending"))}
             for it in items if isinstance(it, dict)]
 
 
@@ -108,9 +112,33 @@ def build_crisis_html(profile: CBCLProfile) -> str:
     )
 
 
+def pending_results(profile: CBCLProfile) -> dict[str, SafeResult]:
+    """LLM 결과가 아직 없을 때 결정론 부분만 미리 보기 위한 자리표시 SafeResult 2건.
+
+    탐색 콘솔이 슬라이더 변경마다 곡선·밴드·고정 문구를 즉시 다시 그리는 데 쓴다.
+    생성 블록 5개는 전부 PENDING_TEXT이고 _pending 표식으로 템플릿이 구분한다.
+    """
+    return {
+        "explain": SafeResult(task="explain", output={
+            "overview": PENDING_TEXT, "before_counseling": PENDING_TEXT}),
+        "prep": SafeResult(task="prep", output={
+            "questions_for_counselor": [{"question": PENDING_TEXT, "source_scale": None, "_pending": True}],
+            "observation_points": [{"point": PENDING_TEXT, "source_scale": None, "_pending": True}],
+            "counselor_briefing": PENDING_TEXT}),
+    }
+
+
+def build_pending_report_html(profile: CBCLProfile, mode_label: str = "생성 전") -> str:
+    """생성 전 미리보기: 같은 템플릿·같은 렌더러로 결정론 부분만 실제 값으로 그린다."""
+    return build_report_html(profile, pending_results(profile), mode_label=mode_label, pending=True)
+
+
 def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mock",
-                      model_label: str = "") -> str:
-    """SafeResult 2건({"explain","prep"})을 받아 완성 HTML 문자열을 만든다."""
+                      model_label: str = "", pending: bool = False) -> str:
+    """SafeResult 2건({"explain","prep"})을 받아 완성 HTML 문자열을 만든다.
+
+    pending=True면 생성 블록 자리에 '생성 대기' 표식을 붙인다 (탐색 콘솔 미리보기).
+    """
     explain, prep = results["explain"], results["prep"]
     fallback_blocks = set(explain.fallback_blocks) | set(prep.fallback_blocks)
     elevated = [s.name_ko for s in profile.elevated_scales()]
@@ -144,4 +172,5 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         days=profile.days_until_counseling,
         regen_count=explain.regen_count + prep.regen_count,
         fallback_count=len(fallback_blocks),
+        pending=pending,
     )

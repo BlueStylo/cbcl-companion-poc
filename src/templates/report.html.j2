@@ -41,6 +41,8 @@
   .tag { display: inline-block; font-size: 11px; color: var(--sub); border: 1px solid var(--line);
          border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; font-weight: 400; }
   .tag.fb { background: #eee; }
+  .tag.pending { color: var(--accent); border-color: var(--accent); border-style: dashed; }
+  .pending-text { color: var(--sub); font-style: italic; }
   details.fold { color: var(--sub); font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
   details.fold summary { cursor: pointer; }
   details.fold ol { margin: 6px 0 0; padding-left: 18px; }
@@ -84,9 +86,9 @@
     <details class="meta">
       <summary><span class="badge">자작 가상 데이터</span>{{ alias }} (가상 아동) · 검사일 {{ test_date }} · 자세히</summary>
       {{ instrument }} · 생성 모드 {{ mode_label }}{% if model_label %} · 모델 {{ model_label }}{% endif %}
-      · 가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건
+      {% if pending %}· 생성 전 (결정론 부분만 렌더){% else %}· 가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건{% endif %}
     </details>
-    <a class="jump" href="#prep">상담사에게 물어볼 질문 보기 <small>↓ {{ questions|length }}개 · 상담까지 {{ days }}일</small></a>
+    <a class="jump" href="#prep">상담사에게 물어볼 질문 보기 <small>↓ {% if pending %}생성 대기{% else %}{{ questions|length }}개{% endif %} · 상담까지 {{ days }}일</small></a>
   </header>
 
   <section class="page" id="page1">
@@ -114,8 +116,8 @@
       {% if elevated_names %}상담에서 함께 살펴볼 영역: {{ elevated_names|join(", ") }}.{% else %}모든 척도가 정상 범위로 보고되었습니다.{% endif %}</p>
 
     <div class="box gen">
-      <h3>보호자의 관찰과 검사 소견{% if overview_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</h3>
-      <p>{{ overview }}</p>
+      <h3>보호자의 관찰과 검사 소견{% if pending %}<span class="tag pending">생성 대기</span>{% elif overview_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</h3>
+      <p{% if pending %} class="pending-text"{% endif %}>{{ overview }}</p>
     </div>
 
     <h3>종합지표</h3>
@@ -160,34 +162,34 @@
 
   <section class="page" id="prep">
     <h2>상담 준비 도우미</h2>
-    <p>{{ before_counseling }}{% if before_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</p>
+    <p{% if pending %} class="pending-text"{% endif %}>{{ before_counseling }}{% if pending %}<span class="tag pending">생성 대기</span>{% elif before_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</p>
 
     <h3>상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
     <ul class="qlist">
       {% for q in questions %}
-      <li><input type="checkbox" checked> <span>{{ q.text }}{% if q.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
-          <span class="src-badge">근거: {{ q.source_name }}</span></li>
+      <li><input type="checkbox" checked> <span{% if q.pending %} class="pending-text"{% endif %}>{{ q.text }}{% if q.pending %}<span class="tag pending">생성 대기</span>{% elif q.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
+          {% if not q.pending %}<span class="src-badge">근거: {{ q.source_name }}</span>{% endif %}</li>
       {% endfor %}
     </ul>
 
     <h3 style="margin-top:16px">상담까지 남은 {{ days }}일, 가정 관찰 포인트</h3>
     <ul class="qlist">
       {% for o in observations %}
-      <li><span>·</span> <span>{{ o.text }}{% if o.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
-          <span class="src-badge">근거: {{ o.source_name }}</span></li>
+      <li><span>·</span> <span{% if o.pending %} class="pending-text"{% endif %}>{{ o.text }}{% if o.pending %}<span class="tag pending">생성 대기</span>{% elif o.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
+          {% if not o.pending %}<span class="src-badge">근거: {{ o.source_name }}</span>{% endif %}</li>
       {% endfor %}
     </ul>
 
     <details class="brief">
-      <summary>상담사용 사전 요약 (보호자 화면에는 표시되지 않는 별도 전달용){% if briefing_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% endif %}</summary>
-      <div class="box gen">{{ briefing }}</div>
+      <summary>상담사용 사전 요약 (보호자 화면에는 표시되지 않는 별도 전달용){% if pending %}<span class="tag pending">생성 대기</span>{% elif briefing_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% endif %}</summary>
+      <div class="box gen{% if pending %} pending-text{% endif %}">{{ briefing }}</div>
     </details>
   </section>
 
   <footer>
     <details>
       <summary>생성 정보</summary>
-      가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건 ·
+      {% if pending %}생성 전 미리보기 (LLM 미호출){% else %}가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건{% endif %} ·
       수치와 그림은 결정론 코드가, 연결 문단·질문은 LLM이, 척도 해설은 고정 문구가, 임상 판단은 상담사가 담당합니다.
     </details>
   </footer>
