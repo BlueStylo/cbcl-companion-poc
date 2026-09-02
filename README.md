@@ -55,7 +55,55 @@ python harness/run_harness.py --mock
 | `python main.py --compare <a.json> <b.json> --mock` | 동점-상이의견 페어 나란히 비교 HTML |
 | `python main.py ... --api` | 실 LLM 호출 (.env 필요) |
 | `python harness/run_harness.py --mock` | 프로파일 7종 실행 + 합격 게이트 지표 표 + 품질 지표 표 |
-| `pytest` | LLM 없이 도는 결정론 테스트 (파서, 가드레일, 품질 지표, 하네스) |
+| `pytest` | LLM 없이 도는 결정론 테스트 (파서, 가드레일, 품질 지표, 하네스, 탐색 콘솔 조립) |
+| `streamlit run app/explorer.py` | 평가자용 탐색 콘솔 - 슬라이더로 프로파일을 바꿔 가며 확인 (`requirements-app.txt`, 아래 절) |
+
+## 탐색 콘솔 (평가자용)
+
+![탐색 콘솔 - 왼쪽 슬라이더·의견 입력, 오른쪽 2페이지 리포트와 실행 패널](docs/img/explorer.png)
+
+JSON 파일 없이 슬라이더와 텍스트로 프로파일을 바꿔 가며 결과를 확인하는
+Streamlit 화면입니다. 렌더러·규칙·생성기는 위 파이프라인 모듈을 그대로
+호출합니다 (파서 → 위기 게이트 → generator → guardrails → report_html).
+화면용 곡선이나 규칙을 따로 두지 않았으므로 콘솔에서 보는 것이 곧 산출물입니다.
+
+```bash
+pip install -r requirements-app.txt      # 코어 requirements + streamlit (CI는 코어만 돕니다)
+streamlit run app/explorer.py            # http://localhost:8501
+# 데모·스크린샷용: http://localhost:8501/?example=p2_partial_borderline&autorun=1
+```
+
+확인할 수 있는 것 세 가지.
+
+1. **위계·밴드 시각화** - 슬라이더를 움직이면 LLM 없이 곡선·SEM 밴드·구간·고정
+   문구가 즉시 갱신됩니다 (총 문제행동 → 내재화/외현화 → 개별 척도). 밴드 라벨은
+   파서 규칙(개별 60/70, 종합 60/63)이 붙이고, LLM 생성 자리는 "생성 대기"로 표시됩니다.
+2. **보호자 문장을 인용하는 질문** - 보호자 의견 2~3줄을 바꾸고 "리포트 생성"을
+   누르면 질문·관찰 포인트가 그 문장을 인용하고 근거 척도(준임상 이상만)가 붙습니다.
+   P5a/P5b처럼 수치는 그대로 두고 의견만 바꿔 보면 차이가 보입니다.
+3. **가드레일 동작** - 하단 패널에 재생성 횟수, 폴백 블록, 걸린 규칙 분포(G1~G10),
+   품질 지표(보호자 표현 반영률·용어 잔존·방향 경고), 토큰·시간이 나옵니다
+   (`summarize_run` 재사용). mock 모드에서는 규칙별 위반 시드를 주입해 검출 → 재생성
+   → 통과, 시드 지속 → 안전 문구 폴백을 재현할 수 있고, 의견에 위기 키워드를 넣으면
+   LLM 호출 0회로 상담 연결 안내만 나옵니다.
+
+생성 모드는 셋입니다. **mock 템플릿**은 실제 LLM 생성이 아닙니다 - 보호자 의견을
+「」로 인용하고 준임상 이상 척도만 근거로 삼는 규칙으로 조립한 응답(`TemplateMockClient`)이
+같은 가드레일 루프를 통과하며, 첫 시도는 의견을 그대로 인용하고 재생성부터 규칙에 걸린
+인용을 뺍니다. 가드레일·품질 지표는 실제 규칙이 실제로 잰 값입니다. **Ollama**는 로컬
+모델(기본 gemma4:12b, 화면에서 모델명 변경 가능), **API**는 `.env`의 `LLM_*`(기본 모델명
+gpt-5-mini, 비용은 "예상 비용" 절)를 씁니다. 하네스와 `main.py --mock`은 계속 픽스처 목을 씁니다.
+
+**종합 지표를 직접 입력받는 이유.** 내재화·외현화·총 문제행동은 하위 척도의 평균이
+아니라 문항 원점수를 규준에 따라 변환한 T점수라, 하위 척도 슬라이더에서 계산해 넣으면
+틀린 수치가 됩니다. 규준 변환은 검사 시스템의 몫이므로 콘솔은 결과 보고서의 수치를
+그대로 받습니다. 하위 척도가 전부 준임상 이상인데 대응 종합 지표가 정상이면 차단하지
+않고 참고 힌트 한 줄만 보여 줍니다.
+
+**PDF 파싱을 두지 않은 이유.** 실서비스의 입력은 검사 시스템이 넘기는 구조화
+데이터(척도별 T점수·밴드·기준표)이지 결과지 이미지가 아닙니다. 결과지 OCR은 이 PoC가
+검증하려는 것(해설·질문·가드레일)과 무관한 오류원을 하나 더 얹을 뿐이라, 입력은 JSON
+또는 이 콘솔의 위젯으로 한정했습니다. 설계 결정 기록은 `docs/decisions/0007-explorer-console.md`.
 
 ## 구조
 
@@ -69,16 +117,18 @@ prompts/          프롬프트 계약 전문 (코드 밖 정본)
 src/parser.py     입력 검증 + 밴드 라벨 재계산 대조 (fail-closed 1차 관문)
 src/scale_texts.py 척도 x 밴드 고정 문구 33종 + 한계 고지 (LLM 미사용, 테스트로 어휘 고정)
 src/renderer.py   종형곡선 SVG (마커, SEM 밴드, 구간 배경) - 순수 문자열 생성
-src/llm_client.py OpenAI 호환 클라이언트(타임아웃) + MockLLMClient
+src/llm_client.py OpenAI 호환 클라이언트(타임아웃) + MockLLMClient(픽스처) + TemplateMockClient(콘솔용 템플릿 목)
 src/generator.py  연결 문단/질문 생성 (구조화 JSON 출력, 아동 이름 마스킹)
 src/guardrails.py 규칙 10종 + 블록 단위 재생성 + 안전 문구 폴백
 src/quality.py    품질 지표 3종 (용어 잔존율, 보호자 표현 반영률, 질문 방향 경고) - 측정만
 src/report_html.py  2페이지 정적 리포트 (1p 관찰자의 렌즈 / 2p 우리 아이 결과 / 상담 준비)
 src/compare_html.py 동점-상이의견 비교 뷰
 harness/          미니 평가 하네스
+app/              평가자용 탐색 콘솔 (Streamlit) - explorer.py 화면, profile_builder.py 입력 조립
 tests/            결정론 단위 테스트
 docs/decisions/   설계 결정 기록 (ADR) 6건
 CONTRIBUTING.md   브랜치·커밋·검증 규칙
+requirements-app.txt  탐색 콘솔 전용 의존성 (코어 requirements + streamlit)
 .github/          CI 워크플로(ci), PR·이슈 템플릿
 ```
 
@@ -148,6 +198,7 @@ LLM 호출 자체를 하지 않고, 상담 연결 안내와 즉시 도움 라인
 | jinja2 | HTML 템플릿. 문자열 조립보다 화면 구조가 코드에서 읽힘 |
 | openai | OpenAI 호환 SDK. base_url 교체만으로 Ollama 겸용. --api 모드에서만 필요 |
 | pytest | LLM 호출 없이 도는 결정론 테스트 |
+| streamlit (`requirements-app.txt`만) | 평가자용 탐색 콘솔. 코어 파이프라인과 CI는 쓰지 않음 |
 
 ## 사용 모델과 환경 변수
 
