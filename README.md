@@ -65,6 +65,7 @@ python harness/run_harness.py --mock
 | `python main.py ... --api` | 실 LLM 호출 (.env 필요) |
 | `LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=gemma4:12b LLM_NUM_CTX=8192 python main.py ... --api` | 로컬 Ollama로 실행. 사고(thinking)는 기본 off(`LLM_REASONING_EFFORT=none`), `LLM_NUM_CTX`를 주면 네이티브 `/api/chat`로 컨텍스트 길이를 고정 |
 | `python harness/run_harness.py --mock` | 프로파일 7종 실행 + 합격 게이트 지표 표 + 품질 지표 표 |
+| `python harness/io_review.py out/bench/*/run_stats.json --profiles data/profiles --out out/io_review.html` | 실측 런의 입력(프로파일)과 모델별 최종 출력 5블록을 나란히 놓은 리뷰 시트 HTML. 보호자 의견의 어절이 출력에 등장한 자리를 표시. `--md`로 같은 내용의 마크다운도 생성 |
 | `pytest` | LLM 없이 도는 결정론 테스트 (파서, 가드레일, 품질 지표, 하네스, 탐색 콘솔 조립) |
 | `streamlit run app/explorer.py` | 평가자용 탐색 콘솔 - 슬라이더로 프로파일을 바꿔 가며 확인 (`requirements-app.txt`, 아래 절) |
 
@@ -137,7 +138,7 @@ src/guardrails.py 규칙 10종 + 블록 단위 재생성 + 안전 문구 폴백
 src/quality.py    품질 지표 3종 (용어 잔존율, 보호자 표현 반영률, 질문 방향 경고) - 측정만
 src/report_html.py  2페이지 정적 리포트 (1p 관찰자의 렌즈 + 곡선 읽는 법 / 2p 우리 아이 결과 / 상담 준비) + 카드 고정 문구
 src/compare_html.py 동점-상이의견 비교 뷰
-harness/          미니 평가 하네스
+harness/          미니 평가 하네스(run_harness.py) + 실측 런 입출력 리뷰 시트(io_review.py, 템플릿은 src/templates/io_review.html.j2)
 app/              평가자용 탐색 콘솔 (Streamlit) - explorer.py 화면, profile_builder.py 입력 조립
 tests/            결정론 단위 테스트
 docs/decisions/   설계 결정 기록 (ADR) 8건
@@ -420,6 +421,10 @@ Claude Haiku 4.5 $1 / $5 (캐시 읽기 $0.10, 배치 $0.50 / $2.50);
 - 보호자 단일 보고 기반 선별 검사의 한계는 리포트 안에 고지됩니다.
 - 준임상 경계의 해설 어조는 상담사 검수가 필요합니다.
 - SEM 오차 범위선의 신뢰도 계수는 예시값(.84)이며 화면에 예시값임을 표기합니다.
+- 리뷰 시트(`harness/io_review.py`)의 부록은 시도별 원문을 run_stats에 저장된
+  범위까지만 보여 줍니다. 현재 `run_stats.json`은 규칙별 위반 건수만 남기므로
+  차단된 첫 시도의 문장은 표시되지 않습니다.
+- SEM 밴드의 신뢰도 계수는 예시값(.84)이며 화면에 예시값임을 표기합니다.
 
 위 항목은 GitHub 이슈 트래커로 추적합니다 (#1, #3, #4, #6).
 
