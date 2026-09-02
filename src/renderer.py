@@ -1,13 +1,13 @@
 """종형곡선 SVG 렌더러 (결정론, matplotlib 미사용).
 
 정규분포 곡선 아래 면적을 구간 색(정상/준임상/임상)으로 나누고, 아이 위치
-마커와 SEM 대칭 오차 범위선, 기준선, 구간 이름표를 그린다. 그래픽은
+마커와 SEM 대칭 오차 구간(곡선을 따라 굵게), 기준선, 구간 이름표를 그린다. 그래픽은
 텍스트보다 판정처럼 읽히므로 전부 숫자에서 기계적으로 생성하고 확률
 모델은 개입하지 않는다.
 
 시각 언어는 두 겹이다. 구간 색은 곡선 아래에만 칠해 "또래 분포의 어느
 부분인가"를 보여 주고, 아이의 결과는 마커(점, 수직 스템)와 좌우 대칭
-가로 범위선(SEM ±)으로 그 위에 얹는다. 두 겹이 같은 자리에서 반투명으로
+곡선을 따라가는 굵은 오차 구간(SEM ±)으로 그 위에 얹는다. 두 겹이 같은 자리에서 반투명으로
 섞이지 않도록 오차 범위는 면이 아니라 선이다.
 
 라벨 배치는 후보 위치를 순서대로 시도해 (1) 화면 밖으로 나가지 않고
@@ -96,6 +96,26 @@ def _curve_path(x, y) -> str:
     return "M" + " L".join(pts)
 
 
+def _curve_segment_path(x, y, t_lo: float, t_hi: float, step: float = 0.5) -> str:
+    """t_lo~t_hi 구간의 곡선 경로 (오차 구간을 곡선 위에 굵게 덧그릴 때 사용)."""
+    pts = []
+    t = t_lo
+    while t < t_hi - 1e-9:
+        pts.append(f"{x(t):.1f},{y(t):.1f}")
+        t += step
+    pts.append(f"{x(t_hi):.1f},{y(t_hi):.1f}")
+    return "M" + " L".join(pts)
+
+
+def _perp_cap(x, y, t: float, half_len: float = 5.0, dt: float = 0.25):
+    """t 지점에서 곡선에 수직인 짧은 캡의 양 끝 좌표 (접선은 좌우 dt 차분으로 근사)."""
+    x0, y0 = x(t), y(t)
+    dx, dy = x(t + dt) - x(t - dt), y(t + dt) - y(t - dt)
+    norm = math.hypot(dx, dy) or 1.0
+    nx, ny = -dy / norm, dx / norm
+    return (x0 - nx * half_len, y0 - ny * half_len, x0 + nx * half_len, y0 + ny * half_len)
+
+
 def _area_path(x, y, base: float) -> str:
     """곡선과 기준선으로 닫은 면적 (구간 색 클리핑용)."""
     return f"{_curve_path(x, y)} L{x(T_RIGHT):.1f},{base} L{x(T_LEFT):.1f},{base} Z"
@@ -181,6 +201,12 @@ def _place_pair(first, second, width, base, y, t_at, obstacles):
         for p2, _b2 in _valid_placements(c2, t2, f2, width, base, y, t_at, [*obstacles, b1]):
             return p1, p2
     for p1, _b1 in _valid_placements(c1, t1, f1, width, base, y, t_at, obstacles):
+        # 두 번째 라벨의 유효 자리가 없으면(극단 꼬리) 겹침은 허용하되, 화면 좌우 안에 있고
+        # 곡선을 가로지르지 않는 첫 후보를 고른다
+        for ax, by, anchor in c2:
+            box = _text_box(ax, by, anchor, t2, f2)
+            if box[0] >= 2 and box[2] <= width - 2 and not _crosses_curve(box, y, t_at):
+                return p1, (ax, by, anchor)
         return p1, c2[0]
     return c1[0], c2[0]
 
@@ -232,7 +258,7 @@ def bell_curve_svg(
 
     구성: 곡선 아래 면적을 정상/준임상/임상 구간 색으로 분할(clipPath), 정규곡선,
     경계 기준선(점선)과 기준선 라벨(곡선 위 빈 공간), 꼭짓점 라벨, 아이 위치 마커
-    (점 + 수직 스템)와 SEM 대칭 가로 범위선(양 끝 캡) + 오차 범위 라벨, 눈금,
+    (점 + 수직 스템)와 곡선을 따라가는 SEM 대칭 오차 구간(양 끝 수직 캡) + 오차 범위 라벨, 눈금,
     축 아래 구간 이름표 줄, 축 라벨.
 
     clip_id는 문서 안에 곡선이 여러 개 들어갈 때 clipPath id 충돌을 피하기 위한
@@ -279,20 +305,24 @@ def bell_curve_svg(
     )
     obstacles = [_text_box(x(T_MEAN), peak_y, "middle", PEAK_LABEL, 9.5), *cutoff_labels]
 
-    # 마커: 수직 스템 + 점 + SEM 대칭 가로 범위선 (양 끝 캡)
+    # 마커: 수직 스템 + 점 + SEM 대칭 오차 구간. 오차 구간은 가로선이 아니라 곡선을 따라
+    # 굵게 덧그리고(58~66T 구간의 곡선 자체), 양 끝에 곡선에 수직인 짧은 캡을 세운다.
+    # 구간 색(면)과 시각 언어가 다르고, "이 점수대의 곡선 위 어디쯤"이 그대로 읽힌다.
     mx, my = x(t_score), y(t_score)
     lo, hi = max(T_LEFT, t_score - sem), min(T_RIGHT, t_score + sem)
     lx, hx = x(lo), x(hi)
+    ly, hy = y(lo), y(hi)
+    cap_l, cap_h = _perp_cap(x, y, lo), _perp_cap(x, y, hi)
     marker = (
         f'<line x1="{mx:.1f}" y1="{base}" x2="{mx:.1f}" y2="{my:.1f}" '
         f'stroke="{_COL["marker"]}" stroke-width="1.5"/>'
-        f'<line x1="{lx:.1f}" y1="{my:.1f}" x2="{hx:.1f}" y2="{my:.1f}" '
-        f'stroke="{_COL["marker"]}" stroke-width="2"/>'
-        f'<line x1="{lx:.1f}" y1="{my - 4:.1f}" x2="{lx:.1f}" y2="{my + 4:.1f}" '
-        f'stroke="{_COL["marker"]}" stroke-width="2"/>'
-        f'<line x1="{hx:.1f}" y1="{my - 4:.1f}" x2="{hx:.1f}" y2="{my + 4:.1f}" '
-        f'stroke="{_COL["marker"]}" stroke-width="2"/>'
-        f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="4" fill="{_COL["marker"]}"/>'
+        f'<path d="{_curve_segment_path(x, y, lo, hi)}" fill="none" stroke="{_COL["marker"]}" '
+        f'stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>'
+        f'<line x1="{cap_l[0]:.1f}" y1="{cap_l[1]:.1f}" x2="{cap_l[2]:.1f}" y2="{cap_l[3]:.1f}" '
+        f'stroke="{_COL["marker"]}" stroke-width="2" stroke-linecap="round"/>'
+        f'<line x1="{cap_h[0]:.1f}" y1="{cap_h[1]:.1f}" x2="{cap_h[2]:.1f}" y2="{cap_h[3]:.1f}" '
+        f'stroke="{_COL["marker"]}" stroke-width="2" stroke-linecap="round"/>'
+        f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="4.5" fill="{_COL["marker"]}" stroke="#ffffff" stroke-width="1.2"/>'
     )
 
     # 마커 라벨: 점의 오른쪽 위가 기본, 안 되면 왼쪽 위, 범위선 바깥, 점 위 가운데(꼬리),
@@ -311,7 +341,9 @@ def bell_curve_svg(
         ([(mx + 6, my - 8, "start"), (mx - 6, my - 8, "end"),
           (lx - 6, my - 8, "end"), (hx + 6, my - 8, "start"), *tail_m,
           (mx + 6, my + 16, "start"), (mx - 6, my + 16, "end")], m_text, 11),
-        ([(hx + 5, my + 3, "start"), (lx - 5, my + 3, "end"),
+        ([(hx + 7, hy + 3, "start"), (lx - 7, ly + 3, "end"),
+          (hx + 7, hy - 10, "start"), (lx - 7, ly - 10, "end"),
+          (hx + 5, my + 3, "start"), (lx - 5, my + 3, "end"),
           (hx + 5, my - 12, "start"), (lx - 5, my - 12, "end"),
           (mx, my - 12, "middle"), *tail_s,
           (mx + 6, my + 16, "start"), (mx - 6, my + 16, "end"),
