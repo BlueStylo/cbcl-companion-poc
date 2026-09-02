@@ -317,7 +317,7 @@ OBSERVATION_BY_SCALE: dict[str, str] = {
 
 # 규칙별 위반 시드 (하네스 B축 시드와 같은 계열의 문장). 탐색 콘솔에서 가드레일이
 # 실제로 막는 모습을 보여 주기 위해 목 출력에 주입한다.
-SEED_RULES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11")
+SEED_RULES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12")
 
 QUOTE_LIMIT = 32  # 인용 조각 상한 (질문 길이 25~90자 계약을 지키기 위해 긴 의견은 앞부분만 인용)
 
@@ -467,6 +467,8 @@ def inject_seed_violations(task: str, profile: CBCLProfile, output: dict, rules)
         qs[3]["question"] = "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 상담에서 무엇부터 살펴보게 되나요?"
     if "G11" in rules:
         qs[4]["question"] = "그런 모습이 관찰되는 상황이나 사례를 몇 가지 더 알려주시겠어요?"
+    if "G12" in rules:
+        qs[3]["question"] = "아이가 없어지고 싶다고 말한 날의 앞뒤 상황을 상담에서 어떻게 다루게 되나요?"
     if "G5" in rules:
         out["questions_for_counselor"] = qs[:2]
     return out

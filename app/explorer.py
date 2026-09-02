@@ -285,7 +285,7 @@ def _run_panel(run: dict | None, stale: bool) -> None:
 
     left, right = st.columns([3, 2])
     with left:
-        st.markdown("**걸린 규칙 분포 (G1~G11, 전 시도 합산)**")
+        st.markdown("**걸린 규칙 분포 (G1~G12, 전 시도 합산)**")
         counts = _rule_counts(stats)
         if any(counts.values()):
             st.bar_chart(pd.DataFrame({"위반 수": [counts[r] for r in SEED_RULES]}, index=list(SEED_RULES)),

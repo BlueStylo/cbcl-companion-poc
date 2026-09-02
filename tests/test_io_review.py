@@ -167,7 +167,7 @@ def test_blocks_match_guardrail_schema():
     assert len(io_review.BLOCKS) == 2
     assert set(io_review.LEGACY_BLOCKS) == {("explain", "overview"), ("explain", "before_counseling"),
                                             ("prep", "counselor_briefing")}
-    assert set(io_review.RULE_KO) == {f"G{i}" for i in range(1, 12)}
+    assert set(io_review.RULE_KO) == {f"G{i}" for i in range(1, 13)}
 
 
 def test_legacy_four_and_five_block_run_stats_still_render(tmp_path):

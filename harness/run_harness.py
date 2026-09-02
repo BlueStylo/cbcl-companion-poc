@@ -47,7 +47,7 @@ CLEAN_PROFILES = [p for p in PROFILE_ORDER if p != "a1_adversarial"]
 # 합격 게이트가 대조하는 시드 총수. fixture에서 센 값과 일치해야 한다
 # (시드 파일이 비어 버리면 0/0=100%로 통과하는 구멍을 막는다).
 EXPECTED_PIPELINE_SEEDS = 10
-EXPECTED_B_SEEDS = 45
+EXPECTED_B_SEEDS = 47
 
 
 def print_table(headers: list[str], rows: list[list]) -> None:
@@ -203,7 +203,7 @@ SEEDED_FILE_ORDER = [
     "g1_diagnosis", "g2_severity", "g3_numbers",
     "g4_source", "g5_schema", "g6_prescription",
     "g7_format_leak", "g8_band_label", "g9_normal_scale",
-    "g10_grounding", "g11_direction", "bypass",
+    "g10_grounding", "g11_direction", "g12_crisis_output", "bypass",
 ]
 
 

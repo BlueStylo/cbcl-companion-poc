@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.generator import PROMPTS_DIR, TASKS, build_user_message, load_system_prompt
-from src.guardrails import (TASK_BLOCKS, Violation, _strip_fallback_flags, check_output,
+from src.guardrails import (SAFE_QUESTION, TASK_BLOCKS, Violation, _check_crisis_vocab,
+                            _strip_fallback_flags, check_output, detect_crisis_signals,
                             has_quote_claim, quotes_caregiver_note, run_with_guardrails,
                             scale_mentions)
 from src.llm_client import TemplateMockClient
@@ -463,6 +464,51 @@ def test_g11_caregiver_to_counselor_requests_pass(prep_out, ok):
 
 def test_g11_applies_to_questions_only(prep_out):
     assert "G11" not in rules(check_output(PROFILE, "prep", _o(prep_out, 0, "보호자님이 놀이터에서 본 장면을 한 줄로 적어 두기")))
+
+
+# ---------------------------------------------------------------- G12 위기 어휘 출력
+
+
+@pytest.mark.parametrize("bad", [
+    "아이가 없어지고 싶다고 말한 날의 앞뒤 상황을 상담에서 어떻게 다루게 되나요?",   # 외부 리뷰 재현 사례
+    "손목을 긋고 싶다는 말이 나오면 상담 전까지 무엇을 하면 되나요?",
+    "아이가 죽고 싶다는 말을 하면 상담에서는 어떻게 이어 가게 되나요?",
+    "아빠가 때린다고 아이가 말하면 그 자리에서 무엇을 확인하게 되나요?",
+])
+def test_g12_crisis_vocabulary_in_llm_output_is_blocked(prep_out, bad):
+    """입력(p2 의견)에 없는 위기 표현을 모델이 질문에 넣으면 G12. 근거 척도가 유효해 G10으로는 안 잡히는 자리다."""
+    vs = check_output(PROFILE, "prep", _q(prep_out, 2, bad, "anxious_depressed"))
+    assert "G12" in rules(vs) and any("위기 어휘" in v.matched for v in vs), bad
+    assert detect_crisis_signals(PROFILE.model_copy(update={"caregiver_notes": [bad]}))   # 입력 게이트와 같은 사전
+
+
+def test_g12_shares_dictionary_with_input_gate_and_passes_ordinary_text():
+    for text in ("동생을 때려요라고 적으셨는데 상담에서는 무엇부터 살펴보게 되나요?",
+                 "때려치우고 싶다는 말을 자주 하는데 어떻게 보면 될까요?",
+                 "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 어떻게 보면 될까요?"):
+        assert _check_crisis_vocab("q", text) == [], text
+        assert detect_crisis_signals(PROFILE.model_copy(update={"caregiver_notes": [text]})) == []
+
+
+def test_g12_persisting_violation_falls_back_to_safe_question(prep_out):
+    """위기 어휘가 재생성 2회 뒤에도 남으면 질문 블록은 안전 문구로 대체되고, 최종 출력에 위기 어휘가 없다."""
+    bad = _q(prep_out, 2, "아이가 없어지고 싶다고 말한 날의 앞뒤 상황을 상담에서 어떻게 다루게 되나요?")
+    seen = []
+
+    def gen_fn(attempt, pending, feedback):
+        seen.append((attempt, tuple(pending), {v.rule_id for v in feedback}))
+        return copy.deepcopy(bad)
+
+    result = run_with_guardrails(PROFILE, "prep", gen_fn)
+    assert [a for a, _p, _f in seen] == [0, 1, 2]
+    assert all("G12" in f for _a, _p, f in seen[1:])                      # 재생성 피드백에 G12가 실린다
+    assert result.fallback_blocks == ["questions_for_counselor"]
+    assert result.output["questions_for_counselor"][0]["question"] == SAFE_QUESTION
+    assert _check_crisis_vocab("q", json.dumps(result.output, ensure_ascii=False)) == []
+    assert check_output(PROFILE, "prep", result.output) == []
+    regen = build_user_message(PROFILE, 1, ["questions_for_counselor"],
+                               [Violation("G12", "questions_for_counselor", "없어지고 싶", 0)])
+    assert "위기 어휘" in regen                                            # RULE_HINTS에 G12가 있다
 
 
 # ---------------------------------------------------------------- 루프
