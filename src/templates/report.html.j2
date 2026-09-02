@@ -146,7 +146,7 @@
         <span class="verdict">{{ c.verdict }}</span>
         {% if c.band == "normal" %}<span class="range-inline">· <span class="chip {{ c.band }}">{{ c.band_ko }}</span> · {{ c.t }}T</span>{% endif %}
       </div>
-      {% if c.band != "normal" %}<p class="range">{{ c.plain_range }} · 전문용어로 <span class="chip {{ c.band }}">{{ c.band_ko }}</span> · 이번 검사 결과 {{ c.t }}T</p>{% endif %}
+      {% if c.band != "normal" %}<p class="range">보고서 표기 <span class="chip {{ c.band }}">{{ c.band_ko }}</span> · 이번 검사 결과 {{ c.t }}T</p>{% endif %}
       {% if c.open %}
       {{ c.svg|safe }}
       <p class="text">{{ c.text }} <span class="tag">고정 문구</span></p>
@@ -164,7 +164,7 @@
           <span class="verdict">{{ s.verdict }}</span>
           {% if s.band == "normal" %}<span class="range-inline">· <span class="chip {{ s.band }}">{{ s.band_ko }}</span> · {{ s.t }}T</span>{% endif %}
         </div>
-        {% if s.band != "normal" %}<p class="range">{{ s.plain_range }} · 전문용어로 <span class="chip {{ s.band }}">{{ s.band_ko }}</span> · 이번 검사 결과 {{ s.t }}T</p>{% endif %}
+        {% if s.band != "normal" %}<p class="range">보고서 표기 <span class="chip {{ s.band }}">{{ s.band_ko }}</span> · 이번 검사 결과 {{ s.t }}T</p>{% endif %}
       </summary>
       {{ s.svg|safe }}
       <p class="text">{{ s.text }} <span class="tag">고정 문구</span></p>

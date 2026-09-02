@@ -41,10 +41,10 @@ def _order(fragment: str, *needles: str) -> list[int]:
 
 
 def test_borderline_card_reads_in_fixed_order():
-    """p2 내재화(종합, 62T 준임상): 척도명 → 결론 → 쉬운 구간 → 라벨 배지 → 수치 → 곡선 → 해설 → 진단 아님."""
+    """p2 내재화(종합, 62T 준임상): 척도명 → 쉬운 구간 이름 → 보고서 표기 배지 → 수치 → 곡선 → 해설 → 진단 아님."""
     html = build_pending_report_html(_profile("p2_partial_borderline"))
     card = _card(html, "internalizing")
-    pos = _order(card, "내재화 문제", CARD_VERDICT["borderline"], CARD_PLAIN_RANGE["borderline"],
+    pos = _order(card, "내재화 문제", CARD_VERDICT["borderline"], "보고서 표기",
                  '<span class="chip borderline">준임상</span>', "이번 검사 결과 62T", "<svg",
                  "준임상 범위입니다", CARD_NOT_DIAGNOSIS)
     assert pos == sorted(pos), pos
@@ -55,7 +55,7 @@ def test_borderline_card_reads_in_fixed_order():
 def test_clinical_card_has_not_diagnosis_line_and_normal_cards_do_not():
     p4 = build_pending_report_html(_profile("p4_clinical"))
     aggressive = _card(p4, "aggressive")
-    pos = _order(aggressive, "공격성", CARD_VERDICT["clinical"], CARD_PLAIN_RANGE["clinical"],
+    pos = _order(aggressive, "공격성", CARD_VERDICT["clinical"], "보고서 표기",
                  '<span class="chip clinical">임상</span>', "이번 검사 결과 71T", "<svg", CARD_NOT_DIAGNOSIS)
     assert pos == sorted(pos), pos
     # 준임상 2 + 임상 3 = 5개 카드에만 한 줄이 붙는다
@@ -84,8 +84,8 @@ def test_curve_howto_block_appears_once_on_page_one():
 def test_card_fixed_texts_stay_outside_llm_gates():
     """카드 고정 문구는 템플릿에서만 나오고 가드레일·품질 지표가 보는 LLM 텍스트에는 없다.
 
-    "높은 편"은 G8이 LLM 출력에서 금지하는 비표준 밴드 표현이지만, 카드의 결론 문장은
-    같은 줄의 원 보고서 라벨 배지와 항상 짝인 고정 문구라 게이트 대상이 아니다.
+    결론 줄은 평가 형용사 없이 보고서 라벨을 풀어 쓴 구간 이름만 쓴다(G8이 LLM에 금지하는
+    "높은 편" 같은 어휘를 시스템도 쓰지 않는다). 고정 문구는 게이트 입력에 섞이지 않는다.
     """
     profile = _profile("p2_partial_borderline")
     results = generate_all(profile, make_client("mock"))
@@ -106,8 +106,8 @@ def test_normal_cards_have_single_line_header():
     somatic = _card(html, "somatic")
     assert CARD_VERDICT["normal"] in somatic
     assert '<span class="chip normal">정상</span>' in somatic and "51T" in somatic
-    assert "전문용어로" not in somatic and '<p class="range">' not in somatic
+    assert "보고서 표기" not in somatic and '<p class="range">' not in somatic
     internalizing = _card(html, "internalizing")
-    assert "전문용어로" in internalizing and CARD_PLAIN_RANGE["borderline"] in internalizing
+    assert "보고서 표기" in internalizing and CARD_PLAIN_RANGE["borderline"] in internalizing
     p1 = build_pending_report_html(_profile("p1_all_normal"))
-    assert "전문용어로" not in p1
+    assert "보고서 표기" not in p1
