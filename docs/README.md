@@ -15,6 +15,7 @@
 | [0004](decisions/0004-g3-numeric-equivalence.md) | G3 에코 t_score의 수치 동치 정의 정확화 (비교 완화 아님) |
 | [0005](decisions/0005-reduce-llm-scope.md) | LLM 범위 축소: 척도별 해설은 고정 문구, LLM은 인용이 필요한 곳만 |
 | [0006](decisions/0006-harness-metrics-redefinition.md) | 검증 지표 재정의: 커버리지 2단, FP 게이트, 시드 수 assert |
+| [0007](decisions/0007-explorer-console.md) | 평가자용 탐색 콘솔: 슬라이더 입력, 즉시 결정론 렌더, 템플릿 목 (입력/결과 패널 분리 추가 결정 포함) |
 
 새 결정은 다음 번호로 파일을 추가하고 이 표에 한 줄을 더합니다. 규칙·지표·프롬프트 계약을
 바꾸는 PR은 해당 ADR 번호를 본문에 적습니다.

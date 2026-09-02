@@ -60,12 +60,15 @@ python harness/run_harness.py --mock
 
 ## 탐색 콘솔 (평가자용)
 
-![탐색 콘솔 - 왼쪽 슬라이더·의견 입력, 오른쪽 2페이지 리포트와 실행 패널](docs/img/explorer.png)
+![탐색 콘솔 - 왼쪽 입력 패널(슬라이더, 보호자 의견, 생성 모드), 오른쪽 결과 패널(2페이지 리포트와 실행 패널)](docs/img/explorer.png)
 
 JSON 파일 없이 슬라이더와 텍스트로 프로파일을 바꿔 가며 결과를 확인하는
 Streamlit 화면입니다. 렌더러·규칙·생성기는 위 파이프라인 모듈을 그대로
 호출합니다 (파서 → 위기 게이트 → generator → guardrails → report_html).
 화면용 곡선이나 규칙을 따로 두지 않았으므로 콘솔에서 보는 것이 곧 산출물입니다.
+화면은 왼쪽 입력 패널(프로파일과 생성 설정)과 오른쪽 결과 패널(리포트와 실행 지표)로
+나뉘며, 두 패널은 배경과 테두리로 구분되고 소제목에는 영역 표식(입력은 회색 번호 캡션,
+결과는 파란 좌측 보더)이 붙습니다.
 
 ```bash
 pip install -r requirements-app.txt      # 코어 requirements + streamlit (CI는 코어만 돕니다)
