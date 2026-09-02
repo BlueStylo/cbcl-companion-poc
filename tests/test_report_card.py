@@ -61,12 +61,11 @@ def test_clinical_card_has_not_diagnosis_line_and_normal_cards_do_not():
     # 준임상 2 + 임상 3 = 5개 카드에만 한 줄이 붙는다
     assert p4.count(CARD_NOT_DIAGNOSIS) == 5
     withdrawn = _card(p4, "withdrawn")
-    assert CARD_VERDICT["normal"] in withdrawn and CARD_PLAIN_RANGE["normal"] in withdrawn
-    assert CARD_NOT_DIAGNOSIS not in withdrawn
+    assert CARD_VERDICT["normal"] in withdrawn and CARD_NOT_DIAGNOSIS not in withdrawn
 
     p1 = build_pending_report_html(_profile("p1_all_normal"))
     assert CARD_NOT_DIAGNOSIS not in p1
-    assert p1.count(CARD_VERDICT["normal"]) == 11
+    assert p1.count(f'<span class="verdict">{CARD_VERDICT["normal"]}</span>') == 11
     assert CARD_VERDICT["borderline"] not in p1 and CARD_VERDICT["clinical"] not in p1
 
 
@@ -99,3 +98,16 @@ def test_card_fixed_texts_stay_outside_llm_gates():
     assert all(text not in gated for text in fixed)
     for task in ("explain", "prep"):
         assert check_output(profile, task, results[task].output) == []
+
+
+def test_normal_cards_have_single_line_header():
+    """정상 카드(접힘)는 헤더 한 줄: 척도명, 결론, 라벨 배지, T점수. 둘째 줄(쉬운 구간 문장)은 준임상 이상에만."""
+    html = build_pending_report_html(_profile("p2_partial_borderline"))
+    somatic = _card(html, "somatic")
+    assert CARD_VERDICT["normal"] in somatic
+    assert '<span class="chip normal">정상</span>' in somatic and "51T" in somatic
+    assert "전문용어로" not in somatic and '<p class="range">' not in somatic
+    internalizing = _card(html, "internalizing")
+    assert "전문용어로" in internalizing and CARD_PLAIN_RANGE["borderline"] in internalizing
+    p1 = build_pending_report_html(_profile("p1_all_normal"))
+    assert "전문용어로" not in p1
