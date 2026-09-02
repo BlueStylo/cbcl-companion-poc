@@ -75,6 +75,7 @@ Streamlit 화면입니다. 렌더러·규칙·생성기는 위 파이프라인 �
 ```bash
 pip install -r requirements-app.txt      # 코어 requirements + streamlit (CI는 코어만 돕니다)
 streamlit run app/explorer.py            # http://localhost:8501
+# 루트 .env에 LLM_BASE_URL(…:11434/v1)과 LLM_MODEL을 적어 두면 Ollama 모드 입력칸에 미리 채워집니다
 # 데모·스크린샷용: http://localhost:8501/?example=p2_partial_borderline&autorun=1
 ```
 

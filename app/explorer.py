@@ -36,9 +36,10 @@ from src.quality import fmt_rate
 from src.report_html import build_crisis_html, build_pending_report_html, build_report_html
 
 DEFAULT_EXAMPLE = "p2_partial_borderline"
+load_env_file(ROOT / ".env")  # 시작 시 한 번: Ollama 모드 입력칸(base_url, 모델명)이 .env 값으로 미리 채워지도록
 OLLAMA_DEFAULT_URL = "http://localhost:11434/v1"
 OLLAMA_DEFAULT_MODEL = "gemma4:12b"
-API_DEFAULT_MODEL = "gpt-5-mini"
+API_DEFAULT_MODEL = "gpt-5.6-luna"  # src/llm_client.py 기본값과 동일하게 유지
 MODES = {
     "mock": "mock 템플릿 (실제 LLM 생성이 아님)",
     "ollama": f"Ollama ({OLLAMA_DEFAULT_MODEL} 기본, 모델명 변경 가능)",
