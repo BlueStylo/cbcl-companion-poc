@@ -194,5 +194,18 @@
     </details>
   </footer>
 </main>
+<script data-inpage-jump>
+// 이 리포트가 srcdoc iframe(예: Streamlit 탐색 콘솔) 안에서 열리면 "#prep" 같은 문서 내 링크가
+// 부모 페이지 URL 기준으로 해석되어 iframe 안에 부모 앱이 다시 열린다 (srcdoc 문서는 부모의 base URL을 물려받음).
+// 문서 내 이동은 스크립트로 직접 처리해 단독 파일과 iframe 양쪽에서 같은 동작을 보장한다.
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  var t = document.getElementById(a.getAttribute('href').slice(1));
+  if (!t) return;
+  e.preventDefault();
+  t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+</script>
 </body>
 </html>
