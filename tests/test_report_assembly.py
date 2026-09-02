@@ -40,7 +40,7 @@ def test_overview_quotes_notes_verbatim_and_lists_elevated_scales_by_report_labe
     assert text == (
         '보호자님은 이렇게 적어 주셨습니다. "학원 숙제를 앞에 두면 딴 데를 자주 봅니다" '
         '"놀이터에서 또래에게 먼저 말을 거는 일이 줄었습니다" '
-        "검사에서는 내재화 문제, 위축, 우울/불안, 주의집중이 준임상 범위로 보고되었고, 그 밖의 척도는 정상 범위였습니다. "
+        "검사에서는 내재화 문제, 위축, 우울/불안, 주의집중이 준임상 범위로 보고되었고, 그 밖의 포함 척도는 정상 범위였습니다. "
         "이 관찰과 결과가 어떻게 이어지는지는 예약된 상담에서 상담사와 이야기해 보세요."
     )
     assert not re.search(r"\d", text)                       # 수치는 카드가 보여준다
@@ -48,7 +48,7 @@ def test_overview_quotes_notes_verbatim_and_lists_elevated_scales_by_report_labe
 
 def test_overview_lists_clinical_then_borderline_and_uses_josa():
     text = build_overview_text(_profile("p3_boundary_mix"))
-    assert "검사에서는 공격성이 임상 범위로, 총 문제행동, 외현화 문제, 위축, 주의집중이 준임상 범위로 보고되었고, 그 밖의 척도는 정상 범위였습니다." in text
+    assert "검사에서는 공격성이 임상 범위로, 총 문제행동, 외현화 문제, 위축, 주의집중이 준임상 범위로 보고되었고, 그 밖의 포함 척도는 정상 범위였습니다." in text
     text = build_overview_text(_profile("p4_clinical"))
     assert "총 문제행동, 외현화 문제, 공격성이 임상 범위로, 주의집중, 비행이 준임상 범위로" in text
 
@@ -58,7 +58,7 @@ def test_overview_all_normal_branch():
     assert text == (
         '보호자님은 이렇게 적어 주셨습니다. "동생이 태어난 뒤로 잠드는 데 시간이 오래 걸립니다" '
         '"정상 범위라는 말을 들어도 마음이 놓이지 않아 여쭤보고 싶습니다" '
-        "검사에서는 모든 척도가 정상 범위로 보고되었습니다. 관찰하신 모습이 무엇을 뜻하는지는 상담에서 함께 살펴볼 수 있습니다."
+        "검사에서는 이번 가이드에 포함된 척도는 모두 정상 범위로 보고되었습니다. 관찰하신 모습이 무엇을 뜻하는지는 상담에서 함께 살펴볼 수 있습니다."
     )
     assert "준임상" not in text and "임상 범위" not in text
 

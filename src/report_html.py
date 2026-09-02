@@ -143,7 +143,8 @@ def build_overview_text(profile: CBCLProfile) -> str:
     elevated = profile.elevated_scales()
     if not elevated:
         what = "관찰하신 모습이" if notes else "이 결과가"
-        return (f"{first} 검사에서는 모든 척도가 정상 범위로 보고되었습니다. "
+        scope = "모든 척도가" if profile.special_scales_administered else "이번 가이드에 포함된 척도는 모두"
+        return (f"{first} 검사에서는 {scope} 정상 범위로 보고되었습니다. "
                 f"{what} 무엇을 뜻하는지는 상담에서 함께 살펴볼 수 있습니다.")
     parts = []
     for band in ("clinical", "borderline"):
@@ -151,7 +152,8 @@ def build_overview_text(profile: CBCLProfile) -> str:
         if names:
             parts.append(f"{', '.join(names)}{josa(names[-1], '이', '가')} {BAND_KO[band]} 범위로")
     second = "검사에서는 " + ", ".join(parts) + " 보고되었"
-    second += "고, 그 밖의 척도는 정상 범위였습니다." if len(elevated) < len(profile.all_scales()) else "습니다."
+    rest = "그 밖의 척도는" if profile.special_scales_administered else "그 밖의 포함 척도는"
+    second += f"고, {rest} 정상 범위였습니다." if len(elevated) < len(profile.all_scales()) else "습니다."
     where = "예약된 상담에서" if profile.counseling_scheduled else "상담 예약 후"
     third = f"이 관찰과 결과가 어떻게 이어지는지는 {where} 상담사와 이야기해 보세요."
     return f"{first} {second} {third}"
