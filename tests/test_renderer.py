@@ -67,12 +67,12 @@ def test_card_curve_has_new_visual_language():
 
 
 def test_plot_labels_never_overflow_overlap_or_cross_the_curve():
-    """25~85T 전부, 두 기준표 모두: 플롯 영역 라벨은 화면 안에 있고 서로 겹치지 않으며
+    """25~100T 전부, 두 기준표 모두: 플롯 영역 라벨은 화면 안에 있고 서로 겹치지 않으며
     마커·오차 범위 라벨은 곡선을 가로지르지 않는다 (렌더러의 폭 추정치 기준)."""
     width = 460
     x, y, base, t_at = R._geometry(width, R.CARD_HEIGHT, top=R.CARD_TOP, bottom=R.CARD_BOTTOM)
     for criteria in (COMP, SYN):
-        for t in range(25, 86):
+        for t in range(25, 101):
             svg = bell_curve_svg(t, criteria)
             boxes = _plot_label_boxes(svg, base)
             assert len(boxes) == 5, (t, sorted(boxes))
@@ -82,5 +82,37 @@ def test_plot_labels_never_overflow_overlap_or_cross_the_curve():
             for i, (ta, a) in enumerate(items):
                 for tb, b in items[i + 1:]:
                     assert not R._overlaps(a, b, pad=0.0), (t, criteria, ta, tb)
-            for text in (f"이번 결과 {t}T", f"오차 범위 {t - 4}~{t + 4}T (예시값)"):
+            marker_text = f"이번 결과 {t}T" + (" (표시 범위 밖)" if t > 85 else "")
+            for text in (marker_text, f"오차 범위 {t - 4}~{t + 4}T (예시값)"):
                 assert not R._crosses_curve(boxes[text], y, t_at), (t, criteria, text)
+
+
+def test_scores_above_plot_range_are_clamped_and_labeled():
+    svg = bell_curve_svg(96, SYN)
+    marker = re.search(r'<circle cx="([\d.]+)" cy="([\d.]+)" r="4.5"', svg)
+    assert marker
+    x, _y, _base, _t_at = R._geometry(
+        460, R.CARD_HEIGHT, top=R.CARD_TOP, bottom=R.CARD_BOTTOM
+    )
+    assert float(marker.group(1)) == round(x(85), 1)
+    assert "이번 결과 96T (표시 범위 밖)" in svg
+    assert "오차 범위 92~100T (예시값)" in svg
+
+    segment = re.search(
+        r'<path d="(M[^"]+)" fill="none" stroke="#b0552e" stroke-width="4"',
+        svg,
+    )
+    assert segment
+    for px, py in re.findall(r"([\d.]+),([\d.]+)", segment.group(1)):
+        assert 0 <= float(px) <= 460
+        assert 0 <= float(py) <= R.CARD_HEIGHT
+    marker_lines = re.findall(
+        r'<line x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="([\d.]+)" '
+        r'stroke="#b0552e"',
+        svg,
+    )
+    assert len(marker_lines) == 3
+    for coords in marker_lines:
+        x1, y1, x2, y2 = map(float, coords)
+        assert 0 <= x1 <= 460 and 0 <= x2 <= 460
+        assert 0 <= y1 <= R.CARD_HEIGHT and 0 <= y2 <= R.CARD_HEIGHT

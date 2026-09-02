@@ -13,8 +13,9 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from src.parser import (COMPOSITE_IDS, SCALE_NAMES, SYNDROME_IDS, BandCriteria,
-                        CBCLProfile, expected_band, parse_profile)
+from src.parser import (COMPOSITE_IDS, KCBCL_DEFAULT_BAND_CRITERIA, SCALE_NAMES,
+                        SYNDROME_IDS, BandCriteria, CBCLProfile, expected_band,
+                        parse_profile)
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES_DIR = ROOT / "data" / "profiles"
@@ -23,10 +24,7 @@ T_SLIDER_MIN, T_SLIDER_MAX = 30, 90
 ALL_SCALE_IDS = (*COMPOSITE_IDS, *SYNDROME_IDS)
 
 # 기준표 (data/profiles 8종과 동일). 실서비스는 검사 시스템의 기준표를 받는다.
-DEFAULT_CRITERIA = {
-    "composite": {"normal_max_t": 59, "borderline_max_t": 62},
-    "syndrome": {"normal_max_t": 59, "borderline_max_t": 69},
-}
+DEFAULT_CRITERIA = json.loads(json.dumps(KCBCL_DEFAULT_BAND_CRITERIA))
 
 # 종합 지표를 구성하는 하위 척도 (참고 힌트 계산에만 쓴다 - 값을 유도하지 않는다)
 COMPOSITE_MEMBERS = {

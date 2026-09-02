@@ -308,8 +308,10 @@ def bell_curve_svg(
     # 마커: 수직 스템 + 점 + SEM 대칭 오차 구간. 오차 구간은 가로선이 아니라 곡선을 따라
     # 굵게 덧그리고(58~66T 구간의 곡선 자체), 양 끝에 곡선에 수직인 짧은 캡을 세운다.
     # 구간 색(면)과 시각 언어가 다르고, "이 점수대의 곡선 위 어디쯤"이 그대로 읽힌다.
-    mx, my = x(t_score), y(t_score)
-    lo, hi = max(T_LEFT, t_score - sem), min(T_RIGHT, t_score + sem)
+    plot_t = min(max(float(t_score), T_LEFT), T_RIGHT)
+    mx, my = x(plot_t), y(plot_t)
+    lo = min(max(t_score - sem, T_LEFT), T_RIGHT)
+    hi = min(max(t_score + sem, T_LEFT), T_RIGHT)
     lx, hx = x(lo), x(hi)
     ly, hy = y(lo), y(hi)
     cap_l, cap_h = _perp_cap(x, y, lo), _perp_cap(x, y, hi)
@@ -328,13 +330,15 @@ def bell_curve_svg(
     # 마커 라벨: 점의 오른쪽 위가 기본, 안 되면 왼쪽 위, 범위선 바깥, 점 위 가운데(꼬리),
     # 오른쪽 끝 정렬(꼬리 끝), 점 아래 순. 오차 범위 라벨: 오른쪽 캡 옆이 기본, 안 되면
     # 왼쪽 캡 옆, 범위선 위 가운데, 오른쪽 끝 정렬, 점 아래, 마커 라벨 위 순.
-    m_text = f"{marker_label} {t_score}T"
+    outside_suffix = " (표시 범위 밖)" if not T_LEFT <= t_score <= T_RIGHT else ""
+    m_text = f"{marker_label} {t_score}T{outside_suffix}"
     s_text = SEM_LABEL.format(lo=_fmt_t(t_score - sem), hi=_fmt_t(t_score + sem))
     # 점 위 가운데와 화면 끝 정렬 후보는 점이 꼬리에 있을 때만 쓴다 (가운데 근처 점수에서는
     # 점에서 먼 자리나 자리가 들쭉날쭉 바뀌는 것을 피한다). 오차 범위 라벨의 마지막 후보
     # (점 아래 두 번째 줄)는 마커 라벨이 점 아래로 내려간 경우(58~59T)의 자리다.
     near_right, near_left = mx > width - 120, mx < 120
-    tail_m = ([(mx, my - 24, "middle")] if near_right or near_left else []) \
+    tail_m = ([(width - 4, top - 8, "end")] if t_score > T_RIGHT else []) \
+        + ([(mx, my - 24, "middle")] if near_right or near_left else []) \
         + ([(width - 4, my - 24, "end")] if near_right else []) + ([(4, my - 24, "start")] if near_left else [])
     tail_s = ([(width - 4, my - 12, "end")] if near_right else []) + ([(4, my - 12, "start")] if near_left else [])
     (ax, by, anchor), (sx, sy, s_anchor) = _place_pair(

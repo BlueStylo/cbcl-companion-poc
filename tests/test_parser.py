@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.parser import ProfileError, load_profile, parse_profile
+from src.parser import KCBCL_DEFAULT_BAND_CRITERIA, ProfileError, load_profile, parse_profile
 
 PROFILES = sorted((ROOT / "data" / "profiles").glob("*.json"))
 
@@ -32,6 +32,24 @@ def test_t_score_out_of_range_rejected(base_raw):
     raw["syndromes"][0]["t_score"] = 120
     with pytest.raises(ProfileError):
         parse_profile(raw)
+
+
+def test_band_criteria_below_supported_range_rejected(base_raw):
+    raw = copy.deepcopy(base_raw)
+    raw["band_criteria"]["composite"]["normal_max_t"] = 49
+    with pytest.raises(ProfileError, match="greater than or equal to 50"):
+        parse_profile(raw)
+
+
+def test_band_criteria_above_supported_range_rejected_and_defaults_documented(base_raw):
+    raw = copy.deepcopy(base_raw)
+    raw["band_criteria"]["syndrome"]["borderline_max_t"] = 91
+    with pytest.raises(ProfileError, match="less than or equal to 90"):
+        parse_profile(raw)
+    assert KCBCL_DEFAULT_BAND_CRITERIA == {
+        "composite": {"normal_max_t": 59, "borderline_max_t": 62},
+        "syndrome": {"normal_max_t": 59, "borderline_max_t": 69},
+    }
 
 
 def test_band_label_mismatch_rejected(base_raw):
