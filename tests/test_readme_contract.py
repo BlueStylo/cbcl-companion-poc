@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_readme_describes_validation_and_measured_call_ranges():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "입력은 Pydantic으로 검증하고 출력은 결정론 가드레일로 검증" in readme
-    assert "호출 1회, 합계 12B 4~6초, 31B 8~11초" in readme
+    assert "호출 1회, 합계 12B 3~5초, 31B 5~8초" in readme
     assert "입력/출력 스키마 검증" not in readme
     assert "호출 2회 합계 12B 9초" not in readme
 

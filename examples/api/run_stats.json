@@ -15,11 +15,10 @@
           "regen_count": 0,
           "violations_by_attempt": {},
           "block_states": {
-            "questions_for_counselor": "pass",
-            "observation_points": "pass"
+            "questions_for_counselor": "pass"
           },
           "state_counts": {
-            "pass": 2,
+            "pass": 1,
             "regen_pass": 0,
             "fallback": 0
           }
@@ -30,25 +29,26 @@
           "profile_id": "p2_partial_borderline",
           "task": "prep",
           "attempt": 0,
-          "duration_s": 6.21,
-          "prompt_tokens": 3694,
-          "completion_tokens": 419
+          "duration_s": 5.08,
+          "prompt_tokens": 3525,
+          "completion_tokens": 278
         }
       ],
-      "total_prompt_tokens": 3694,
-      "total_completion_tokens": 419,
-      "total_llm_seconds": 6.21,
+      "total_prompt_tokens": 3525,
+      "total_completion_tokens": 278,
+      "total_llm_seconds": 5.08,
       "quality": {
         "jargon": {
           "term_hits": 6,
           "by_term": {
             "준임상": 3,
-            "척도": 3
+            "척도": 2,
+            "내재화": 1
           },
-          "blocks_total": 8,
+          "blocks_total": 5,
           "blocks_with_term": 3,
           "glossed_blocks": 0,
-          "residual_rate": 0.375,
+          "residual_rate": 0.6,
           "gloss_rate": 0.0
         },
         "reflection": {
@@ -76,12 +76,13 @@
             "또래",
             "먼저",
             "말을",
-            "거는"
+            "거는",
+            "줄었"
           ],
-          "token_rate": 0.8333333333333334,
-          "items_total": 8,
-          "items_reflected": 6,
-          "item_rate": 0.75,
+          "token_rate": 0.9166666666666666,
+          "items_total": 5,
+          "items_reflected": 4,
+          "item_rate": 0.8,
           "questions_total": 5,
           "questions_reflected": 4
         },
@@ -91,38 +92,24 @@
         "prep": {
           "questions_for_counselor": [
             {
-              "question": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습이 주의집중 척도 준임상 범위와 어떻게 연결되나요?",
+              "question": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 주의집중 척도가 준임상 범위로 보고된 것과 연결해서 보면 될까요?",
               "source_scale": "attention"
             },
             {
-              "question": "숙제할 때 딴 데를 보는 것이 주의집중의 어려움인지 아니면 다른 이유 때문인지 상담에서 어떻게 구분하나요?",
+              "question": "숙제 앞에서 딴 데를 보는 것이 집중력의 문제인지 다른 이유 때문인지는 상담에서 어떻게 구분하나요?",
               "source_scale": "attention"
             },
             {
-              "question": "놀이터에서 또래에게 먼저 말을 거는 일이 줄어든 것을 상담에서는 무엇부터 살펴보게 되나요?",
+              "question": "놀이터에서 또래에게 먼저 말을 거는 일이 줄었다고 적어 주셨는데, 이 모습을 상담에서는 무엇부터 살펴보게 되나요?",
               "source_scale": "withdrawn"
             },
             {
-              "question": "또래에게 먼저 말을 거는 일이 줄어든 것과 위축 척도 준임상 결과는 어떤 관계가 있나요?",
+              "question": "또래에게 먼저 말을 거는 일이 줄어든 것과 위축 척도가 준임상 범위인 것은 어떤 관련이 있나요?",
               "source_scale": "withdrawn"
             },
             {
-              "question": "우울/불안 척도가 준임상 범위로 나온 것이 아이의 정서 상태에 대해 어떤 의미를 주나요?",
-              "source_scale": "anxious_depressed"
-            }
-          ],
-          "observation_points": [
-            {
-              "point": "학원 숙제를 할 때 딴 곳으로 시선이 분산되는 빈도 기록하기",
-              "source_scale": "attention"
-            },
-            {
-              "point": "놀이터에서 또래에게 먼저 말을 거는 상황이 발생하는지 여부 기록하기",
-              "source_scale": "withdrawn"
-            },
-            {
-              "point": "아이가 불안해하거나 우울해하는 듯한 표현을 할 때의 상황 메모하기",
-              "source_scale": "anxious_depressed"
+              "question": "내재화 문제가 준임상 범위라는 것은 아이의 마음 상태에 대해 어떤 정보를 주는 건가요?",
+              "source_scale": "internalizing"
             }
           ]
         }
@@ -142,11 +129,10 @@
           "regen_count": 0,
           "violations_by_attempt": {},
           "block_states": {
-            "questions_for_counselor": "pass",
-            "observation_points": "pass"
+            "questions_for_counselor": "pass"
           },
           "state_counts": {
-            "pass": 2,
+            "pass": 1,
             "regen_pass": 0,
             "fallback": 0
           }
@@ -157,26 +143,25 @@
           "profile_id": "p5a_paired_notes",
           "task": "prep",
           "attempt": 0,
-          "duration_s": 3.9,
-          "prompt_tokens": 3697,
-          "completion_tokens": 433
+          "duration_s": 2.6,
+          "prompt_tokens": 3528,
+          "completion_tokens": 289
         }
       ],
-      "total_prompt_tokens": 3697,
-      "total_completion_tokens": 433,
-      "total_llm_seconds": 3.9,
+      "total_prompt_tokens": 3528,
+      "total_completion_tokens": 289,
+      "total_llm_seconds": 2.6,
       "quality": {
         "jargon": {
-          "term_hits": 8,
+          "term_hits": 6,
           "by_term": {
-            "준임상": 4,
-            "척도": 3,
-            "내재화": 1
+            "준임상": 3,
+            "척도": 3
           },
-          "blocks_total": 8,
-          "blocks_with_term": 4,
+          "blocks_total": 5,
+          "blocks_with_term": 3,
           "glossed_blocks": 0,
-          "residual_rate": 0.5,
+          "residual_rate": 0.6,
           "gloss_rate": 0.0
         },
         "reflection": {
@@ -206,9 +191,9 @@
             "이야기"
           ],
           "token_rate": 0.9090909090909091,
-          "items_total": 8,
-          "items_reflected": 6,
-          "item_rate": 0.75,
+          "items_total": 5,
+          "items_reflected": 4,
+          "item_rate": 0.8,
           "questions_total": 5,
           "questions_reflected": 4
         },
@@ -222,7 +207,7 @@
               "source_scale": "withdrawn"
             },
             {
-              "question": "낯선 어른이 말을 걸면 대답을 못 하고 굳어 있는 행동이 상담에서 무엇부터 살펴보게 되나요?",
+              "question": "낯선 어른이 말을 걸면 대답을 못 하고 굳어 있는 행동을 상담에서는 무엇부터 살펴보게 되나요?",
               "source_scale": "withdrawn"
             },
             {
@@ -230,25 +215,11 @@
               "source_scale": "anxious_depressed"
             },
             {
-              "question": "속상한 일이 있어도 며칠 뒤에야 이야기하는 행동을 상담에서 어떻게 구분해서 보게 되나요?",
+              "question": "속상한 일이 있어도 며칠 뒤에야 이야기하는 아이의 마음을 상담에서 어떻게 파악하게 되나요?",
               "source_scale": "anxious_depressed"
             },
             {
-              "question": "내재화 문제가 준임상 범위로 보고된 것은 아이의 내면 상태에 대해 어떤 정보를 주나요?",
-              "source_scale": "internalizing"
-            }
-          ],
-          "observation_points": [
-            {
-              "point": "낯선 어른이 말을 걸었을 때 아이가 반응한 구체적인 상황 기록하기",
-              "source_scale": "withdrawn"
-            },
-            {
-              "point": "속상한 일이 생겼을 때 아이가 말하기까지 걸린 시간이나 상황 메모하기",
-              "source_scale": "anxious_depressed"
-            },
-            {
-              "point": "주의집중 척도가 준임상 범위인 상황에서 집중이 흐트러지는 순간 기록하기",
+              "question": "주의집중 척도가 준임상 범위로 보고되었는데 이 결과는 아이의 일상과 어떻게 연결되나요?",
               "source_scale": "attention"
             }
           ]
