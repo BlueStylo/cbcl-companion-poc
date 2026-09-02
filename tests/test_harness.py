@@ -20,21 +20,21 @@ from src.parser import load_profile
 
 
 def test_apply_mutations_four_ops():
-    """set / delete / append / truncate와 scale:<id> 경로 해석."""
+    """set / delete / append / truncate와 중첩 경로 해석."""
     out = {
         "overview": "이전",
-        "scale_explanations": [{"scale_id": "attention", "x": 1}],
+        "questions": [{"question": "q", "x": 1}],
         "items": [1, 2, 3],
     }
     rh.apply_mutations(out, [
         {"op": "set", "path": ["overview"], "value": "이후"},
-        {"op": "set", "path": ["scale:attention", "y"], "value": 9},
-        {"op": "delete", "path": ["scale:attention", "x"]},
+        {"op": "set", "path": ["questions", 0, "y"], "value": 9},
+        {"op": "delete", "path": ["questions", 0, "x"]},
         {"op": "append", "path": ["items"], "value": 4},
         {"op": "truncate", "path": ["items"], "value": 2},
     ])
     assert out["overview"] == "이후"
-    assert out["scale_explanations"][0] == {"scale_id": "attention", "y": 9}
+    assert out["questions"][0] == {"question": "q", "y": 9}
     assert out["items"] == [1, 2]
 
 
@@ -59,8 +59,11 @@ def test_undetectable_seed_counted_as_miss(tmp_path, monkeypatch):
 def test_raw_vs_final_coverage_are_different_metrics():
     """원시 attempt 0 커버리지는 생성 품질(<100% 가능), 최종 출력은
 
-    fail-closed 조립이라 구조상 항상 100%임을 A1로 확인한다.
+    fail-closed 조립이라 구조상 항상 100%임을 A1로 확인한다. 근거 필드는
+    prep에만 있으므로 explain은 0/0이다.
     """
+    assert source_coverage(load_profile(ROOT / "data/profiles/p2_partial_borderline.json"),
+                           "explain", {"overview": "x", "before_counseling": "y"}) == (0, 0)
     profile = load_profile(ROOT / "data/profiles/a1_adversarial.json")
     client = MockLLMClient()
 
@@ -74,7 +77,7 @@ def test_raw_vs_final_coverage_are_different_metrics():
 
 
 def test_seed_inventory_matches_gate_constants():
-    """시드 파일 재고: B축 39건(G1~G9 + 우회), 파이프라인 10건, expect_rules 공백 없음."""
+    """시드 파일 재고: B축 41건(G1~G10 + 우회), 파이프라인 10건, expect_rules 공백 없음."""
     total = 0
     for name in rh.SEEDED_FILE_ORDER:
         data = json.loads(
@@ -82,7 +85,7 @@ def test_seed_inventory_matches_gate_constants():
         for case in data["cases"]:
             assert case["expect_rules"], f"{case['id']}: expect_rules 비어 있음"
         total += len(data["cases"])
-    assert total == rh.EXPECTED_B_SEEDS == 39
+    assert total == rh.EXPECTED_B_SEEDS == 41
 
     manifest = json.loads(
         (rh.FIXTURES_DIR / "a1_adversarial.json").read_text(encoding="utf-8"))
@@ -94,4 +97,4 @@ def test_all_seeds_detected():
     hit, total, rows, fails = rh.run_seeded_check()
     assert fails == []
     assert hit == total == rh.EXPECTED_B_SEEDS
-    assert len(rows) == len(rh.SEEDED_FILE_ORDER) == 10
+    assert len(rows) == len(rh.SEEDED_FILE_ORDER) == 11

@@ -129,7 +129,8 @@ def main() -> int:
                 results = generate_all(profile, client)
                 run_stats.append(summarize_run(profile, results, client))
                 path = out_dir / f"{profile.profile_id}.html"
-                pending.append((path, build_report_html(profile, results, mode_label)))
+                pending.append((path, build_report_html(profile, results, mode_label,
+                                                        getattr(client, "model", ""))))
                 notes.append(summarize(profile.profile_id, results))
                 notes.append(f"리포트 생성: {path}")
 

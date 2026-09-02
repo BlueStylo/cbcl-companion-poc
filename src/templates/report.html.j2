@@ -15,71 +15,78 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
          font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
-         line-height: 1.65; font-size: 15px; }
-  main { max-width: 840px; margin: 0 auto; padding: 32px 20px 64px; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
-  h2 { font-size: 19px; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+         line-height: 1.6; font-size: 15px; }
+  main { max-width: 840px; margin: 0 auto; padding: 24px 16px 56px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
   h3 { font-size: 15px; margin: 0 0 8px; }
-  .meta { color: var(--sub); font-size: 13px; margin-bottom: 28px; }
-  .meta .badge { display: inline-block; background: var(--chip-borderline); color: var(--chip-borderline-ink);
-                 border-radius: 20px; padding: 1px 10px; font-weight: 600; margin-right: 6px; }
+  p { margin: 0 0 10px; }
+  details.meta { color: var(--sub); font-size: 12.5px; margin-bottom: 14px; }
+  details.meta summary { cursor: pointer; list-style: none; }
+  details.meta summary::-webkit-details-marker { display: none; }
+  .badge { display: inline-block; background: var(--chip-borderline); color: var(--chip-borderline-ink);
+           border-radius: 20px; padding: 1px 10px; font-weight: 600; margin-right: 6px; }
+  .jump { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; font-weight: 700;
+          border-radius: 8px; padding: 10px 16px; margin: 4px 0 18px; font-size: 14.5px; }
+  .jump small { font-weight: 400; opacity: .85; margin-left: 6px; }
   section.page { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-                 padding: 28px 28px 24px; margin-bottom: 24px; }
-  blockquote.lens { margin: 0 0 20px; padding: 14px 18px; border-left: 4px solid var(--accent);
-                    background: #f2f5f9; border-radius: 0 8px 8px 0; font-size: 15.5px; }
-  figure { margin: 0 0 18px; }
-  figcaption { color: var(--sub); font-size: 12.5px; margin-top: 4px; }
-  .box { border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+                 padding: 22px 20px 18px; margin-bottom: 18px; }
+  blockquote.lens { margin: 0 0 14px; padding: 12px 16px; border-left: 4px solid var(--accent);
+                    background: #f2f5f9; border-radius: 0 8px 8px 0; font-size: 15px; }
+  figure { margin: 0 0 12px; }
+  figcaption { color: var(--sub); font-size: 12.5px; margin-top: 2px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
   .box.gen { background: #fbfaf7; }
-  .gen-tag { display: inline-block; font-size: 11px; color: var(--sub); border: 1px solid var(--line);
-             border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
-  aside.footnotes { color: var(--sub); font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 10px; }
-  aside.footnotes ol { margin: 6px 0 0; padding-left: 18px; }
-  .hier-note { color: var(--sub); font-size: 13.5px; margin: 0 0 16px; }
+  .box p:last-child { margin-bottom: 0; }
+  .tag { display: inline-block; font-size: 11px; color: var(--sub); border: 1px solid var(--line);
+         border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; font-weight: 400; }
+  .tag.fb { background: #eee; }
+  details.fold { color: var(--sub); font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+  details.fold summary { cursor: pointer; }
+  details.fold ol { margin: 6px 0 0; padding-left: 18px; }
+  .hier-note { color: var(--sub); font-size: 13px; margin: 0 0 12px; }
   .chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 20px; padding: 1px 10px; }
   .chip.normal { background: var(--chip-normal); color: var(--chip-normal-ink); }
   .chip.borderline { background: var(--chip-borderline); color: var(--chip-borderline-ink); }
   .chip.clinical { background: var(--chip-clinical); color: var(--chip-clinical-ink); }
-  .look-tag { display: inline-block; font-size: 12px; color: var(--accent); border: 1px solid var(--accent);
-              border-radius: 4px; padding: 0 8px; margin-left: 8px; }
-  .comp-row { border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px 8px; margin-bottom: 12px; }
-  .comp-row .head, .card .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-  .order-num { color: var(--sub); font-size: 12.5px; }
+  .row { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 8px; margin-bottom: 8px; }
+  .row .head, .card .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .tval { color: var(--sub); font-size: 13px; }
-  .quote-label { color: var(--sub); font-size: 12.5px; }
-  .sem-note, .psyedu { color: var(--sub); font-size: 12.5px; background: #fbfaf7;
-                       border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; margin: 14px 0; }
-  .card { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px 10px; margin-bottom: 14px; }
-  .card dl { margin: 8px 0; }
-  .card dt { font-weight: 700; font-size: 13px; color: var(--sub); margin-top: 8px; }
-  .card dd { margin: 2px 0 0; }
-  .evidence { font-size: 12px; color: var(--sub); border-top: 1px dashed var(--line);
-              margin-top: 10px; padding: 6px 0 2px; }
-  .fallback-tag { display: inline-block; font-size: 11px; background: #eee; color: var(--sub);
-                  border-radius: 4px; padding: 0 6px; margin-left: 6px; }
-  .caution { border: 1px solid var(--chip-clinical-ink); border-radius: 8px; padding: 12px 16px;
-             margin: 20px 0 8px; font-size: 14px; }
-  .caution .src { display: block; color: var(--sub); font-size: 12px; margin-top: 4px; }
+  .one { color: var(--sub); font-size: 13px; margin: 2px 0 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 8px; margin-bottom: 10px; }
+  .card.open { border-color: var(--chip-borderline-ink); }
+  details.card summary { cursor: pointer; list-style: none; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary .head::after { content: "펼치기"; color: var(--accent); font-size: 12px; margin-left: auto; }
+  details.card[open] summary .head::after { content: "접기"; }
+  .card .text { margin: 8px 0 6px; }
+  .psyedu { color: var(--sub); font-size: 12.5px; background: #fbfaf7; border: 1px dashed var(--line);
+            border-radius: 8px; padding: 6px 10px; margin: 6px 0; }
+  .caution { border: 1px solid var(--chip-clinical-ink); border-radius: 8px; padding: 10px 14px;
+             margin: 14px 0 8px; font-size: 14px; }
   ul.qlist { list-style: none; margin: 0; padding: 0; }
   ul.qlist li { display: flex; gap: 10px; align-items: flex-start; border-bottom: 1px dashed var(--line);
-                padding: 9px 2px; }
+                padding: 8px 2px; }
   ul.qlist input { margin-top: 5px; }
   .src-badge { font-size: 11.5px; color: var(--accent); white-space: nowrap; margin-left: auto; padding-left: 10px; }
-  details.brief { margin-top: 16px; }
+  details.brief { margin-top: 14px; }
   details.brief summary { cursor: pointer; font-weight: 700; font-size: 14px; }
-  details.brief .box { margin-top: 10px; }
+  details.brief .box { margin-top: 8px; }
   footer { color: var(--sub); font-size: 12.5px; text-align: center; margin-top: 8px; }
-  @media print { section.page { break-after: page; border: none; } }
+  footer summary { cursor: pointer; }
+  @media print { section.page { break-after: page; border: none; } details { open: true; } }
 </style>
 </head>
 <body>
 <main>
   <header>
     <h1>보고서 동반 가이드</h1>
-    <p class="meta">
-      <span class="badge">자작 가상 데이터</span>
-      {{ alias }} (가상 아동) · {{ instrument }} · 검사일 {{ test_date }} · 생성 모드 {{ mode_label }}
-    </p>
+    <details class="meta">
+      <summary><span class="badge">자작 가상 데이터</span>{{ alias }} (가상 아동) · 검사일 {{ test_date }} · 자세히</summary>
+      {{ instrument }} · 생성 모드 {{ mode_label }}{% if model_label %} · 모델 {{ model_label }}{% endif %}
+      · 가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건
+    </details>
+    <a class="jump" href="#prep">상담사에게 물어볼 질문 보기 <small>↓ {{ questions|length }}개 · 상담까지 {{ days }}일</small></a>
   </header>
 
   <section class="page" id="page1">
@@ -87,106 +94,102 @@
     <blockquote class="lens">{{ lens_quote }}</blockquote>
     <figure>
       {{ concept_svg|safe }}
-      <figcaption>같은 아이라도 관찰자(보호자, 교사)에 따라 결과가 다르게 나타나는 전형적인 모습 — 특정 아동의 실측값이 아닌 개념 예시입니다.</figcaption>
+      <figcaption>같은 아이라도 관찰자(보호자, 교사)에 따라 결과가 다르게 나타나는 전형적인 모습 — 개념 예시입니다.</figcaption>
     </figure>
     <div class="box">
-      <h3>T점수란</h3>
-      <p style="margin:0">{{ tscore_explain }}</p>
+      <h3>T점수란 <span class="tag">고정 문구</span></h3>
+      <p>{{ tscore_explain }}</p>
     </div>
-    <aside class="footnotes">
-      "결과가 다르게 나오는 것이 정상"은 위로가 아니라 측정학의 사실입니다.
+    <details class="fold">
+      <summary>{{ footnotes_summary }} 근거 보기</summary>
       <ol>
         {% for note in footnotes %}<li>{{ note }}</li>{% endfor %}
       </ol>
-    </aside>
+    </details>
   </section>
 
   <section class="page" id="page2">
     <h2>2페이지 · 우리 아이 결과</h2>
-    <p class="hier-note">읽는 순서: ① 총 문제행동 → ② 내재화/외현화 → ③ 개별 척도. 가장 큰 그림부터 봅니다.</p>
+    <p class="hier-note">읽는 순서: ① 총 문제행동 → ② 내재화/외현화 → ③ 개별 척도.
+      {% if elevated_names %}상담에서 함께 살펴볼 영역: {{ elevated_names|join(", ") }}.{% else %}모든 척도가 정상 범위로 보고되었습니다.{% endif %}</p>
 
     <div class="box gen">
-      <h3>전체 요약<span class="gen-tag">생성 문구 · 검증 통과</span>{% if overview_fallback %}<span class="fallback-tag">안전 문구로 대체됨</span>{% endif %}</h3>
-      <p style="margin:0">{{ overview }}</p>
+      <h3>보호자의 관찰과 검사 소견{% if overview_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</h3>
+      <p>{{ overview }}</p>
     </div>
 
     <h3>종합지표</h3>
     {% for c in composites %}
-    <div class="comp-row">
+    <div class="row">
       <div class="head">
-        <span class="order-num">{{ loop.index }}</span>
-        <strong>{{ c.name }}</strong>
+        <strong>{{ loop.index }}. {{ c.name }}</strong>
         <span class="chip {{ c.band }}">{{ c.band_ko }}</span>
         <span class="tval">T점수 {{ c.t }}</span>
-        <span class="quote-label">원 보고서 라벨: 『{{ c.band_ko }}』</span>
-        {% if c.band != "normal" %}<span class="look-tag">상담에서 함께 살펴볼 영역</span>{% endif %}
       </div>
-      {{ c.svg|safe }}
+      {% if c.open %}{{ c.svg|safe }}<p class="text" style="margin:6px 0 4px">{{ c.text }}</p>{% else %}<p class="one">{{ c.one_liner }}</p>{% endif %}
     </div>
     {% endfor %}
 
-    <div class="sem-note">{{ sem_note }}</div>
-
-    <h3>개별 척도</h3>
+    <h3 style="margin-top:16px">개별 척도</h3>
     {% for s in syndromes %}
-    <div class="card">
-      <div class="head">
-        <strong>{{ s.name }}</strong>
-        <span class="chip {{ s.band }}">{{ s.band_ko }}</span>
-        <span class="tval">T점수 {{ s.t }}</span>
-        <span class="quote-label">원 보고서 라벨: 『{{ s.band_ko }}』</span>
-        {% if s.fallback %}<span class="fallback-tag">안전 문구로 대체됨</span>{% endif %}
-      </div>
+    <details class="card{% if s.open %} open{% endif %}"{% if s.open %} open{% endif %}>
+      <summary>
+        <div class="head">
+          <strong>{{ s.name }}</strong>
+          <span class="chip {{ s.band }}">{{ s.band_ko }}</span>
+          <span class="tval">T점수 {{ s.t }}</span>
+        </div>
+      </summary>
       {{ s.svg|safe }}
-      <dl>
-        <dt>무엇을 보나요</dt><dd>{{ s.what_it_measures }}</dd>
-        <dt>숫자의 의미<span class="gen-tag">생성 문구 · 검증 통과</span></dt><dd>{{ s.what_the_number_means }}</dd>
-        {% if s.everyday_example %}<dt>일상에서의 일반적인 예</dt><dd>{{ s.everyday_example }}</dd>{% endif %}
-      </dl>
-      {% if s.band == "borderline" %}<div class="psyedu">{{ borderline_note }}</div>{% endif %}
-      <div class="evidence">근거: 원 보고서 · {{ s.name }} 척도, T점수 {{ s.t }}, 라벨 『{{ s.band_ko }}』</div>
-    </div>
+      <p class="text">{{ s.text }} <span class="tag">고정 문구</span></p>
+    </details>
     {% endfor %}
+    {% if has_borderline %}<div class="psyedu">{{ borderline_note }}</div>{% endif %}
 
-    <div class="caution">
-      {{ caution }}
-      <span class="src">— 해석 유의사항 요지</span>
-    </div>
-    <div class="box gen">
-      <h3>이 자료의 한계<span class="gen-tag">생성 문구 · 검증 통과</span>{% if limits_fallback %}<span class="fallback-tag">안전 문구로 대체됨</span>{% endif %}</h3>
-      <p style="margin:0">{{ limits }}</p>
-    </div>
+    <details class="fold">
+      <summary>곡선의 밴드와 기준선은 무엇인가요</summary>
+      <p style="margin-top:6px">{{ sem_note }}</p>
+    </details>
+
+    <div class="caution">{{ caution }}</div>
+    <details class="fold">
+      <summary>이 자료의 한계 (고정 문구)</summary>
+      <p style="margin-top:6px">{{ limits }}</p>
+    </details>
   </section>
 
   <section class="page" id="prep">
     <h2>상담 준비 도우미</h2>
-    <p>{{ before_counseling }}</p>
+    <p>{{ before_counseling }}{% if before_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</p>
 
-    <h3>상담사에게 물어볼 질문 <span class="gen-tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
+    <h3>상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
     <ul class="qlist">
       {% for q in questions %}
-      <li><input type="checkbox" checked> <span>{{ q.text }}</span>
+      <li><input type="checkbox" checked> <span>{{ q.text }}{% if q.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
           <span class="src-badge">근거: {{ q.source_name }}</span></li>
       {% endfor %}
     </ul>
 
-    <h3 style="margin-top:20px">상담까지 남은 {{ days }}일, 가정 관찰 포인트</h3>
+    <h3 style="margin-top:16px">상담까지 남은 {{ days }}일, 가정 관찰 포인트</h3>
     <ul class="qlist">
       {% for o in observations %}
-      <li><span>·</span> <span>{{ o.text }}</span>
+      <li><span>·</span> <span>{{ o.text }}{% if o.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
           <span class="src-badge">근거: {{ o.source_name }}</span></li>
       {% endfor %}
     </ul>
 
     <details class="brief">
-      <summary>상담사용 사전 요약 (보호자 화면에는 표시되지 않는 별도 전달용)</summary>
+      <summary>상담사용 사전 요약 (보호자 화면에는 표시되지 않는 별도 전달용){% if briefing_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% endif %}</summary>
       <div class="box gen">{{ briefing }}</div>
     </details>
   </section>
 
   <footer>
-    가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건 ·
-    이 화면의 모든 수치와 그림은 결정론 코드가, 서술은 LLM이, 임상 판단은 상담사가 담당합니다.
+    <details>
+      <summary>생성 정보</summary>
+      가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건 ·
+      수치와 그림은 결정론 코드가, 연결 문단·질문은 LLM이, 척도 해설은 고정 문구가, 임상 판단은 상담사가 담당합니다.
+    </details>
   </footer>
 </main>
 </body>

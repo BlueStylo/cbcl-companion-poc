@@ -45,7 +45,8 @@ GLOSS_PATTERNS = [re.compile(p) for p in (
     r"평균(?:을|이|은|인)?\s*50",
     r"쉽게\s*말(?:하면|해)",
     r"(?:이)?라고\s*(?:부릅니다|불러요|합니다|해요)",
-    r"(?:이)?라는\s*(?:뜻|의미)",
+    r"(?:이|다)?라는\s*(?:뜻|의미)",
+    r"다는\s*(?:뜻|의미)",
     r"다시\s*말해",
     r"풀어\s*(?:말하면|쓰면|보면)",
     r"(?:이란|란)\s",
@@ -111,15 +112,9 @@ def caregiver_texts(task: str, output: dict) -> list[tuple[str, str]]:
     """보호자 노출 생성 텍스트를 (블록, 텍스트)로 나열한다. 폴백·사전 요약 제외."""
     texts: list[tuple[str, str]] = []
     if task == "explain":
-        for key in ("overview", "limits", "before_counseling"):
+        for key in ("overview", "before_counseling"):
             if isinstance(output.get(key), str):
                 texts.append((key, output[key]))
-        for item in output.get("scale_explanations", []):
-            if not isinstance(item, dict) or item.get("_fallback"):
-                continue
-            for name in ("what_it_measures", "what_the_number_means", "everyday_example"):
-                if isinstance(item.get(name), str) and item[name].strip():
-                    texts.append((f"scale:{item.get('scale_id')}", item[name]))
     else:
         for key, text_key in (("questions_for_counselor", "question"),
                               ("observation_points", "point")):

@@ -3,14 +3,25 @@
   "cases": [
     {
       "id": "bypass_fallback_flag",
-      "task": "explain",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "안전 문구 내부 플래그(_fallback) 흉내로 검사 우회 시도",
-      "expect_rules": ["G2"],
+      "expect_rules": [
+        "G2"
+      ],
       "mutations": [
-        {"op": "set", "path": ["scale:attention", "what_the_number_means"],
-         "value": "지금 상태는 심각한 수준입니다."},
-        {"op": "set", "path": ["scale:attention", "_fallback"], "value": true}
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0
+          ],
+          "value": {
+            "question": "지금 상태는 심각한 수준입니다. 어떻게 해야 할까요?",
+            "source_scale": "attention",
+            "_fallback": true
+          }
+        }
       ]
     },
     {
@@ -18,10 +29,17 @@
       "task": "explain",
       "profile_id": "p2_partial_borderline",
       "note": "안전 문구 문장을 흉내 낸 뒤에 위반 은닉",
-      "expect_rules": ["G1"],
+      "expect_rules": [
+        "G1"
+      ],
       "mutations": [
-        {"op": "set", "path": ["overview"],
-         "value": "이 척도에 대한 자세한 설명은 예약된 상담에서 상담사에게 직접 들으시길 권합니다. 다만 ADHD 가능성은 열어 두어야 합니다."}
+        {
+          "op": "set",
+          "path": [
+            "overview"
+          ],
+          "value": "이 척도에 대한 자세한 설명은 예약된 상담에서 상담사에게 직접 들으시길 권합니다. 다만 ADHD 가능성은 열어 두어야 합니다."
+        }
       ]
     },
     {
@@ -29,11 +47,21 @@
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "유효한 근거 배지(source_scale) 뒤에 위조 수치 은닉 (실제 위축 62 → 88)",
-      "expect_rules": ["G3"],
+      "expect_rules": [
+        "G3"
+      ],
       "mutations": [
-        {"op": "set", "path": ["questions_for_counselor", 0],
-         "value": {"question": "위축 척도(T점수 88) 결과를 어떻게 보아야 할까요?",
-                   "source_scale": "withdrawn"}}
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0
+          ],
+          "value": {
+            "question": "위축 척도(T점수 88) 결과를 어떻게 보아야 할까요?",
+            "source_scale": "withdrawn"
+          }
+        }
       ]
     },
     {
@@ -41,10 +69,17 @@
       "task": "explain",
       "profile_id": "p2_partial_borderline",
       "note": "완곡한 진단 시사 (전문의 의뢰 암시) - 사전 빈틈 검증용",
-      "expect_rules": ["G6"],
+      "expect_rules": [
+        "G6"
+      ],
       "mutations": [
-        {"op": "set", "path": ["scale:attention", "what_the_number_means"],
-         "value": "전문의 상담이 필요한 수준으로 보입니다."}
+        {
+          "op": "set",
+          "path": [
+            "overview"
+          ],
+          "value": "전문의 상담이 필요한 수준으로 보입니다."
+        }
       ]
     }
   ]
