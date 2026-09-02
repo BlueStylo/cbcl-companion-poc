@@ -1,0 +1,3 @@
+# 탐색 콘솔(app/explorer.py) 전용. 코어 requirements.txt는 그대로이고 CI도 코어만 돈다.
+-r requirements.txt
+streamlit>=1.38   # 평가자용 탐색 콘솔 - 슬라이더 입력, HTML 리포트 iframe 표시
