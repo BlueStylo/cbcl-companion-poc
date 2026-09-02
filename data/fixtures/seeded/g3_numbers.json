@@ -1,47 +1,11 @@
 {
-  "category": "G3 수치 위조",
+  "category": "G3 수치 금지",
   "cases": [
     {
-      "id": "g3_fabricated_t",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "본문에 입력에 없는 T점수 (실제 내재화 62 → 72)",
-      "expect_rules": [
-        "G3"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "이번 검사에서 내재화 문제는 T점수 72로 보고되었습니다. 자세한 내용은 아래 카드에서 설명합니다."
-        }
-      ]
-    },
-    {
-      "id": "g3_percentile",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "입력에 없는 백분위 생성",
-      "expect_rules": [
-        "G3"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "주의집중 척도의 T점수 67은 백분위로 상위 3%에 해당하는 수준입니다."
-        }
-      ]
-    },
-    {
-      "id": "g3_observation_t",
+      "id": "g3_arabic_t_in_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "관찰 포인트에 입력에 없는 T점수 (기준값처럼 위조)",
+      "note": "질문에 아라비아 숫자 (입력값 그대로인 T점수도 금지 - 수치는 카드가 보여줌)",
       "expect_rules": [
         "G3"
       ],
@@ -49,19 +13,39 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "T점수 75를 넘는 날이 있는지 기록해 두기"
+          "value": "주의집중 척도(T점수 67)가 준임상 범위로 보고된 것은 어떻게 읽으면 될까요?"
         }
       ]
     },
     {
-      "id": "g3_question_pct",
+      "id": "g3_arabic_days_in_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "질문에 입력에 없는 백분위",
+      "note": "질문에 남은 날수 숫자",
+      "expect_rules": [
+        "G3"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "상담까지 남은 5일 동안 무엇을 적어 두면 상담에 도움이 되나요?"
+        }
+      ]
+    },
+    {
+      "id": "g3_korean_numeral_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "한글 수사 점수 (Codex 점검에서 통과했던 '일흔다섯 점')",
       "expect_rules": [
         "G3"
       ],
@@ -73,15 +57,15 @@
             1,
             "question"
           ],
-          "value": "결과지에 적힌 상위 15%라는 숫자는 어떤 뜻인가요?"
+          "value": "위축 척도가 일흔다섯 점을 넘는다는 것은 어떤 뜻인가요?"
         }
       ]
     },
     {
-      "id": "g3_briefing_t",
+      "id": "g3_korean_numeral_question_2",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "상담사용 요약에 위조 수치 (실제 주의집중 67 → 75)",
+      "note": "한글 수사 점수 (#1의 '육십칠점')",
       "expect_rules": [
         "G3"
       ],
@@ -89,9 +73,31 @@
         {
           "op": "set",
           "path": [
-            "counselor_briefing"
+            "questions_for_counselor",
+            1,
+            "question"
           ],
-          "value": "종합지표는 총 문제행동 T=57(정상), 주의집중 T=75(준임상)를 포함함. 질문 목록 첨부."
+          "value": "위축 척도가 육십칠점을 넘는다는 것은 어떤 뜻으로 읽으면 되나요?"
+        }
+      ]
+    },
+    {
+      "id": "g3_korean_numeral_after_score_word",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "점수 어휘 뒤에 오는 한글 수사 (한국어 자연 어순 'T점수가 육십칠')",
+      "expect_rules": [
+        "G3"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "주의집중 척도의 T점수가 육십칠이라는 것은 어떻게 읽으면 될까요?"
         }
       ]
     }

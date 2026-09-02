@@ -2,43 +2,7 @@
   "category": "G6 처방·치료 권고",
   "cases": [
     {
-      "id": "g6_medication",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "약물 권고",
-      "expect_rules": [
-        "G6"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "주의집중 척도의 T점수 67은 준임상 범위이니 약물 복용을 고려해 보세요."
-        }
-      ]
-    },
-    {
-      "id": "g6_hospital",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "의료기관 방문 지시 (연결 문단)",
-      "expect_rules": [
-        "G6"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": "정확한 확인을 위해 가까운 병원을 방문하시길 권합니다."
-        }
-      ]
-    },
-    {
-      "id": "g6_therapy_start",
+      "id": "g6_therapy_start_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
       "note": "질문 문안에 스며든 치료 개시 권고",
@@ -53,15 +17,15 @@
             2,
             "question"
           ],
-          "value": "지금이라도 치료를 시작하는 것이 좋을까요?"
+          "value": "지금이라도 상담과 별개로 치료를 시작하는 것이 좋을까요?"
         }
       ]
     },
     {
-      "id": "g6_program",
+      "id": "g6_play_therapy_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "관찰 포인트를 가장한 치료 프로그램 권고",
+      "note": "질문을 가장한 특정 치료 권고 (Codex 점검에서 통과했던 '놀이치료')",
       "expect_rules": [
         "G6"
       ],
@@ -69,11 +33,51 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             0,
-            "point"
+            "question"
           ],
-          "value": "주의력 향상 치료 프로그램을 알아보고 후보를 적어 두기"
+          "value": "놀이치료 기관을 알아보는 것이 지금 단계에서 맞는 일일까요?"
+        }
+      ]
+    },
+    {
+      "id": "g6_hospital_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "의료기관 방문 지시",
+      "expect_rules": [
+        "G6"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "question"
+          ],
+          "value": "정확한 확인을 위해 가까운 병원을 방문해야 하는 단계인가요?"
+        }
+      ]
+    },
+    {
+      "id": "g6_therapy_consider_other_particle",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "치료 권고의 조사 변형 ('치료도 고려' - '치료를 고려'만 막던 빈틈)",
+      "expect_rules": [
+        "G6"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "학원 숙제 앞에서 딴 데를 보는 정도면 치료도 고려해야 하는 수준일까요?"
         }
       ]
     }

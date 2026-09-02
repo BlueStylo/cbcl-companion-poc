@@ -2,6 +2,8 @@
 
 심사자가 JSON 파일 없이 슬라이더와 텍스트로 프로파일을 바꿔 가며 (1) 위계·밴드
 시각화 (2) 보호자 문장을 인용하는 질문 생성 (3) 가드레일 동작을 확인한다.
+LLM 호출은 prep 1종(질문 1블록, 첫 시도 통과 시 1회)이고 연결 문단·관찰 포인트·상담사 요약은
+결정론 조립이다 (ADR 0010과 그 보강).
 렌더러·규칙·생성기는 기존 파이프라인 모듈을 그대로 호출한다 (두 벌 금지):
 파서 → 위기 게이트 → generator → guardrails → report_html.
 
@@ -33,9 +35,11 @@ from src.guardrails import detect_crisis_signals
 from src.llm_client import SEED_RULES, OpenAICompatClient, TemplateMockClient
 from src.parser import BAND_KO, COMPOSITE_IDS, SCALE_NAMES, SYNDROME_IDS, ProfileError
 from src.quality import fmt_rate
-from src.report_html import build_crisis_html, build_pending_report_html, build_report_html
+from src.report_html import build_crisis_html, build_preview_html, build_report_html
 
 DEFAULT_EXAMPLE = "p2_partial_borderline"
+# 위기 표현이 있을 때 결과 패널에 붙는 캡션. 생성 전 미리보기와 생성 후 화면이 같은 문장을 쓴다.
+CRISIS_CAPTION = "위기 표현이 검출되어 LLM을 호출하지 않았습니다"
 load_env_file(ROOT / ".env")  # 시작 시 한 번: Ollama 모드 입력칸(base_url, 모델명)이 .env 값으로 미리 채워지도록
 OLLAMA_DEFAULT_URL = "http://localhost:11434/v1"
 OLLAMA_DEFAULT_MODEL = "gemma4:12b"
@@ -200,7 +204,7 @@ def _left_panel() -> tuple[bool, str, dict]:
                  key="sex", horizontal=True)
         c2.number_input("만 나이", 4, 18, key="age_years")
 
-    _section("in", "보호자 의견", "질문과 관찰 포인트가 이 문장을 인용합니다", idx="03")
+    _section("in", "보호자 의견", "질문이 이 문장을 인용합니다", idx="03")
     for i in range(NOTE_SLOTS):
         st.text_input(f"의견 {i + 1}", key=f"note_{i}", label_visibility="collapsed",
                       placeholder=f"보호자 의견 {i + 1} (비우면 제외)")
@@ -216,8 +220,8 @@ def _left_panel() -> tuple[bool, str, dict]:
                                            format_func=lambda r: f"{r} · {RULE_HINTS[r]}", key="seeds"))
         opts["persist"] = st.checkbox("재생성해도 계속 위반 (안전 문구 폴백까지 확인)", key="persist")
         if opts["seeds"]:
-            st.caption("시드는 첫 시도 출력에 들어갑니다. G9는 정상 척도와 준임상 이상 척도가 함께 있을 때, "
-                       "G10은 의견에 '학원 숙제'가 없을 때만 실제 위반이 됩니다.")
+            st.caption("시드는 첫 시도 질문 블록에 들어갑니다. G9는 정상 척도와 준임상 이상 척도가 함께 있을 때, "
+                       "G10은 의견에 '학원 숙제'가 없을 때만 실제 위반이 됩니다. G5는 질문 수 미달이라 다른 시드를 덮을 수 있습니다.")
     elif mode == "ollama":
         env_url = os.environ.get("LLM_BASE_URL", "")
         env_model = os.environ.get("LLM_MODEL", "")
@@ -248,18 +252,22 @@ def _rule_counts(stats: dict) -> dict[str, int]:
     return counts
 
 
-def _run_panel(run: dict | None, stale: bool) -> None:
+def _run_panel(run: dict | None, stale: bool, preview_crisis: list[str]) -> None:
     _section("out", "이번 실행")
-    if run is None:
-        st.caption("아직 실행 전입니다. 왼쪽에서 값을 바꾸고 '리포트 생성'을 누르면 위기 게이트 → 생성 → "
-                   "가드레일 순서로 실행되고, 위 리포트의 '생성 대기' 자리가 실제 문장으로 바뀝니다.")
-        return
-    if stale:
-        st.info("입력이 바뀌어 이전 실행 결과를 내렸습니다. 위 리포트는 결정론 부분만 갱신된 미리보기입니다. "
-                "'리포트 생성'을 다시 누르세요.")
+    if run is None or stale:
+        if preview_crisis:
+            st.error(f"{CRISIS_CAPTION}. 미리보기 단계에서 입력 게이트와 같은 검사가 먼저 걸려 점수 리포트 대신 "
+                     "상담 연결 안내를 보여 주고 있습니다. '리포트 생성'을 눌러도 같은 화면이며, 의견을 고치면 다시 평가합니다.")
+            st.caption("검출 패턴 (평가자 확인용 - 보호자 화면에는 표시되지 않음): " + ", ".join(preview_crisis))
+        elif run is None:
+            st.caption("아직 실행 전입니다. 왼쪽에서 값을 바꾸고 '리포트 생성'을 누르면 위기 게이트 → 생성 → "
+                       "가드레일 순서로 실행되고, 위 리포트의 '생성 대기' 자리가 실제 문장으로 바뀝니다.")
+        else:
+            st.info("입력이 바뀌어 이전 실행 결과를 내렸습니다. 위 리포트는 결정론 부분만 갱신된 미리보기입니다. "
+                    "'리포트 생성'을 다시 누르세요.")
         return
     if run["crisis"]:
-        st.error("위기 신호 검출 → LLM 호출 0회. 해설 대신 상담 연결 안내만 생성했습니다 (입력 게이트, fail-closed).")
+        st.error(f"{CRISIS_CAPTION} (LLM 호출 0회). 해설 대신 상담 연결 안내만 생성했습니다 (입력 게이트, fail-closed).")
         st.caption("검출 패턴 (평가자 확인용 - 보호자 화면에는 표시되지 않음): " + ", ".join(run["crisis"]))
         return
 
@@ -284,7 +292,7 @@ def _run_panel(run: dict | None, stale: bool) -> None:
 
     left, right = st.columns([3, 2])
     with left:
-        st.markdown("**걸린 규칙 분포 (G1~G10, 전 시도 합산)**")
+        st.markdown("**걸린 규칙 분포 (G1~G12, 전 시도 합산)**")
         counts = _rule_counts(stats)
         if any(counts.values()):
             st.bar_chart(pd.DataFrame({"위반 수": [counts[r] for r in SEED_RULES]}, index=list(SEED_RULES)),
@@ -302,7 +310,7 @@ def _run_panel(run: dict | None, stale: bool) -> None:
     j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]
     _section("out", "품질 지표", "측정만, 게이트 아님")
     qc = st.columns(3)
-    qc[0].metric("보호자 표현 반영률 (항목 · 토큰)",
+    qc[0].metric("보호자 표현 반영률 (질문 · 토큰)",
                  f"{r['items_reflected']}/{r['items_total']} ({fmt_rate(r['item_rate'])})",
                  help=f"토큰 {len(r['tokens_hit'])}/{len(r['tokens'])} ({fmt_rate(r['token_rate'])})")
     qc[1].metric("용어 잔존 (등장 · 용어 블록 · 풀이 동반)",
@@ -367,14 +375,19 @@ if clicked or autorun:
 
 run = st.session_state.get("run")
 stale = bool(run) and run["fingerprint"] != fingerprint
+preview_crisis: list[str] = []
 with result_box:
     _section("out", "리포트", "2페이지")
     if run and not stale:
         st.caption("생성 완료 - 위기 안내 화면이거나, 가드레일을 통과한 생성 문구로 채워진 리포트입니다.")
         html = run["html"]
     else:
-        st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구는 실제 값이고, LLM 생성 자리(연결 문단·질문·관찰·요약)는 "
-                   "'생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
-        html = build_pending_report_html(profile)
+        # 미리보기 게이트: 입력이 바뀔 때마다 위기 표현을 다시 평가한다. 검출되면 점수 리포트를 그리지 않는다.
+        html, preview_crisis = build_preview_html(profile)
+        if preview_crisis:
+            st.caption(f"{CRISIS_CAPTION} - 생성 전 미리보기에서도 점수 리포트 대신 상담 연결 안내를 보여 줍니다.")
+        else:
+            st.caption("생성 전 미리보기 - 곡선·오차 범위선·구간·고정 문구·결정론 조립(연결 문단, 관찰 포인트, 상담사 요약)은 "
+                       "실제 값이고, LLM 생성 자리(질문)는 '생성 대기'입니다. 같은 템플릿과 렌더러입니다.")
     components.html(html, height=REPORT_HEIGHT, scrolling=True)
-    _run_panel(run, stale)
+    _run_panel(run, stale, preview_crisis)

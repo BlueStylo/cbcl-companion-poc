@@ -173,16 +173,6 @@ class CBCLProfile(BaseModel):
         m = self.scale_map()
         return [m[sid] for sid in order if m[sid].band != "normal"]
 
-    def allowed_numbers(self) -> set[int]:
-        """LLM 출력 본문에 등장해도 되는 수치 집합 (가드레일 G3의 기준)."""
-        allowed = {s.t_score for s in self.all_scales()}
-        for c in self.band_criteria.values():
-            allowed |= {c.normal_max_t, c.normal_max_t + 1,
-                        c.borderline_max_t, c.borderline_max_t + 1}
-        # T점수 체계 설명용 상수 (평균 50, 표준편차 10, 통상 범위 40~60, SEM 68%)
-        allowed |= {10, 30, 40, 50, 60, 68, 70, 80, 100}
-        return allowed
-
 
 def parse_profile(raw: dict) -> CBCLProfile:
     """dict를 검증해 CBCLProfile로. 실패 시 ProfileError (fail-closed)."""

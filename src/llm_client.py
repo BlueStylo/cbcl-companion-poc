@@ -9,7 +9,7 @@ LLM 생성이 아니며 하네스는 계속 픽스처 목을 쓴다.
 
 두 클라이언트의 공통 인터페이스:
     generate(task, profile, attempt, system_prompt, user_message) -> dict
-task는 "explain" | "prep", attempt는 0(첫 생성)부터 시작하는 재생성 회차.
+task는 "prep"(상담사에게 물어볼 질문, ADR 0010과 그 보강), attempt는 0(첫 생성)부터 시작하는 재생성 회차.
 """
 
 from __future__ import annotations
@@ -22,8 +22,9 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .guardrails import check_output
+from .guardrails import check_output, mask_notes
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile, ScaleScore
+from .report_html import josa
 
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "data" / "fixtures"
 
@@ -298,33 +299,11 @@ NOTE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "total_problems": (),
 }
 
-# 척도별 가정 관찰 포인트 고정 문구 (보호자 의견에 안 잡힌 준임상 이상 척도용).
-# G10 예시 문구("학원 숙제", "놀이터", "또래에게 먼저 말")는 쓰지 않는다.
-OBSERVATION_BY_SCALE: dict[str, str] = {
-    "attention": "숙제나 책 읽기를 시작한 뒤 자리에서 일어나기까지 걸린 시간을 적어 두기",
-    "withdrawn": "또래와 함께 있는 자리에서 아이가 어떻게 놀이에 들어가는지 한 줄로 적어 두기",
-    "anxious_depressed": "아이가 걱정거리를 이야기하면 주제만 메모해 두기",
-    "somatic": "몸이 불편하다고 말한 날의 요일과 그때 상황을 적어 두기",
-    "social_immaturity": "또래와 놀 때 막히는 장면이 있으면 그 상황을 한 줄로 적어 두기",
-    "thought_problems": "반복되는 행동이 나온 상황과 시각을 한 줄로 적어 두기",
-    "delinquent": "어떤 규칙이 어떤 상황에서 어겨졌는지 적어 두기",
-    "aggressive": "화가 시작된 계기와 가라앉기까지 걸린 시간을 적어 두기",
-    "internalizing": "말수가 줄거나 표정이 가라앉은 날이 있으면 그날 있었던 일을 적어 두기",
-    "externalizing": "큰 소리나 다툼이 있었던 날, 그 앞뒤 상황을 적어 두기",
-    "total_problems": "상담까지 남은 {days}일 동안 하루 한 번, 아이가 즐거워한 순간을 적기",
-}
-
 # 규칙별 위반 시드 (하네스 B축 시드와 같은 계열의 문장). 탐색 콘솔에서 가드레일이
 # 실제로 막는 모습을 보여 주기 위해 목 출력에 주입한다.
-SEED_RULES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10")
+SEED_RULES = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10", "G11", "G12")
 
-
-def josa(word: str, with_batchim: str, without: str) -> str:
-    """마지막 글자의 받침 유무로 조사를 고른다 (이/가, 은/는)."""
-    ch = word[-1]
-    if "가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28:
-        return with_batchim
-    return without
+QUOTE_LIMIT = 32  # 인용 조각 상한 (질문 길이 25~90자 계약을 지키기 위해 긴 의견은 앞부분만 인용)
 
 
 def _label(s: ScaleScore) -> str:
@@ -332,12 +311,15 @@ def _label(s: ScaleScore) -> str:
     return s.name_ko if s.scale_id in COMPOSITE_IDS else f"{s.name_ko} 척도"
 
 
-def _label_t(s: ScaleScore) -> str:
-    return f"{_label(s)}(T점수 {s.t_score})"
-
-
 def _quote(note: str) -> str:
-    return f"「{note}」"
+    """보호자 의견을 「」로 인용한다. 긴 의견은 앞부분만 (원문 조각이므로 G10 (a)를 만족한다).
+
+    끝의 종결 부호(마침표 등)는 떼고 인용한다. 인용 안의 마침표는 G5가 세지 않지만, 질문 문장
+    안에 "봅니다.」라고" 꼴이 남는 것보다 읽기 편하다.
+    """
+    note = note.rstrip(".!?。 ")
+    text = note if len(note) <= QUOTE_LIMIT else note[:QUOTE_LIMIT].rstrip() + "…"
+    return f"「{text}」"
 
 
 def _anchor_candidates(profile: CBCLProfile) -> list[ScaleScore]:
@@ -357,38 +339,6 @@ def _match_scale(note: str, candidates: list[ScaleScore]) -> ScaleScore:
     return best
 
 
-def _compose_explain(profile: CBCLProfile, notes: list[str]) -> dict:
-    m = profile.scale_map()
-    elevated = profile.elevated_scales()  # 위계 순서 (종합지표 → 개별 척도)
-    sentences = [
-        "보호자께서는 " + ", ".join(_quote(n) for n in notes) + "라고 적어 주셨습니다."
-        if notes else "보호자 의견은 따로 적히지 않았습니다."
-    ]
-    if not elevated:
-        sentences += [
-            "검사에서는 모든 척도가 정상 범위로 보고되었습니다.",
-            "정상 범위는 보고된 행동의 양이 또래와 비슷하다는 뜻이지 앞으로를 보증하는 말은 아닙니다.",
-            "적어 주신 관찰을 이 결과와 어떻게 함께 볼지는 예약된 상담에서 상담사와 이야기해 보세요.",
-        ]
-    else:
-        total = m["total_problems"]
-        sentences.append(f"검사에서 총 문제행동(T점수 {total.t_score})은 {BAND_KO[total.band]} 범위로 보고되었습니다.")
-        others = [s for s in elevated if s.scale_id != "total_problems"]
-        for band in ("borderline", "clinical"):
-            group = [s for s in others if s.band == band]
-            if group:
-                names = ", ".join(_label_t(s) for s in group)
-                sentences.append(f"{names}{josa(_label(group[-1]), '은', '는')} {BAND_KO[band]} 범위입니다.")
-        gloss = []
-        if any(s.band == "borderline" for s in elevated):
-            gloss.append("준임상은 또래보다 조금 더 자주")
-        if any(s.band == "clinical" for s in elevated):
-            gloss.append("임상은 또래보다 뚜렷이 자주")
-        sentences.append(", ".join(gloss) + " 보고되었다는 뜻이며, 적어 주신 관찰과 이 결과를 어떻게 함께 볼지는 "
-                         "예약된 상담에서 상담사와 이야기해 보세요.")
-    return {"overview": " ".join(sentences)}
-
-
 def _pad_questions(anchor: ScaleScore, all_normal: bool) -> list[dict]:
     if all_normal:
         texts = (
@@ -400,7 +350,7 @@ def _pad_questions(anchor: ScaleScore, all_normal: bool) -> list[dict]:
         )
     else:
         texts = (
-            f"{BAND_KO[anchor.band]}이라는 라벨은 다음 단계로 무엇을 하는 구간인지, 이 아이의 경우에 맞춰 들을 수 있을까요?",
+            f"{BAND_KO[anchor.band]}이라는 라벨은 다음 단계로 무엇을 하는 구간인지 이 아이의 경우에 맞춰 들을 수 있을까요?",
             "집에서 본 모습과 검사 결과가 다르게 느껴질 때는 어느 쪽을 기준으로 이야기하면 될까요?",
             "선생님처럼 다른 관찰자의 보고를 함께 받아 보는 것이 이 결과를 읽는 데 도움이 될까요?",
             "이 결과를 바탕으로 상담에서는 보통 어떤 이야기부터 시작하게 되나요?",
@@ -410,8 +360,8 @@ def _pad_questions(anchor: ScaleScore, all_normal: bool) -> list[dict]:
 
 
 def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
-    m = profile.scale_map()
-    days = profile.days_until_counseling
+    """질문 5~7개를 조립한다. 1문장 의문형 25~90자, 숫자 없음, 문장 안의 척도명은 근거 척도 하나뿐
+    (가드레일 G3/G5/G10 계약과 같은 규칙). 관찰 포인트는 report_html이 결정론으로 조립하므로 없다."""
     candidates = _anchor_candidates(profile)
     all_normal = not profile.elevated_scales()
     pairs = [(n, _match_scale(n, candidates)) for n in notes]
@@ -421,10 +371,9 @@ def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
     questions: list[dict] = []
     for note, s in pairs:
         if all_normal:
-            q = f"{_quote(note)}라고 적었는데, 모든 척도가 정상 범위로 보고된 결과와 이 모습을 함께 보면 어떤 의미가 있을까요?"
+            q = f"{_quote(note)}라고 적으셨는데, 모든 척도가 정상 범위인 결과와 함께 보면 어떤 뜻일까요?"
         else:
-            q = (f"{_quote(note)}라고 적었는데, 이 모습은 {_label_t(s)}{josa(_label(s), '이', '가')} "
-                 f"{BAND_KO[s.band]} 범위로 보고된 것과 연결해서 보면 될까요?")
+            q = f"{_quote(note)}라고 적으셨는데, 이 모습은 {_label(s)}의 {BAND_KO[s.band]} 결과와 이어서 보면 될까요?"
         questions.append({"question": q, "source_scale": s.scale_id})
     for note, s in pairs:
         questions.append({"question": f"{_quote(note)}에 대해서는 상담에서 무엇부터 살펴보게 되나요?",
@@ -434,7 +383,7 @@ def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
         for s in candidates:
             if s.scale_id not in covered:
                 questions.append({
-                    "question": (f"{_label_t(s)}{josa(_label(s), '이', '가')} {BAND_KO[s.band]} 범위라는 것은 "
+                    "question": (f"{_label(s)}{josa(_label(s), '이', '가')} {BAND_KO[s.band]} 범위라는 것은 "
                                  "아이의 일상에 대해 어느 정도의 정보를 주는 건가요?"),
                     "source_scale": s.scale_id})
                 covered.add(s.scale_id)
@@ -443,66 +392,35 @@ def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
             break
         questions.append(q)
     questions = questions[:7]
-
-    # 관찰 포인트: 의견 장면 → 척도 고정 문구 → 3개 미만이면 보충
-    observations: list[dict] = []
-    for note, s in pairs[:3]:
-        observations.append({"point": f"{_quote(note)} 같은 장면이 있었던 날, 앞뒤 상황을 한 줄로 적어 두기",
-                             "source_scale": s.scale_id})
-    obs_covered = {s.scale_id for _, s in pairs}
-    for s in candidates:
-        if len(observations) >= 5:
-            break
-        if s.scale_id not in obs_covered:
-            observations.append({"point": OBSERVATION_BY_SCALE[s.scale_id].format(days=days),
-                                 "source_scale": s.scale_id})
-            obs_covered.add(s.scale_id)
-    pads = ["아이가 편안해 보였던 활동과 그때 함께 있던 사람을 적어 두기",
-            "하루 중 아이가 스스로 시작한 놀이나 활동을 하나씩 적어 두기"]
-    while len(observations) < 3 and pads:
-        observations.append({"point": pads.pop(0), "source_scale": anchor.scale_id})
-    observations = observations[:5]
-
-    comp = ", ".join(f"{m[sid].name_ko} T={m[sid].t_score}({BAND_KO[m[sid].band]})" for sid in COMPOSITE_IDS)
-    synd = [m[sid] for sid in SYNDROME_IDS if m[sid].band != "normal"]
-    briefing = [f"종합지표: {comp}."]
-    if synd:
-        briefing.append("개별 척도 중 상담에서 살펴볼 영역: "
-                        + ", ".join(f"{s.name_ko} T={s.t_score}({BAND_KO[s.band]})" for s in synd) + ".")
-    else:
-        briefing.append("개별 척도는 전부 정상 범위.")
-    briefing.append("보호자 관찰 요지: " + " / ".join(notes) + "." if notes else "보호자 관찰은 적히지 않음.")
-    briefing.append(f"상담까지 {days}일 남은 시점의 템플릿 요약이며, 보호자가 고른 질문 목록과 대기 기간 관찰 기록이 첨부됩니다.")
-    return {"questions_for_counselor": questions, "observation_points": observations,
-            "counselor_briefing": " ".join(briefing)}
+    return {"questions_for_counselor": questions}
 
 
 def compose_template_output(task: str, profile: CBCLProfile, notes: list[str]) -> dict:
-    """프로파일과 (마스킹된) 보호자 의견만으로 task 출력 스키마 전체를 조립한다 (결정론)."""
-    return _compose_explain(profile, notes) if task == "explain" else _compose_prep(profile, notes)
+    """프로파일과 (마스킹된) 보호자 의견만으로 task 출력 스키마 전체를 조립한다 (결정론). task는 prep뿐이다."""
+    if task != "prep":
+        raise LLMError(f"알 수 없는 task: {task!r} (현행 구조의 LLM 태스크는 prep 하나)")
+    return _compose_prep(profile, notes)
 
 
 def inject_seed_violations(task: str, profile: CBCLProfile, output: dict, rules) -> dict:
     """규칙별 위반 시드를 목 출력에 심는다 (탐색 콘솔의 가드레일 확인용).
 
     G9는 정상 척도와 준임상 이상 척도가 함께 있을 때만, G10은 보호자 의견에
-    '학원 숙제'가 없을 때만 실제 위반이 된다 (규칙 정의 그대로).
+    '학원 숙제'가 없을 때만 실제 위반이 된다 (규칙 정의 그대로). G5는 질문 수 미달이다.
     """
     out = copy.deepcopy(output)
     rules = set(rules)
-    if task == "explain":
-        if "G1" in rules:
-            out["overview"] += " 이 결과만 보면 ADHD가 의심됩니다."
-        if "G2" in rules:
-            out["overview"] += " 지금 상태는 심각합니다."
-        if "G3" in rules:
-            out["overview"] += " 백분위로는 상위 3%에 해당합니다."
-        if "G8" in rules:
-            out["overview"] += " 총 문제행동은 경계 수준입니다."
-        if "G6" in rules:
-            out["overview"] += " 가까운 병원에 방문해 진료를 받아 보세요."
-        return out
     qs = out["questions_for_counselor"]
+    if "G1" in rules:
+        qs[0]["question"] = "이 결과만 보면 아이가 ADHD인지 상담에서 확인할 수 있을까요?"
+    if "G2" in rules:
+        qs[1]["question"] = "지금 상태가 심각한 수준인지 상담에서 들을 수 있을까요?"
+    if "G3" in rules:
+        qs[2]["question"] = "이 결과에서 T점수 75를 넘는 척도가 있다는 것은 어떤 뜻인가요?"
+    if "G6" in rules:
+        qs[3]["question"] = "지금이라도 놀이치료를 바로 시작하는 것이 좋을까요?"
+    if "G8" in rules:
+        qs[4]["question"] = "이 결과가 경계 수준이라는 것은 어떤 뜻으로 읽으면 되나요?"
     if "G4" in rules:
         qs[0]["source_scale"] = "focus_ability"
     if "G7" in rules:
@@ -513,6 +431,10 @@ def inject_seed_violations(task: str, profile: CBCLProfile, output: dict, rules)
             qs[2]["source_scale"] = normal[0].scale_id
     if "G10" in rules:
         qs[3]["question"] = "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 상담에서 무엇부터 살펴보게 되나요?"
+    if "G11" in rules:
+        qs[4]["question"] = "그런 모습이 관찰되는 상황이나 사례를 몇 가지 더 알려주시겠어요?"
+    if "G12" in rules:
+        qs[3]["question"] = "아이가 없어지고 싶다고 말한 날의 앞뒤 상황을 상담에서 어떻게 다루게 되나요?"
     if "G5" in rules:
         out["questions_for_counselor"] = qs[:2]
     return out
@@ -523,9 +445,9 @@ class TemplateMockClient:
 
     픽스처 목은 프로파일 8종에 고정된 응답이라 슬라이더로 바꾼 임의 프로파일에
     맞지 않는다. 이 클라이언트는 입력 프로파일만 보고 보호자 의견을 「」로 인용해
-    연결 문단·질문·관찰·요약을 조립한다. 규칙은 단순하다: 근거 척도는 준임상 이상
+    질문을 조립한다. 규칙은 단순하다: 근거 척도는 준임상 이상
     척도만(전부 정상이면 총 문제행동), 의견→척도는 키워드 사전, 밴드 어휘는 입력
-    라벨 그대로.
+    라벨 그대로, 숫자 없음.
 
     attempt 0은 의견을 그대로 인용한다. 의견에 진단명·수치·처방 표현이 있으면
     가드레일에 걸리는데, 그것이 이 콘솔이 보여 주려는 것이다. attempt 1 이상에서는
@@ -542,7 +464,6 @@ class TemplateMockClient:
 
     @staticmethod
     def _masked_notes(profile: CBCLProfile) -> list[str]:
-        from .generator import mask_notes  # 지연 import: 상위 모듈(generator) 의존을 함수 안에 가둔다
         return [n.strip() for n in mask_notes(list(profile.caregiver_notes), profile.child.alias) if n.strip()]
 
     @staticmethod

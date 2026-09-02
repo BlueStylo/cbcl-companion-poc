@@ -37,6 +37,7 @@
   figcaption { color: var(--sub); font-size: 12.5px; margin-top: 2px; }
   .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
   .box.gen { background: #fbfaf7; }
+  .brief-text { white-space: pre-line; font-size: 14px; }
   .box p:last-child { margin-bottom: 0; }
   .howto figure { margin: 4px 0 8px; }
   .howto svg { display: block; max-width: 560px; margin: 0 auto; }
@@ -118,7 +119,7 @@
     </div>
     <div class="box">
       <h3>T점수란 <span class="tag">고정 문구</span></h3>
-      <p>T점수는 또래 평균을 50, 표준편차를 10으로 맞춘 점수입니다. 또래 100명을 줄 세우면 50은 한가운데, 60은 위에서 16번째쯤, 70은 위에서 2~3번째쯤입니다. 점수는 점이 아니라 구간으로 읽는 것이 정확하며, 2페이지 곡선에서 마커 좌우로 뻗은 오차 범위선이 그 구간입니다.</p>
+      <p>T점수는 또래 평균을 50, 표준편차를 10으로 맞춘 점수입니다. 또래 100명을 줄 세우면 50은 한가운데, 60은 위에서 16번째쯤, 70은 위에서 2~3번째쯤입니다. 점수는 점이 아니라 구간으로 읽는 것이 정확하며, 2페이지 곡선 위에 굵게 표시한 오차 구간이 그 범위입니다.</p>
     </div>
     <details class="fold">
       <summary>보호자와 교사의 평가 상관은 평균 r=.28 (메타분석 2건) - 불일치는 오류가 아니라 정보입니다. 근거 보기</summary>
@@ -131,11 +132,12 @@
   <section class="page" id="page2">
     <h2>2페이지 · 우리 아이 결과</h2>
     <p class="hier-note">읽는 순서: ① 총 문제행동 → ② 내재화/외현화 → ③ 개별 척도.
-      모든 척도가 정상 범위로 보고되었습니다.</p>
+      이번 가이드에 포함된 척도는 모두 정상 범위로 보고되었습니다.</p>
+    <p class="hier-note">결과 범위는 이번 가이드에 포함된 문제행동 척도 기준입니다.</p>
 
     <div class="box gen">
-      <h3>보호자의 관찰과 검사 소견<span class="tag">생성 문구 · 검증 통과</span></h3>
-      <p>동생이 태어난 뒤로 잠드는 데 시간이 오래 걸린다고 적어 주셨습니다. 이번 검사에서는 총 문제행동 T점수 47을 비롯해 모든 척도가 정상 범위로 보고되었습니다. 정상 범위라는 말을 들어도 마음이 놓이지 않는다고 하셨는데, 이 검사는 보호자가 본 행동의 빈도를 또래와 비교한 것이라 잠드는 데 걸리는 시간처럼 집에서 느끼는 변화가 점수에 그대로 나타나지 않을 수 있습니다. 그 변화가 무엇을 뜻하는지는 예약된 상담에서 상담사와 이야기해 보세요.</p>
+      <h3>보호자의 관찰과 검사 소견 <span class="tag">결정론 조립</span></h3>
+      <p>보호자님은 이렇게 적어 주셨습니다. &#34;동생이 태어난 뒤로 잠드는 데 시간이 오래 걸립니다&#34; &#34;정상 범위라는 말을 들어도 마음이 놓이지 않아 여쭤보고 싶습니다&#34; 검사에서는 이번 가이드에 포함된 척도는 모두 정상 범위로 보고되었습니다. 관찰하신 모습이 무엇을 뜻하는지는 상담에서 함께 살펴볼 수 있습니다.</p>
     </div>
 
     <h3>종합지표</h3>
@@ -288,8 +290,8 @@
     
 
     <details class="fold">
-      <summary>곡선의 색 구간, 오차 범위선, 기준선은 무엇인가요</summary>
-      <p style="margin-top:6px">곡선 아래 색은 원 보고서 기준표의 구간(정상, 준임상, 임상)이고, 점선은 그 기준선입니다. 마커 좌우로 뻗은 가로 범위선은 측정의 표준오차(SEM)로 계산한 대칭 구간입니다. 신뢰도 예시값 0.84 기준 SEM 4.0T이며, 반복 측정 시 점수가 이 범위에 들어올 확률은 약 68%입니다. 실제 서비스는 검사 매뉴얼의 척도별 신뢰도 계수를 씁니다.</p>
+      <summary>곡선의 색 구간, 오차 구간, 기준선은 무엇인가요</summary>
+      <p style="margin-top:6px">곡선 아래 색은 원 보고서 기준표의 구간(정상, 준임상, 임상)이고, 점선은 그 기준선입니다. 마커 주변에서 굵게 표시한 곡선 구간은 측정의 표준오차(SEM)를 나타냅니다. 예시 신뢰도(.84)로 계산한 ±1 표준오차 범위이며, SEM은 4.0T입니다. 실제 서비스는 검사 매뉴얼의 척도별 신뢰도 계수를 씁니다.</p>
     </details>
 
     <div class="caution">이 보고서는 선별 도구이며 진단이 아닙니다. 검사 한 번의 결과는 아이를 이해하는 출발점일 뿐, 그 자체로 어떤 판정도 확정하지 않습니다.</div>
@@ -304,43 +306,53 @@
     <h3>상담 전 안내 <span class="tag">고정 문구</span></h3>
     <p>검사 결과를 보고 걱정되는 마음이 드는 것은 자연스럽습니다. 수치의 의미는 예약된 상담에서 상담사와 함께 확인하게 됩니다.</p>
 
-    <h3 style="margin-top:16px">상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
-    <ul class="qlist">
+    <h3 style="margin-top:16px">상담사에게 물어볼 질문 <span class="tag">LLM 생성 · 검증 통과</span><span class="tag">상담 때 보여줄 질문에 체크해 두세요</span></h3>
+    <ul class="qlist" id="question-list">
       
-      <li><input type="checkbox" checked> <span>모든 척도가 정상 범위로 보고되었는데, 정상 범위라는 말을 가정에서는 어느 정도의 의미로 받아들이면 되는지 궁금합니다.</span>
+      <li><input type="checkbox" checked> <span>동생이 태어난 뒤로 잠드는 데 시간이 오래 걸리는 모습은 모든 척도가 정상 범위인 결과와 함께 보면 어떤 뜻일까요?</span>
           <span class="src-badge">근거: 총 문제행동</span></li>
       
-      <li><input type="checkbox" checked> <span>동생이 태어난 뒤 잠드는 데 시간이 오래 걸리는 모습은 이번 결과의 어떤 부분과 함께 보면 좋을까요?</span>
-          <span class="src-badge">근거: 우울/불안</span></li>
+      <li><input type="checkbox" checked> <span>정상 범위라는 말을 들어도 마음이 놓이지 않는데, 이 결과를 가정에서는 어느 정도의 의미로 받아들이면 되나요?</span>
+          <span class="src-badge">근거: 총 문제행동</span></li>
       
-      <li><input type="checkbox" checked> <span>보호자 보고만으로 이루어진 검사라서 제가 놓치고 있을 수 있는 부분은 어떻게 확인하면 좋을까요?</span>
+      <li><input type="checkbox" checked> <span>잠드는 데 시간이 오래 걸리는 것은 이번 검사의 어떤 영역과 관련이 있는지 상담에서 들을 수 있을까요?</span>
+          <span class="src-badge">근거: 총 문제행동</span></li>
+      
+      <li><input type="checkbox" checked> <span>보호자 보고만으로 이루어진 검사라서 제가 놓치고 있을 수 있는 부분은 어떻게 확인하면 될까요?</span>
           <span class="src-badge">근거: 총 문제행동</span></li>
       
       <li><input type="checkbox" checked> <span>이런 검사는 얼마 간격으로 다시 해 보는 것이 좋은가요?</span>
           <span class="src-badge">근거: 총 문제행동</span></li>
       
-      <li><input type="checkbox" checked> <span>지금처럼 특별한 점이 보고되지 않을 때 가정에서 유지하면 좋은 관찰 습관이 있을까요?</span>
-          <span class="src-badge">근거: 총 문제행동</span></li>
-      
     </ul>
 
-    <h3 style="margin-top:16px">상담까지 남은 3일, 가정 관찰 포인트</h3>
-    <ul class="qlist">
+    <h3 style="margin-top:16px">상담까지 남은 3일, 가정 관찰 포인트 <span class="tag">결정론 조립</span></h3>
+    <ul class="qlist" id="observation-list">
       
-      <li><span>·</span> <span>잠자리에 누운 시각과 잠든 시각을 하루 한 줄로 적어 보기</span>
-          <span class="src-badge">근거: 우울/불안</span></li>
+      <li><span>·</span> <span>상담 전까지 하루 한 번, 아이가 즐거워한 순간을 적어 두기</span>
+          <span class="src-badge">근거: 총 문제행동</span></li>
       
-      <li><span>·</span> <span>동생과 함께 있는 상황에서 아이가 먼저 하는 말이나 행동을 한 가지 적어 두기</span>
-          <span class="src-badge">근거: 사회적 미성숙</span></li>
+      <li><span>·</span> <span>아이가 편안해 보였던 활동과 그때 함께 있던 사람을 적어 두기</span>
+          <span class="src-badge">근거: 총 문제행동</span></li>
       
-      <li><span>·</span> <span>상담까지 남은 3일 동안 아이가 즐거워한 순간을 하루 하나씩 기록하기</span>
+      <li><span>·</span> <span>하루 중 아이가 스스로 시작한 놀이나 활동을 하나씩 적어 두기</span>
           <span class="src-badge">근거: 총 문제행동</span></li>
       
     </ul>
 
     <details class="brief">
-      <summary>상담사용 사전 요약 (보호자 화면에는 표시되지 않는 별도 전달용)</summary>
-      <div class="box gen">종합지표: 총 문제행동 T=47(정상), 내재화 문제 T=48(정상), 외현화 문제 T=46(정상). 개별 척도는 전부 정상 범위. 보호자 관찰 요지: 동생이 태어난 뒤로 잠드는 데 시간이 오래 걸립니다 / 정상 범위라는 말을 들어도 마음이 놓이지 않아 여쭤보고 싶습니다. 상담까지 3일 남은 시점의 요약이며, 보호자가 고른 질문 목록과 대기 기간 관찰 기록이 첨부됩니다.</div>
+      <summary>상담사에게 전달할 요약 미리보기 <span class="tag">결정론 조립</span></summary>
+      <div class="box gen brief-text" id="brief-text">[보호자 의견 원문 2건]
+1. &#34;동생이 태어난 뒤로 잠드는 데 시간이 오래 걸립니다&#34;
+2. &#34;정상 범위라는 말을 들어도 마음이 놓이지 않아 여쭤보고 싶습니다&#34;
+[상승 척도 없음] 이번 가이드에 포함된 척도는 모두 정상 범위
+[상담사에게 물어볼 질문 5개] 위 목록에서 체크한 질문
+1. 동생이 태어난 뒤로 잠드는 데 시간이 오래 걸리는 모습은 모든 척도가 정상 범위인 결과와 함께 보면 어떤 뜻일까요?
+2. 정상 범위라는 말을 들어도 마음이 놓이지 않는데, 이 결과를 가정에서는 어느 정도의 의미로 받아들이면 되나요?
+3. 잠드는 데 시간이 오래 걸리는 것은 이번 검사의 어떤 영역과 관련이 있는지 상담에서 들을 수 있을까요?
+4. 보호자 보고만으로 이루어진 검사라서 제가 놓치고 있을 수 있는 부분은 어떻게 확인하면 될까요?
+5. 이런 검사는 얼마 간격으로 다시 해 보는 것이 좋은가요?
+[상담까지 3일]</div>
     </details>
   </section>
 
@@ -348,7 +360,7 @@
     <details>
       <summary>생성 정보</summary>
       가드레일 재생성 0회 · 안전 문구 대체 0건 ·
-      수치와 그림은 결정론 코드가, 연결 문단·질문은 LLM이, 척도 해설과 상담 전 안내는 고정 문구가, 임상 판단은 상담사가 담당합니다.
+      수치와 그림은 결정론 코드가, 질문은 LLM이, 연결 문단과 관찰 포인트와 상담사 요약은 결정론 조립이, 척도 해설과 상담 전 안내는 고정 문구가, 임상 판단은 상담사가 담당합니다.
     </details>
   </footer>
 </main>
@@ -364,6 +376,39 @@ document.addEventListener('click', function (e) {
   e.preventDefault();
   t.scrollIntoView({ block: 'start' }); // 즉시 이동: 숨은 탭·감속 모션 설정에서도 확실히 동작
 });
+</script>
+<script data-brief-sync>
+// 질문 목록의 체크 상태를 "상담사에게 전달할 요약 미리보기"의 질문 절에 반영한다.
+// 요약은 결정론 조립 텍스트(report_html.build_counselor_briefing)라 생성 시점에는 전체 질문이 실려 있고
+// (체크박스 기본값이 전부 체크), 체크를 풀면 같은 번호 줄을 숨기고 머리글의 개수를 맞춘다.
+// 번호는 화면 목록과 맞추기 위해 다시 매기지 않는다. 인쇄와 복사는 그 시점의 화면 상태를 따른다.
+(function () {
+  var list = document.getElementById('question-list');
+  var box = document.getElementById('brief-text');
+  if (!list || !box) return;
+  var original = box.textContent;
+  var header = /^\[상담사에게 물어볼 질문 \d+개\]/;
+  function sync() {
+    var boxes = list.querySelectorAll('input[type="checkbox"]');
+    var lines = original.split('\n');
+    var out = [], inQuestions = false, qi = 0, kept = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (header.test(line)) { inQuestions = true; out.push(line); continue; }
+      if (inQuestions && /^\d+\. /.test(line)) {
+        var cb = boxes[qi++];
+        if (!cb || cb.checked) { out.push(line); kept++; }
+        continue;
+      }
+      if (inQuestions && line.charAt(0) === '[') inQuestions = false;
+      out.push(line);
+    }
+    box.textContent = out.map(function (l) {
+      return header.test(l) ? l.replace(/\d+개\]/, kept + '개]') : l;
+    }).join('\n');
+  }
+  list.addEventListener('change', sync);
+})();
 </script>
 </body>
 </html>

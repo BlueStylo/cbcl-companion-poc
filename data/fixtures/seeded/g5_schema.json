@@ -1,28 +1,11 @@
 {
-  "category": "G5 스키마 파손",
+  "category": "G5 스키마 파손과 질문 문형",
   "cases": [
     {
       "id": "g5_missing_key",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "최상위 필수 키 누락 (overview)",
-      "expect_rules": [
-        "G5"
-      ],
-      "mutations": [
-        {
-          "op": "delete",
-          "path": [
-            "overview"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "g5_briefing_missing",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "최상위 필수 키 누락 (counselor_briefing)",
+      "note": "최상위 필수 키 누락 (questions_for_counselor)",
       "expect_rules": [
         "G5"
       ],
@@ -30,28 +13,7 @@
         {
           "op": "delete",
           "path": [
-            "counselor_briefing"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "g5_wrong_type",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "문자열이어야 할 필드가 배열",
-      "expect_rules": [
-        "G5"
-      ],
-      "mutations": [
-        {
-          "op": "set",
-          "path": [
-            "overview"
-          ],
-          "value": [
-            "설명은",
-            "생략합니다"
+            "questions_for_counselor"
           ]
         }
       ]
@@ -86,10 +48,70 @@
         {
           "op": "set",
           "path": [
-            "observation_points",
+            "questions_for_counselor",
             1
           ],
           "value": "그냥 문자열 항목"
+        }
+      ]
+    },
+    {
+      "id": "g5_question_not_interrogative",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "질문이 의문형으로 끝나지 않음 (평서문 '궁금합니다')",
+      "expect_rules": [
+        "G5"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습이 주의집중 척도 결과와 이어지는지 궁금합니다."
+        }
+      ]
+    },
+    {
+      "id": "g5_question_too_long",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "질문 길이 상한 초과 (두 문장을 이어 붙인 장문)",
+      "expect_rules": [
+        "G5"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "question"
+          ],
+          "value": "놀이터에서 또래에게 먼저 말을 거는 일이 줄어든 것을 상담에서는 무엇부터 살펴보게 되고, 그 과정에서 보호자가 미리 준비해 두면 좋은 자료나 기록은 어떤 것이 있으며 상담은 보통 몇 회 정도 이어지나요?"
+        }
+      ]
+    },
+    {
+      "id": "g5_question_two_sentences",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "질문이 두 문장 (1문장 규칙 위반)",
+      "expect_rules": [
+        "G5"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "학원 숙제를 앞에 두면 딴 데를 자주 보는 모습은 어떻게 보면 될까요? 그리고 다음 단계는 무엇인가요?"
         }
       ]
     }

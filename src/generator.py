@@ -1,5 +1,8 @@
-"""해설(기능 1)과 상담 준비(기능 2) 생성.
+"""상담 준비(상담사에게 물어볼 질문) 생성.
 
+LLM 호출은 프로파일당 prep 1종이고 블록은 질문 1개다 (ADR 0010과 그 보강). 첫 시도가 통과하면
+호출 1회, 위반이 있으면 블록당 최대 2회 재생성이 더해진다. 연결 문단, 관찰 포인트, 상담사
+요약은 report_html이 결정론으로 조립하므로 여기서 만들지 않는다.
 프롬프트 계약의 정본은 prompts/ 아래 파일이다. LLM에는 파서가 검증한
 구조화 JSON만 넘기고(아동 이름은 제외 - 식별자 마스킹), 출력은
 guardrails의 블록 단위 재생성 루프를 거친 SafeResult로 돌려준다.
@@ -11,32 +14,18 @@ import json
 from pathlib import Path
 
 from . import guardrails
+from .guardrails import MASK_TOKEN, mask_notes  # noqa: F401  (LLM 입력과 G10 인용 대조가 같은 마스킹을 쓴다)
 from .parser import CBCLProfile
 from .quality import quality_summary
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
-TASK_PROMPT_FILES = {"explain": "explainer_system.md", "prep": "counsel_prep_system.md"}
+TASK_PROMPT_FILES = {"prep": "counsel_prep_system.md"}
+TASKS = tuple(TASK_PROMPT_FILES)
 
 
 def load_system_prompt(task: str) -> str:
     """프롬프트 계약 전문을 파일에서 읽는다 (코드 밖 정본)."""
     return (PROMPTS_DIR / TASK_PROMPT_FILES[task]).read_text(encoding="utf-8")
-
-
-MASK_TOKEN = "아이"
-
-
-def mask_notes(notes: list[str], alias: str) -> list[str]:
-    """보호자 의견 안에 아동 이름이 적혀 있으면 '아이'로 바꾼다.
-
-    profile_payload는 alias 필드를 넘기지 않지만, 보호자가 문장 안에 이름을
-    쓰는 경우("민수가 요즘...")가 있어 본문도 마스킹한다. 이름 뒤 조사는 그대로
-    둔다 ("민수가" → "아이가").
-    """
-    alias = (alias or "").strip()
-    if not alias:
-        return list(notes)
-    return [n.replace(alias, MASK_TOKEN) for n in notes]
 
 
 def profile_payload(profile: CBCLProfile) -> dict:
@@ -61,14 +50,16 @@ def profile_payload(profile: CBCLProfile) -> dict:
 RULE_HINTS = {
     "G1": "진단명 금지",
     "G2": "심각성 단정·근거 없는 안심 금지",
-    "G3": "입력에 없는 수치·판정 금지 (t_score/band는 입력값 그대로)",
-    "G4": "scale_id/source_scale은 입력에 있는 척도만",
-    "G5": "출력 스키마·필수 필드·항목 수 준수",
+    "G3": "문장에 아라비아 숫자와 한글 수사 점수 금지 (수치는 화면 카드가 보여줌)",
+    "G4": "source_scale은 입력에 있는 척도의 scale_id만",
+    "G5": "출력 스키마·항목 수·문형 준수 (질문 5~7개, 각각 1문장 의문형 25~90자)",
     "G6": "약물·치료·병원 방문 권고 금지",
     "G7": "사람이 읽는 문장에 scale_id·영문 식별자·괄호 코드 금지 (JSON 필드에만)",
     "G8": "밴드 어휘는 입력 band 라벨 그대로(정상/준임상/임상)만, 척도별 라벨 정확히",
-    "G9": "질문·관찰 포인트의 source_scale은 band가 normal이 아닌 척도만",
-    "G10": "보호자가 caregiver_notes에 쓰지 않은 관찰(예시 문구)을 인용 금지 - 입력의 문장만 인용",
+    "G9": "source_scale은 band가 normal이 아닌 척도만 (전 척도 정상이면 total_problems만)",
+    "G10": "항목마다 caregiver_notes의 원문 조각(연속 6자)을 그대로 인용하거나 준임상 이상 근거 척도를 대고, 문장의 척도명은 source_scale과 같게 - 보호자가 쓰지 않은 말을 인용 금지",
+    "G11": "질문은 보호자가 상담사에게 묻는 방향만 (보호자에게 되묻는 문형 금지)",
+    "G12": "위기 어휘(자해·자살·폭력·성적 접촉 표현) 금지 - 보호자가 쓰지 않은 위기 표현을 문장에 넣지 않음",
 }
 
 
@@ -106,8 +97,8 @@ def generate_safe(profile: CBCLProfile, task: str, client) -> guardrails.SafeRes
 
 
 def generate_all(profile: CBCLProfile, client) -> dict[str, guardrails.SafeResult]:
-    """기능 1(해설)과 기능 2(상담 준비)를 모두 생성한다."""
-    return {task: generate_safe(profile, task, client) for task in ("explain", "prep")}
+    """LLM 태스크 전부를 생성한다. 현행 구조에서는 prep 하나(첫 시도 통과 시 호출 1회)다."""
+    return {task: generate_safe(profile, task, client) for task in TASKS}
 
 
 def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
@@ -115,7 +106,8 @@ def summarize_run(profile: CBCLProfile, results: dict, client) -> dict:
 
     시도별 위반 규칙 분포, 블록별 최종 상태(pass / regen_pass / fallback),
     LLM 호출별 usage 토큰과 소요 시간, 품질 지표 3종(측정용), 최종 출력
-    원문(오프라인 재측정용)을 담는다.
+    원문(오프라인 재측정용)을 담는다. 결정론 조립 텍스트(연결 문단, 관찰 포인트, 상담사 요약)는
+    LLM 출력이 아니므로 여기 들어가지 않는다.
     """
     tasks = {}
     for task, r in results.items():

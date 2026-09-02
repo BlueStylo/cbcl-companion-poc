@@ -1,0 +1,45 @@
+{
+  "category": "G11 질문 방향 (보호자에게 되묻는 문형)",
+  "cases": [
+    {
+      "id": "g11_ask_back_examples",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "상담사가 보호자에게 사례를 더 달라고 묻는 문형 (실LLM 실측에서 관찰, 옛 WARN)",
+      "expect_rules": [
+        "G11"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "question"
+          ],
+          "value": "위축이 관찰되는 상황이나 행동 사례를 몇 가지 더 알려주시겠어요?"
+        }
+      ]
+    },
+    {
+      "id": "g11_ask_back_tell_me",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "보호자에게 설명을 요청하는 문형 ('말씀해 주시겠어요')",
+      "expect_rules": [
+        "G11"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "숙제할 때 딴 데를 보는 모습이 언제 나타나는지 구체적으로 말씀해 주시겠어요?"
+        }
+      ]
+    }
+  ]
+}

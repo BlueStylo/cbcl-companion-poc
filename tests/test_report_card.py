@@ -93,11 +93,9 @@ def test_card_fixed_texts_stay_outside_llm_gates():
     fixed = [*CARD_VERDICT.values(), *CARD_PLAIN_RANGE.values(), CARD_NOT_DIAGNOSIS]
     assert all(text in html for text in fixed if text != CARD_VERDICT["clinical"]
                and text != CARD_PLAIN_RANGE["clinical"])
-    gated = " ".join(t for task in ("explain", "prep")
-                     for _b, t in caregiver_texts(task, results[task].output))
+    gated = " ".join(t for _b, t in caregiver_texts("prep", results["prep"].output))
     assert all(text not in gated for text in fixed)
-    for task in ("explain", "prep"):
-        assert check_output(profile, task, results[task].output) == []
+    assert check_output(profile, "prep", results["prep"].output) == []
 
 
 def test_pre_counseling_note_is_fixed_text_once_and_outside_gates():
@@ -112,12 +110,10 @@ def test_pre_counseling_note_is_fixed_text_once_and_outside_gates():
     assert html.count(PRE_COUNSELING_NOTE) == 1
     assert re.search(rf'<h3>{PRE_COUNSELING_LABEL} <span class="tag">고정 문구</span></h3>\s*<p>{re.escape(PRE_COUNSELING_NOTE)}</p>', html)
     assert PRE_COUNSELING_LABEL == "상담 전 안내" and "마음가짐" not in html
-    assert html.count("생성 문구 · 검증 통과") == 1        # 연결 문단 하나뿐 (상담 전 안내에는 붙지 않는다)
-    assert "before_counseling" not in results["explain"].output
-    gated = " ".join(t for task in ("explain", "prep")
-                     for _b, t in caregiver_texts(task, results[task].output))
+    assert html.count("LLM 생성 · 검증 통과") == 1        # 질문 블록뿐 (상담 전 안내와 관찰 포인트에는 붙지 않는다)
+    assert "before_counseling" not in results["prep"].output
+    gated = " ".join(t for _b, t in caregiver_texts("prep", results["prep"].output))
     assert PRE_COUNSELING_NOTE not in gated
-    assert check_output(profile, "explain", {"overview": PRE_COUNSELING_NOTE}) == []
     pending = build_pending_report_html(profile)
     assert pending.count(PRE_COUNSELING_NOTE) == 1 and "생성 대기" in pending
 
@@ -149,9 +145,9 @@ def test_unscheduled_report_uses_booking_neutral_phrases():
     html = build_report_html(profile, results)
 
     assert "상담 예약 후" in html
-    assert "상담 예약 후 사용" in html
+    assert "상담 예약 후 사용" in html and "[상담 예약 후 사용]" in html   # 머리글과 요약이 같은 문구
     assert "상담 예약 후 상담 전까지 살펴볼 가정 관찰 포인트" in html
-    assert "예약된 상담" not in html
+    assert "예약된 상담" not in html and "미예약" not in html
     assert not re.search(r"상담까지\s*(?:남은\s*)?\d+일", html)
 
 
@@ -159,12 +155,18 @@ def test_special_scale_scope_is_shown_only_when_not_administered():
     profile = _profile("p1_all_normal")
     scoped = build_report_html(profile, generate_all(profile, make_client("mock")))
     assert "이번 가이드에 포함된 문제행동 척도 기준입니다" in scoped
+    # 위계 안내와 상담사 요약도 같은 범위 규칙: 미실시면 "모든 척도"라고 쓰지 않는다
+    assert "이번 가이드에 포함된 척도는 모두 정상 범위로 보고되었습니다" in scoped
+    assert "[상승 척도 없음] 이번 가이드에 포함된 척도는 모두 정상 범위" in scoped
+    assert "모든 척도가 정상 범위로 보고되었습니다" not in scoped and "모든 척도 정상 범위" not in scoped
 
     administered = profile.model_copy(update={"special_scales_administered": True})
     administered_html = build_report_html(
         administered, generate_all(administered, make_client("mock"))
     )
     assert "이번 가이드에 포함된 문제행동 척도 기준입니다" not in administered_html
+    assert "모든 척도가 정상 범위로 보고되었습니다" in administered_html
+    assert "[상승 척도 없음] 모든 척도 정상 범위" in administered_html
 
 
 def test_sem_copy_names_example_assumption_without_probability_claim():

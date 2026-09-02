@@ -2,36 +2,63 @@
   "category": "G8 밴드 라벨 정합",
   "cases": [
     {
-      "id": "g8_nonstandard_vocab",
-      "task": "explain",
+      "id": "g8_nonstandard_vocab_question",
+      "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "비표준 밴드 표현 '경계 수준' (실LLM 실측에서 관찰: 총 문제행동 정상을 경계 수준으로 서술)",
-      "expect_rules": ["G8"],
+      "note": "비표준 밴드 표현 '경계 수준' (실LLM 실측에서 관찰)",
+      "expect_rules": [
+        "G8"
+      ],
       "mutations": [
-        {"op": "set", "path": ["overview"],
-         "value": "이번 검사에서 총 문제행동과 내재화 문제는 경계 수준으로 나타났고, 외현화 문제는 정상 범위에 속합니다."}
-      ]
-    },
-    {
-      "id": "g8_label_mismatch_overview",
-      "task": "explain",
-      "profile_id": "p2_partial_borderline",
-      "note": "표준 어휘를 썼지만 척도별 라벨이 틀림 (총 문제행동 정상 → 준임상으로 서술)",
-      "expect_rules": ["G8"],
-      "mutations": [
-        {"op": "set", "path": ["overview"],
-         "value": "이번 검사에서 종합지표는 총 문제행동 T점수 57(준임상), 내재화 문제 T점수 62(준임상), 외현화 문제 T점수 52(정상)으로 보고되었습니다."}
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "주의집중 척도가 경계 수준으로 나타났다는 것은 어떻게 읽으면 될까요?"
+        }
       ]
     },
     {
       "id": "g8_label_mismatch_question",
       "task": "prep",
       "profile_id": "p2_partial_borderline",
-      "note": "질문 문안의 라벨 오기 (주의집중 준임상 → 정상으로 서술)",
-      "expect_rules": ["G8"],
+      "note": "표준 어휘를 썼지만 라벨이 틀림 (주의집중 준임상 → 정상으로 서술)",
+      "expect_rules": [
+        "G8"
+      ],
       "mutations": [
-        {"op": "set", "path": ["questions_for_counselor", 0, "question"],
-         "value": "주의집중 척도(T점수 67)가 정상 범위라고 들었는데, 숙제 앞에서 딴 데를 자주 보는 모습은 어떻게 보면 될까요?"}
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            0,
+            "question"
+          ],
+          "value": "주의집중 척도가 정상 범위라고 들었는데, 숙제 앞에서 딴 데를 자주 보는 모습은 어떻게 보면 될까요?"
+        }
+      ]
+    },
+    {
+      "id": "g8_boundary_group_question",
+      "task": "prep",
+      "profile_id": "p2_partial_borderline",
+      "note": "비표준 밴드 표현 '경계군' (Codex 점검에서 통과)",
+      "expect_rules": [
+        "G8"
+      ],
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "questions_for_counselor",
+            1,
+            "question"
+          ],
+          "value": "위축 척도가 경계군에 해당한다는 것은 어떤 뜻으로 읽으면 되나요?"
+        }
       ]
     }
   ]
