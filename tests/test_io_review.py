@@ -193,7 +193,9 @@ def test_legacy_five_block_run_stats_still_render(tmp_path):
     assert "#### 상담 전 안내 (before_counseling) - 구 스키마(고정 문구로 전환됨)" in md
     # 저장소에 커밋된 실측 산출물(5블록 시절)도 그대로 읽힌다
     api = io_review.load_runs([str(ROOT / "examples" / "api" / "run_stats.json")])
-    assert "구 스키마(고정 문구로 전환됨)" in io_review.build_review_html(api, PROFILES)
+    # 저장소의 examples/api는 4블록 재실측(2026-09-02) 산출물이라 구 스키마 표기 없이 렌더돼야 한다
+    api_html = io_review.build_review_html(api, PROFILES)
+    assert "구 스키마(고정 문구로 전환됨)" not in api_html and "gemma4:12b" in api_html
 
 
 def test_bad_inputs_fail_cleanly(tmp_path, capsys):
