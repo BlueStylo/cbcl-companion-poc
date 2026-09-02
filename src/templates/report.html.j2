@@ -187,9 +187,10 @@
 
   <section class="page" id="prep">
     <h2>상담 준비 도우미</h2>
-    <p{% if pending %} class="pending-text"{% endif %}>{{ before_counseling }}{% if pending %}<span class="tag pending">생성 대기</span>{% elif before_fallback %}<span class="tag fb">안전 문구로 대체됨</span>{% else %}<span class="tag">생성 문구 · 검증 통과</span>{% endif %}</p>
+    <h3>{{ pre_counseling_label }} <span class="tag">고정 문구</span></h3>
+    <p>{{ pre_counseling_note }}</p>
 
-    <h3>상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
+    <h3 style="margin-top:16px">상담사에게 물어볼 질문 <span class="tag">체크한 질문이 상담사에게 전달됩니다</span></h3>
     <ul class="qlist">
       {% for q in questions %}
       <li><input type="checkbox" checked> <span{% if q.pending %} class="pending-text"{% endif %}>{{ q.text }}{% if q.pending %}<span class="tag pending">생성 대기</span>{% elif q.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
@@ -215,7 +216,7 @@
     <details>
       <summary>생성 정보</summary>
       {% if pending %}생성 전 미리보기 (LLM 미호출){% else %}가드레일 재생성 {{ regen_count }}회 · 안전 문구 대체 {{ fallback_count }}건{% endif %} ·
-      수치와 그림은 결정론 코드가, 연결 문단·질문은 LLM이, 척도 해설은 고정 문구가, 임상 판단은 상담사가 담당합니다.
+      수치와 그림은 결정론 코드가, 연결 문단·질문은 LLM이, 척도 해설과 상담 전 안내는 고정 문구가, 임상 판단은 상담사가 담당합니다.
     </details>
   </footer>
 </main>

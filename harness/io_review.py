@@ -2,7 +2,7 @@
 
 main.py(--api 또는 --mock)가 남기는 run_stats.json 여러 개와 프로파일 디렉토리를 받아,
 프로파일별로 왼쪽에 입력(가상 아동 정보, T점수와 밴드, 보호자 의견 원문, 상담까지 남은 날)을,
-오른쪽에 모델별 최종 출력 5블록을 격자로 놓은 정적 HTML 1개를 만든다. 보호자 의견의 어절이
+오른쪽에 모델별 최종 출력 4블록을 격자로 놓은 정적 HTML 1개를 만든다. 보호자 의견의 어절이
 출력 어디에 등장했는지 색으로 표시해 "입력이 출력에 어떻게 반영됐는가"를 한눈에 보는 것이 목적.
 
     python harness/io_review.py out/bench/*/run_stats.json --profiles data/profiles --out out/io_review.html
@@ -11,7 +11,11 @@ main.py(--api 또는 --mock)가 남기는 run_stats.json 여러 개와 프로파
 
 한계: run_stats에는 시도별 원문이 없고 규칙별 위반 건수만 있다(src/generator.py summarize_run).
 그래서 부록은 걸린 규칙과 통과한 최종 문장까지만 보여 준다. 반영률 수치는 하네스 정의대로
-질문·관찰 항목만 세지만(src/quality.py), 색 표시는 5블록 전체에 한다.
+질문·관찰 항목만 세지만(src/quality.py), 색 표시는 4블록 전체에 한다.
+
+옛 run_stats(5블록 시절, explain에 before_counseling이 있던 산출물 - examples/api 등)도 읽는다.
+현행 스키마에 없는 옛 블록은 '구 스키마(고정 문구로 전환됨)'로 표기해 참고용으로만 보여 주고
+어절 집계와 폴백 분모에서는 빼며, 어느 런에도 없는 블록 행은 건너뛴다 (ADR 0009).
 """
 
 from __future__ import annotations
@@ -38,14 +42,18 @@ from src.quality import fmt_rate, note_tokens
 TEMPLATES_DIR = ROOT / "src" / "templates"
 TEMPLATE_NAME = "io_review.html.j2"
 
-# 출력 5블록 (리포트에 나가는 순서): (task, block, 라벨, 목록이면 항목 텍스트 키)
+# 출력 4블록 (리포트에 나가는 순서): (task, block, 라벨, 목록이면 항목 텍스트 키).
+# src/guardrails.TASK_BLOCKS와 같은 집합이어야 한다 (tests/test_io_review.py가 대조).
 BLOCKS = (
     ("explain", "overview", "보호자의 관찰과 검사 소견", None),
-    ("explain", "before_counseling", "상담 전 마음가짐 안내", None),
     ("prep", "questions_for_counselor", "상담사에게 물어볼 질문", "question"),
     ("prep", "observation_points", "가정 관찰 포인트", "point"),
     ("prep", "counselor_briefing", "상담사용 사전 요약", None),
 )
+# 현행 스키마에서 빠진 옛 블록 (task, block) → 라벨. 옛 run_stats를 넣으면 이 라벨과 LEGACY_NOTE로
+# 나란히 보여 주되 어절 집계·폴백 분모에는 넣지 않는다. 그 밖의 알 수 없는 키는 표시하지 않는다.
+LEGACY_BLOCKS = {("explain", "before_counseling"): "상담 전 안내"}
+LEGACY_NOTE = "구 스키마(고정 문구로 전환됨)"
 TASK_KO = {"explain": "해설 호출 (explain)", "prep": "상담 준비 호출 (prep)"}
 # README '가드레일 규칙' 표의 검사명을 짧게
 RULE_KO = {
@@ -207,14 +215,26 @@ def build_column(run: dict, tokens) -> dict:
         cell["state_ko"] = STATE_KO.get(state, "상태 기록 없음")
         cell["violations"] = col["task_meta"][task]["violations"] if state in ("regen_pass", "fallback") else []
         cell["ambiguous"] = False
+        cell["legacy"] = False
         col["hit"] |= tokens_found(tokens, cell["texts"])
         col["cells"][block] = cell
+    # 옛 스키마 블록: 현행 블록에 없는 키가 outputs에 있으면 참고용으로만 싣는다 (어절 집계·폴백 분모 제외)
+    col["legacy_blocks"] = []
+    for (task, block), _label in LEGACY_BLOCKS.items():
+        if block not in (outputs.get(task) or {}):
+            continue
+        cell = _cell(outputs[task][block], None)
+        state = ((tasks.get(task) or {}).get("block_states") or {}).get(block)
+        cell.update(state=state, state_ko=STATE_KO.get(state, "상태 기록 없음"),
+                    violations=[], ambiguous=False, legacy=True)
+        col["cells"][block] = cell
+        col["legacy_blocks"].append((task, block))
     # 위반은 호출(task) 단위 집계라, 같은 호출에서 통과 못 한 블록이 둘 이상이면 어느 블록의 위반인지 구분되지 않는다
     for task in ("explain", "prep"):
         non_pass = [b for t, b, _l, _k in BLOCKS if t == task and col["cells"][b]["state"] in ("regen_pass", "fallback")]
         for b in non_pass:
             col["cells"][b]["ambiguous"] = len(non_pass) > 1
-    states = [c["state"] for c in col["cells"].values()]
+    states = [col["cells"][b]["state"] for _t, b, _l, _k in BLOCKS]
     col["regen_total"] = sum(m["regen_count"] for m in col["task_meta"].values())
     col["fallback_blocks"] = states.count("fallback")
     col["blocks_total"] = len(BLOCKS)
@@ -249,7 +269,7 @@ def quality_rows(columns: list[dict], tokens) -> list[dict]:
         ("표현 반영 (항목)", lambda c: f"{refl(c)['items_reflected']}/{refl(c)['items_total']} ({fmt_rate(refl(c)['item_rate'])})"),
         ("표현 반영 (어절)", lambda c: f"{len(refl(c)['tokens_hit'])}/{len(refl(c)['tokens'])} ({fmt_rate(refl(c)['token_rate'])})"),
         ("질문·관찰에서 놓친 어절", lambda c: ", ".join(t for t in refl(c)["tokens"] if t not in set(refl(c)["tokens_hit"])) or "없음"),
-        ("5블록 어디에도 없는 어절", lambda c: ", ".join(t for t in tokens if t not in c["hit"]) or "없음"),
+        (f"{len(BLOCKS)}블록 어디에도 없는 어절", lambda c: ", ".join(t for t in tokens if t not in c["hit"]) or "없음"),
         ("용어 잔존", lambda c: f"{jar(c)['term_hits']}회 (용어 블록 {jar(c)['blocks_with_term']}/{jar(c)['blocks_total']}, 풀이 동반 {fmt_rate(jar(c)['gloss_rate'])})"),
         ("상위 용어", lambda c: ", ".join(f"{k} {v}" for k, v in list(jar(c)["by_term"].items())[:4]) or "없음"),
         ("방향 경고", lambda c: f"{len(c['quality']['direction_warnings'])}건"
@@ -326,8 +346,32 @@ def build_section(profile_id: str, runs: list[dict], profiles_dir: Path, model_o
         "tokens": tokens,
         "hit_union": hit_union,
         "columns": columns,
+        "rows": block_rows(columns),
         "quality_rows": quality_rows(columns, tokens),
     }
+
+
+def block_rows(columns: list[dict]) -> list[dict]:
+    """출력 격자의 행 목록. 어느 열에도 없는 블록은 건너뛰고, 옛 스키마 블록은 해당 호출의 끝에 표기와 함께 둔다.
+
+    옛 블록이 일부 열에만 있으면 나머지 열은 "출력 없음" 셀로 채워 템플릿이 열을 균일하게 돈다.
+    """
+    rows: list[dict] = []
+    for task in ("explain", "prep"):
+        for t, block, label, text_key in BLOCKS:
+            if t == task and any(c["cells"][block]["kind"] != "missing" for c in columns):
+                rows.append({"task": task, "block": block, "label": label, "text_key": text_key,
+                             "legacy": False, "note": ""})
+        for (t, block), label in LEGACY_BLOCKS.items():
+            if t != task or not any((t, block) in c["legacy_blocks"] for c in columns):
+                continue
+            for c in columns:
+                c["cells"].setdefault(block, {"kind": "missing", "texts": [], "state": None,
+                                              "state_ko": "상태 기록 없음", "violations": [],
+                                              "ambiguous": False, "legacy": True})
+            rows.append({"task": task, "block": block, "label": label, "text_key": None,
+                         "legacy": True, "note": LEGACY_NOTE})
+    return rows
 
 
 def build_context(runs: list[dict], profiles_dir: str | Path, env_note: str = "", title: str = "") -> dict:
@@ -464,8 +508,9 @@ def build_review_md(runs: list[dict], profiles_dir: str | Path, env_note: str = 
         L.append("")
         L.append("### 출력 (모델별)")
         L.append("")
-        for task, block, label, text_key in BLOCKS:
-            L.append(f"#### {label} ({block})")
+        for row in sec["rows"]:
+            task, block, label = row["task"], row["block"], row["label"]
+            L.append(f"#### {label} ({block})" + (f" - {row['note']}" if row["legacy"] else ""))
             L.append("")
             L.append("| 모델 | 출력 | 메타 |")
             L.append("|---|---|---|")

@@ -24,9 +24,13 @@
 대체한다 (fail-closed). 리포트가 아예 안 나가는 일은 없고, 검증 안 된
 문장이 나가는 일도 없다.
 
-LLM이 쓰는 블록은 5개뿐이다: explain의 overview(보호자 관찰과 소견을 잇는
-연결 문단)·before_counseling, prep의 질문·관찰 포인트·상담사용 요약.
-척도 카드 해설과 한계 고지는 고정 문구(scale_texts.py)라 검사 대상이 아니다.
+LLM이 쓰는 블록은 4개뿐이다: explain의 overview(보호자 관찰과 소견을 잇는
+연결 문단), prep의 질문·관찰 포인트·상담사용 요약. 척도 카드 해설과 한계
+고지(scale_texts.py), 상담 전 안내(report_html.PRE_COUNSELING_NOTE, ADR 0009)는
+고정 문구라 검사 대상이 아니다.
+
+G5는 필수 키 누락만 잡는다. 스키마 밖 키(옛 스키마의 before_counseling 등)는
+위반이 아니라 무시되며, split_blocks/rebuild가 버리므로 리포트에 닿지 않는다.
 
 입력 게이트 1종: 위기 신호 검출 (detect_crisis_signals). 보호자 의견에
 긴급 키워드가 있으면 LLM 호출 자체를 하지 않는다 (generator가 이 함수로
@@ -229,7 +233,7 @@ def detect_crisis_signals(profile: CBCLProfile) -> list[str]:
 # ---------------------------------------------------------------- 블록 분해
 
 TASK_BLOCKS = {
-    "explain": ("overview", "before_counseling"),
+    "explain": ("overview",),
     "prep": ("questions_for_counselor", "observation_points", "counselor_briefing"),
 }
 
@@ -360,7 +364,11 @@ def _require_str(block: str, value, name: str) -> list[Violation]:
 
 
 def check_top_schema(task: str, raw) -> list[Violation]:
-    """출력 최상위 구조 검사 (여기서 걸리면 전체 재생성)."""
+    """출력 최상위 구조 검사 (여기서 걸리면 전체 재생성).
+
+    필수 키 누락만 본다. 스키마 밖 키는 위반이 아니라 무시된다 (split_blocks가
+    버리므로 리포트에 닿지 않는다). 옛 스키마의 before_counseling도 마찬가지다.
+    """
     if not isinstance(raw, dict):
         return [Violation("G5", "*", "출력이 JSON 객체가 아님")]
     missing = [k for k in TASK_BLOCKS[task] if k not in raw]
@@ -412,7 +420,7 @@ def check_block(profile: CBCLProfile, task: str, block: str, content) -> list[Vi
         return _check_items_block(profile, block, content, "question", 5, 7)
     if block == "observation_points":
         return _check_items_block(profile, block, content, "point", 3, 5)
-    # overview / limits / before_counseling / counselor_briefing: 순수 텍스트
+    # overview / counselor_briefing: 순수 텍스트
     vs = _require_str(block, content, block)
     if vs:
         return vs
@@ -444,7 +452,7 @@ def fallback_for(profile: CBCLProfile, task: str, block: str):
         return [{"point": SAFE_OBSERVATION, "source_scale": "total_problems", "_fallback": True}]
     if block == "counselor_briefing":
         return SAFE_BRIEFING
-    return SAFE_GENERIC_TEXT  # before_counseling
+    return SAFE_GENERIC_TEXT  # 알 수 없는 블록 (방어용, 현행 스키마에서는 닿지 않음)
 
 
 def rebuild(profile: CBCLProfile, task: str, blocks: dict[str, object]) -> dict:

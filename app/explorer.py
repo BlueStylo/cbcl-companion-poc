@@ -292,10 +292,11 @@ def _run_panel(run: dict | None, stale: bool) -> None:
         else:
             st.caption("위반 0건 - 모든 블록이 첫 시도에서 통과했습니다.")
     with right:
-        st.markdown("**블록 상태 (5개)**")
-        st.table(pd.DataFrame([{"task": task, "block": block, "state": state}
-                               for task, t in stats["tasks"].items()
-                               for block, state in t["block_states"].items()]))
+        block_rows = [{"task": task, "block": block, "state": state}
+                      for task, t in stats["tasks"].items()
+                      for block, state in t["block_states"].items()]
+        st.markdown(f"**블록 상태 ({len(block_rows)}개)**")
+        st.table(pd.DataFrame(block_rows))
 
     q = stats["quality"]
     j, r, w = q["jargon"], q["reflection"], q["direction_warnings"]

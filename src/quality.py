@@ -112,9 +112,8 @@ def caregiver_texts(task: str, output: dict) -> list[tuple[str, str]]:
     """보호자 노출 생성 텍스트를 (블록, 텍스트)로 나열한다. 폴백·사전 요약 제외."""
     texts: list[tuple[str, str]] = []
     if task == "explain":
-        for key in ("overview", "before_counseling"):
-            if isinstance(output.get(key), str):
-                texts.append((key, output[key]))
+        if isinstance(output.get("overview"), str):
+            texts.append(("overview", output["overview"]))
     else:
         for key, text_key in (("questions_for_counselor", "question"),
                               ("observation_points", "point")):

@@ -95,6 +95,9 @@
   .fb { font-size: 11px; color: var(--chip-clinical-ink); margin-left: 6px; }
   .meta { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 11.5px; color: var(--sub); line-height: 1.5; }
   .missing { color: var(--sub); font-style: italic; }
+  tr.legacy td { background: var(--paper); color: var(--sub); }
+  tr.legacy td.rowh small { font-style: italic; }
+  .legacy-tag { display: inline-block; font-size: 11px; font-style: italic; color: var(--sub); border: 1px dashed var(--line); border-radius: 4px; padding: 0 6px; }
 
   /* 품질 지표 표 */
   .quality-wrap { overflow-x: auto; margin-top: 16px; }
@@ -130,7 +133,7 @@
   <header>
     <h1>{{ title }}</h1>
     <p class="sub">생성 {{ generated_at }} · 런 {{ n_runs }}개 · 프로파일 {{ n_profiles }}종 · 모델 {{ n_models }}종 · 자작 가상 데이터</p>
-    <p class="lead">프로파일마다 왼쪽에 LLM에 들어간 입력을, 오른쪽에 모델별 최종 출력 5블록을 놓았습니다.
+    <p class="lead">프로파일마다 왼쪽에 LLM에 들어간 입력을, 오른쪽에 모델별 최종 출력 {{ blocks|length }}블록을 놓았습니다.
       보호자 의견의 어절이 출력에 등장한 자리는 <mark class="hit">이렇게</mark> 표시합니다.</p>
 
     <h3>포함된 런</h3>
@@ -158,7 +161,8 @@
     <p class="nav">바로가기: {% for sec in sections %}<a href="#{{ sec.profile_id }}">{{ sec.profile_id }}</a> · {% endfor %}<a href="#appendix">부록 (규칙에 걸린 시도)</a></p>
 
     <div class="legend">
-      <span><mark class="hit">어절</mark> 보호자 의견의 어절이 출력에 등장 (5블록 전체 기준)</span>
+      <span><mark class="hit">어절</mark> 보호자 의견의 어절이 출력에 등장 ({{ blocks|length }}블록 전체 기준)</span>
+      <span><span class="legacy-tag">구 스키마</span> 현행 스키마에 없는 옛 블록 (고정 문구로 전환됨, 참고용 - 어절 집계 제외)</span>
       <span><span class="cand">어절</span> 측정 대상 어절이지만 어느 모델 출력에도 없음</span>
       <span><span class="state pass">첫 시도 통과</span> <span class="state regen_pass">재생성 후 통과</span> <span class="state fallback">안전 문구 대체</span></span>
       <span>반영률 수치는 하네스 정의대로 질문·관찰 항목만 셉니다</span>
@@ -215,7 +219,7 @@
           </tr></thead>
           <tbody>
           {% set ns = namespace(task=None) %}
-          {% for task, block, label, text_key in blocks %}
+          {% for row in sec.rows %}{% set task, block, label = row.task, row.block, row.label %}
             {% if task != ns.task %}
               {% set ns.task = task %}
               <tr class="task-head">
@@ -226,8 +230,8 @@
                 {% endfor %}
               </tr>
             {% endif %}
-            <tr>
-              <td class="rowh">{{ label }}<small>{{ block }}</small></td>
+            <tr{% if row.legacy %} class="legacy"{% endif %}>
+              <td class="rowh">{{ label }}<small>{{ block }}{% if row.legacy %} · {{ row.note }}{% endif %}</small></td>
               {% for col in sec.columns %}{% set cell = col.cells[block] %}
               <td>
                 {% if cell.kind == "text" %}
