@@ -27,6 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from main import load_env_file  # --api에서 저장소 루트의 .env를 읽는다 (main.py와 같은 로더)
 from src.generator import build_user_message, generate_all, load_system_prompt
 from src.guardrails import (CrisisSignalDetected, _strip_fallback_flags,
                             check_output, detect_crisis_signals,
@@ -337,6 +338,8 @@ def main() -> int:
     mode.add_argument("--api", dest="mock", action="store_false", help="실 LLM 호출")
     args = ap.parse_args()
     mode_label = "mock" if args.mock else "api"
+    if not args.mock:
+        load_env_file(ROOT / ".env")  # README "실 LLM으로 검증하기"의 .env 경로와 동일
 
     print(f"# cbcl-companion 미니 평가 하네스 (모드: {mode_label})\n")
 

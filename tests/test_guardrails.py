@@ -524,3 +524,17 @@ def test_fail_closed_fallback_after_two_regens_with_feedback(prep_out):
     assert result.fallback_blocks == ["questions_for_counselor"]
     assert list(result.output) == ["questions_for_counselor"]
     assert check_output(PROFILE, "prep", result.output) == []
+
+
+def test_non_string_source_scale_is_a_violation_not_a_crash():
+    """source_scale이 배열이나 객체면 dict.get이 TypeError를 내며 죽었다 (Codex 최종 점검).
+    스키마 위반(G5)으로 잡혀 재생성과 안전 문구 경로로 가야 한다."""
+    from src.guardrails import check_block
+    from src.parser import load_profile
+
+    profile = load_profile("data/profiles/p2_partial_borderline.json")
+    for bad in (["attention"], {"id": "attention"}, 3):
+        items = [{"question": "「학원 숙제를 앞에 두면 딴 데를 자주 봅니다」라고 적으셨는데, 상담에서 무엇부터 살펴보게 되나요?",
+                  "source_scale": bad}] * 5
+        found = check_block(profile, "prep", "questions_for_counselor", items)
+        assert any(v.rule_id == "G5" and "source_scale" in v.matched for v in found), bad

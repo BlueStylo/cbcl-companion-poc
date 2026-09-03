@@ -70,7 +70,7 @@
       <h3>연결 문단 <span class="src">결정론 조립</span></h3>
       <p>{{ c.overview }}</p>
 
-      <h3>생성된 질문 리스트 <span class="src">LLM 생성, 검증 통과</span></h3>
+      <h3>생성된 질문 리스트 <span class="src">{{ c.gen_tag }}</span></h3>
       <ul>
         {% for q in c.questions %}
         <li>{{ q.text }} <span class="src">참고 척도: {{ q.source_name }}</span></li>
@@ -89,7 +89,8 @@
 
   <footer>
     수치와 라벨은 두 케이스에서 완전히 같습니다. 달라진 것은 보호자의 문장뿐이고,
-    그 문장이 인용된 질문이 상담 출석의 동기가 됩니다 - LLM이 템플릿으로 대체되지 않는 지점의 실증.
+    그 문장이 인용된 질문이 상담 출석의 동기가 됩니다. LLM이 템플릿으로 대체되지 않는 지점을 보여 주는 설계 데모이며,
+    효과를 실증한 자료는 아닙니다.
   </footer>
 </main>
 </body>

@@ -189,7 +189,15 @@ def test_fallback_question_block_is_tagged_as_replaced_not_verified():
     assert html.count('<span class="tag fb">안전 문구</span>') == 1            # 항목 태그는 그대로
     p2 = _profile("p2_partial_borderline")
     ok = build_report_html(p2, generate_all(p2, make_client("mock")))
-    assert FALLBACK_TAG not in ok and ok.count(LLM_TAG) == 1
+    from src.report_html import MOCK_TAG
+    assert FALLBACK_TAG not in ok and ok.count(MOCK_TAG) == 1 and LLM_TAG not in ok
+    # 실 LLM 모드 라벨로 조립하면 "LLM 생성" 태그가 붙는다
+    api = build_report_html(p2, generate_all(p2, make_client("mock")), mode_label="api")
+    assert api.count(LLM_TAG) == 1 and MOCK_TAG not in api
+    # 폴백 결과는 질문이 아니므로 머리글 링크는 개수 대신 "안전 문구", 항목에 체크박스가 없다
+    assert "안전 문구</small>" in html or "↓ 안전 문구" in html
+    qlist = html.split('id="question-list"', 1)[1].split("</ul>", 1)[0]
+    assert 'type="checkbox"' not in qlist
 
 
 def test_briefing_for_p4_lists_clinical_and_borderline_with_t_scores():
@@ -212,7 +220,8 @@ def test_rendered_report_tags_two_assembled_blocks_and_new_briefing_label():
     assert _unescape(build_overview_text(profile)) in _unescape(html)
     briefing = build_counselor_briefing(profile, results["prep"].output["questions_for_counselor"], 5, True)
     assert _unescape(briefing) in _unescape(html)
-    assert html.count(LLM_TAG) == 1                                # 질문 블록만 LLM 생성
+    from src.report_html import MOCK_TAG
+    assert html.count(MOCK_TAG) == 1 and LLM_TAG not in html         # mock: 질문 블록만 템플릿 목 태그
     assert "생성 문구 · 검증 통과" not in html
     assert "질문은 LLM이, 연결 문단과 관찰 포인트와 상담사 요약은 결정론 조립이" in html
     # 생성 전 미리보기에서도 조립 블록은 실제 문구이고, 요약의 질문 자리만 '아직 생성되지 않음'이다

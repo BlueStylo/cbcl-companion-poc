@@ -670,6 +670,11 @@ def _check_items_block(profile: CBCLProfile, block: str, items) -> list[Violatio
             found.append(Violation("G5", f"{block}[{i}]", "항목은 객체여야 함"))
             continue
         sid = it.get("source_scale")
+        if sid is not None and not isinstance(sid, str):
+            # 배열·객체 등 해시 불가 값은 스키마 위반이다. dict.get에 넘기면 TypeError로 죽어
+            # "위반은 재생성, 상한 뒤 안전 문구"라는 fail-closed 계약을 지키지 못한다.
+            found.append(Violation("G5", f"{block}[{i}]", f"source_scale은 문자열이어야 함: {sid!r}"))
+            sid = None
         scale = scale_map.get(sid)
         vs = _require_str(f"{block}[{i}]", it.get(text_key), text_key)
         found += vs
@@ -812,6 +817,7 @@ def source_coverage(profile: CBCLProfile, task: str, output: dict) -> tuple[int,
             if isinstance(item, dict) and item.get("_fallback"):
                 continue
             need += 1
-            if isinstance(item, dict) and item.get("source_scale") in valid_ids:
+            sid = item.get("source_scale") if isinstance(item, dict) else None
+            if isinstance(sid, str) and sid in valid_ids:
                 have += 1
     return have, need

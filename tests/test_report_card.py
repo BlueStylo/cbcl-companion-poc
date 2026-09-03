@@ -110,7 +110,8 @@ def test_pre_counseling_note_is_fixed_text_once_and_outside_gates():
     assert html.count(PRE_COUNSELING_NOTE) == 1
     assert re.search(rf'<h3>{PRE_COUNSELING_LABEL} <span class="tag">고정 문구</span></h3>\s*<p>{re.escape(PRE_COUNSELING_NOTE)}</p>', html)
     assert PRE_COUNSELING_LABEL == "상담 전 안내" and "마음가짐" not in html
-    assert html.count("LLM 생성 · 검증 통과") == 1        # 질문 블록뿐 (상담 전 안내와 관찰 포인트에는 붙지 않는다)
+    from src.report_html import LLM_TAG, MOCK_TAG
+    assert html.count(MOCK_TAG) == 1 and LLM_TAG not in html   # mock의 질문 블록뿐 (상담 전 안내와 관찰 포인트에는 붙지 않는다)
     assert "before_counseling" not in results["prep"].output
     gated = " ".join(t for _b, t in caregiver_texts("prep", results["prep"].output))
     assert PRE_COUNSELING_NOTE not in gated
