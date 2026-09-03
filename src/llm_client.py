@@ -371,7 +371,7 @@ def _compose_prep(profile: CBCLProfile, notes: list[str]) -> dict:
     questions: list[dict] = []
     for note, s in pairs:
         if all_normal:
-            q = f"{_quote(note)}라고 적으셨는데, 모든 척도가 정상 범위인 결과와 함께 보면 어떤 뜻일까요?"
+            q = f"{_quote(note)}라고 적으셨는데, 이번에 실시한 척도가 모두 정상 범위인 결과와 함께 보면 어떤 뜻일까요?"
         else:
             q = f"{_quote(note)}라고 적으셨는데, 이 모습은 {_label(s)}의 {BAND_KO[s.band]} 결과와 이어서 보면 될까요?"
         questions.append({"question": q, "source_scale": s.scale_id})

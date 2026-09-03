@@ -196,7 +196,7 @@
     <ul class="qlist" id="question-list">
       {% for q in questions %}
       <li><input type="checkbox" checked> <span{% if q.pending %} class="pending-text"{% endif %}>{{ q.text }}{% if q.pending %}<span class="tag pending">생성 대기</span>{% elif q.fallback %}<span class="tag fb">안전 문구</span>{% endif %}</span>
-          {% if not q.pending %}<span class="src-badge">근거: {{ q.source_name }}</span>{% endif %}</li>
+          {% if not q.pending %}<span class="src-badge">참고 척도: {{ q.source_name }}</span>{% endif %}</li>
       {% endfor %}
     </ul>
 
@@ -204,7 +204,7 @@
     <ul class="qlist" id="observation-list">
       {% for o in observations %}
       <li><span>·</span> <span>{{ o.text }}</span>
-          <span class="src-badge">근거: {{ o.source_name }}</span></li>
+          <span class="src-badge">참고 척도: {{ o.source_name }}</span></li>
       {% endfor %}
     </ul>
 

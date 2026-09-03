@@ -525,7 +525,7 @@ def build_review_md(runs: list[dict], profiles_dir: str | Path, env_note: str = 
                     body = highlight_md(cell["text"], tokens)
                 elif cell["kind"] == "list":
                     body = "<br>".join(
-                        f"{i}) {highlight_md(it['text'], tokens)} [근거: {it['source_ko']}]" + (" [안전 문구]" if it["fallback"] else "")
+                        f"{i}) {highlight_md(it['text'], tokens)} [참고 척도: {it['source_ko']}]" + (" [안전 문구]" if it["fallback"] else "")
                         for i, it in enumerate(cell["items"], 1))
                 else:
                     body = "(출력 없음)"

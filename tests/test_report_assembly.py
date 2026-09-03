@@ -207,7 +207,7 @@ def test_rendered_report_tags_two_assembled_blocks_and_new_briefing_label():
     assert f"<h3>{OVERVIEW_LABEL} " in html
     observations = html[html.index('id="observation-list"'):html.index("</ul>", html.index('id="observation-list"'))]
     assert all(_unescape(o["point"]) in _unescape(observations) for o in build_observation_points(profile))
-    assert observations.count("근거:") == 3 and "생성 대기" not in observations and LLM_TAG not in observations
+    assert observations.count("참고 척도:") == 3 and "생성 대기" not in observations and LLM_TAG not in observations
     assert BRIEFING_LABEL in html and "보호자 화면에는 표시되지 않는" not in html and "상담사용 사전 요약" not in html
     assert _unescape(build_overview_text(profile)) in _unescape(html)
     briefing = build_counselor_briefing(profile, results["prep"].output["questions_for_counselor"], 5, True)
@@ -253,3 +253,21 @@ def test_assembled_texts_are_outside_llm_gates():
 
     run_with_guardrails(profile, "prep", gen_fn)
     assert seen == [("questions_for_counselor",)]
+
+
+def test_briefing_all_fallback_is_not_counted_and_is_schedule_aware():
+    """안전 문구만 남은 질문 절은 개수로 세지 않고, 미예약이면 '예약된 상담' 전제를 쓰지 않는다."""
+    from src.guardrails import SAFE_QUESTION
+    from src.parser import load_profile
+    from src.report_html import FALLBACK_TAG, build_counselor_briefing
+
+    profile = load_profile("data/profiles/p2_partial_borderline.json")
+    fallback = [{"question": SAFE_QUESTION, "source_scale": "total_problems", "_fallback": True}]
+    scheduled = build_counselor_briefing(profile, fallback, days=5, counseling_scheduled=True)
+    assert FALLBACK_TAG in scheduled and "질문 1개" not in scheduled
+    unscheduled = build_counselor_briefing(profile, fallback, days=0, counseling_scheduled=False)
+    assert "예약된 상담" not in unscheduled
+    normal = build_counselor_briefing(profile, [{"question": "이 부분은 상담에서 무엇부터 살펴보게 되나요?",
+                                                "source_scale": "attention"}], days=5,
+                                      counseling_scheduled=True)
+    assert "질문 1개" in normal
