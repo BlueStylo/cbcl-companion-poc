@@ -1,10 +1,14 @@
-"""OpenAICompatClient 요청 구성 테스트 (네트워크 없음).
+"""OpenAICompatClient 요청 구성과 응답 처리 테스트 (네트워크 없음).
 
-사고(thinking) 기본 off와 Ollama 네이티브 경로의 페이로드를 고정한다.
+사고(thinking) 기본 off, Ollama 네이티브 요청과 응답, 실패 시 fail-closed를 고정한다.
 """
 
+import io
 import json
+import socket
 from types import SimpleNamespace
+import urllib.error
+import urllib.request
 
 import pytest
 
@@ -23,6 +27,27 @@ def make(monkeypatch, with_default_key=True, **env):
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     return OpenAICompatClient()
+
+
+def make_native(monkeypatch):
+    return make(
+        monkeypatch,
+        with_default_key=False,
+        LLM_BASE_URL="http://localhost:11434/v1",
+        LLM_MODEL="gemma4:12b",
+        LLM_NUM_CTX="8192",
+        LLM_TIMEOUT_S="7",
+    )
+
+
+def generate_native(client):
+    return client.generate(
+        task="prep",
+        profile=SimpleNamespace(profile_id="test-profile"),
+        attempt=0,
+        system_prompt="system",
+        user_message="user",
+    )
 
 
 def test_default_is_reasoning_off_with_json_mode(monkeypatch):
@@ -55,6 +80,178 @@ def test_num_ctx_routes_to_ollama_native_with_think_off(monkeypatch):
     assert c.settings["transport"] == "ollama-native"
     # force_json=False면 format을 보내지 않는다 (JSON 재요청 경로)
     assert "format" not in c._native_payload(MSGS, force_json=False)
+
+
+def test_call_native_sends_request_and_returns_content_and_usage(monkeypatch):
+    client = make_native(monkeypatch)
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+        captured["content_type"] = request.get_header("Content-type")
+        captured["authorization"] = request.get_header("Authorization")
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        response = {
+            "message": {"content": '{"ok": true}'},
+            "prompt_eval_count": 12,
+            "eval_count": 3,
+        }
+        return io.BytesIO(json.dumps(response).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    assert client._call_native(MSGS, force_json=True) == (
+        '{"ok": true}',
+        {"prompt_tokens": 12, "completion_tokens": 3},
+    )
+    assert captured == {
+        "url": "http://localhost:11434/api/chat",
+        "timeout": 7.0,
+        "content_type": "application/json",
+        "authorization": "Bearer ollama",
+        "body": client._native_payload(MSGS, force_json=True),
+    }
+
+
+def test_call_native_http_error_includes_status_and_detail(monkeypatch):
+    client = make_native(monkeypatch)
+
+    def fake_urlopen(_request, timeout):
+        assert timeout == 7.0
+        raise urllib.error.HTTPError(
+            client._native_url(),
+            503,
+            "Service Unavailable",
+            {},
+            io.BytesIO(b'{"error":"server down"}'),
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(LLMError, match=r'Ollama /api/chat HTTP 503: .*server down'):
+        client._call_native(MSGS, force_json=True)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        urllib.error.URLError("network down"),
+        socket.timeout("socket timed out"),
+        TimeoutError("timed out"),
+    ],
+    ids=("url-error", "socket-timeout", "timeout-error"),
+)
+def test_call_native_connection_errors_are_llm_errors(monkeypatch, error):
+    client = make_native(monkeypatch)
+    calls = []
+
+    def fake_urlopen(_request, timeout):
+        assert timeout == 7.0
+        calls.append(1)
+        raise error
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(
+        LLMError,
+        match=r"Ollama /api/chat 연결 실패 또는 타임아웃\(7s\)",
+    ):
+        client._call_native(MSGS, force_json=True)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (b"not-json", "응답 JSON 파싱 실패"),
+        (b"[]", "응답이 JSON 객체가 아님"),
+        (b'{"message":"wrong"}', "응답 message가 객체가 아님"),
+    ],
+)
+def test_native_invalid_response_envelope_is_llm_error(monkeypatch, payload, message):
+    client = make_native(monkeypatch)
+    calls = []
+
+    def fake_urlopen(_request, timeout):
+        assert timeout == 7.0
+        calls.append(1)
+        return io.BytesIO(payload)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(LLMError, match=message):
+        client._call_native(MSGS, force_json=True)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("content", [{}, [], 123, True])
+def test_native_non_string_content_fails_closed(monkeypatch, content):
+    client = make_native(monkeypatch)
+    calls = []
+
+    def fake_urlopen(_request, timeout):
+        assert timeout == 7.0
+        calls.append(1)
+        envelope = {"message": {"content": content}}
+        return io.BytesIO(json.dumps(envelope).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(LLMError, match="message.content가 문자열이 아님"):
+        generate_native(client)
+    assert len(calls) == 1
+    assert len(client.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {},
+        {"message": {}},
+        {"message": {"content": ""}},
+        {"message": {"content": "not json"}},
+    ],
+    ids=("message-missing", "content-missing", "content-empty", "content-not-json"),
+)
+def test_native_empty_or_non_json_content_retries_once_then_fails_closed(monkeypatch, response):
+    client = make_native(monkeypatch)
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        assert timeout == 7.0
+        calls.append(json.loads(request.data.decode("utf-8")))
+        envelope = {**response, "prompt_eval_count": 1, "eval_count": 2}
+        return io.BytesIO(json.dumps(envelope).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(LLMError, match="JSON 파싱 실패"):
+        generate_native(client)
+    assert len(calls) == 2
+    assert calls[0]["format"] == "json"
+    assert "format" not in calls[1]
+    assert client.calls[0]["prompt_tokens"] == 2
+    assert client.calls[0]["completion_tokens"] == 4
+
+
+def test_native_non_json_content_recovers_on_second_response(monkeypatch):
+    client = make_native(monkeypatch)
+    contents = iter(("not json", '{"ok": true}'))
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        assert timeout == 7.0
+        calls.append(json.loads(request.data.decode("utf-8")))
+        envelope = {"message": {"content": next(contents)}}
+        return io.BytesIO(json.dumps(envelope).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    assert generate_native(client) == {"ok": True}
+    assert len(calls) == 2
+    assert calls[0]["format"] == "json"
+    assert "format" not in calls[1]
 
 
 def test_parse_json_text_accepts_markdown_fence_only():
