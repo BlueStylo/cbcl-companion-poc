@@ -133,6 +133,52 @@ python main.py --profile data/profiles/p2_partial_borderline.json --mock
 start out\p2_partial_borderline.html
 ```
 
+## 실 LLM으로 검증하기 (평가자용, 5분)
+
+mock 모드는 LLM을 부르지 않습니다. 실제 생성을 보려면 아래 둘 중 하나로 `.env`를 만들고
+`--api`를 붙이면 됩니다. `.env` 파일 방식은 macOS, Linux, Windows에서 똑같이 동작합니다
+(`main.py`가 `--api`일 때 저장소 루트의 `.env`를 읽습니다. 셸에서 환경 변수를 직접 넣는
+`VAR=값 python ...` 문법은 PowerShell에서 동작하지 않습니다).
+
+**A. 로컬 Ollama (데이터가 밖으로 나가지 않음, 비용 없음)**
+
+1. [Ollama](https://ollama.com)를 설치하고 모델을 받습니다: `ollama pull gemma4:12b` (약 8GB)
+2. 저장소 루트에 `.env`를 만듭니다.
+
+```ini
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=gemma4:12b
+LLM_API_KEY=ollama
+LLM_NUM_CTX=8192
+LLM_REASONING_EFFORT=none
+```
+
+3. 실행합니다. 한 프로파일이면 `main.py`, 일곱 프로파일 표까지 보려면 하네스입니다.
+
+```bash
+python main.py --profile data/profiles/p2_partial_borderline.json --api
+python harness/run_harness.py --api
+```
+
+GPU 서버(gemma4:12b)에서는 리포트 1건에 3~5초였고, GPU 없는 노트북은 재생성이 겹치면 수 분이
+걸릴 수 있어 호출 상한이 180초입니다. 그 안에 끝나지 않으면 fail-closed로 안전 문구가 들어갑니다.
+
+**B. OpenAI 호환 API**
+
+`.env.example`을 `.env`로 복사하고 `LLM_API_KEY`만 채우면 됩니다 (기본 모델 gpt-5.6-luna,
+리포트 1건 약 2원, "예상 비용" 절). 실행 명령은 A와 같습니다.
+
+**무엇을 보면 되나**
+
+- `out/p2_partial_borderline.html`: 화면 아래쪽 "상담사에게 물어볼 질문" 5~7개가 실제 생성분입니다.
+  보호자 의견을 「」로 인용했는지, 질문 옆 "참고 척도" 배지가 준임상 이상 척도인지, 수치와 판정
+  어휘가 없는지가 가드레일이 보장하는 것들입니다. 그 밖의 문장은 전부 결정론 고정 문구라 mock과 같습니다.
+- `out/run_stats.json`: 시도 횟수, 걸린 규칙, 토큰 수. 첫 시도에 통과하면 재생성 0입니다.
+- 하네스는 프로파일 7종의 합격 게이트 표와 품질 지표 표를 터미널에 찍습니다. 위기 프로파일(c1)은
+  LLM을 부르지 않고 위기 안내만 나오는 것이 정상입니다.
+- 슬라이더로 바꿔 가며 보려면 탐색 콘솔(`streamlit run app/explorer.py`)의 생성 모드에서
+  Ollama 또는 API를 고르면 됩니다. `.env`의 값이 입력칸에 미리 채워집니다.
+
 ## 실행 방법
 
 | 명령 | 설명 |
