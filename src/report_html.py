@@ -73,7 +73,14 @@ CURVE_HOWTO_CAPTION = "곡선이 높을수록 이 점수대에 해당하는 또�
 CURVE_HOWTO_LINES = (
     "가운데 50T 근처에 또래의 대부분이 있고, 오른쪽으로 갈수록 그렇게 보고된 아이가 드물어집니다.",
     "2페이지의 곡선마다 같은 그림 위에 이번 결과의 위치와 오차 범위를 표시합니다.",
+    "곡선의 높이는 그 점수대에 있는 또래의 수이고, 곡선 위의 위치는 또래와 비교한 상대적인 위치입니다. "
+    "어떤 진단이 있을 가능성의 크기가 아닙니다.",
+    "왼쪽은 해당 행동이 또래보다 적게 보고된 쪽이라, 이 가이드에 포함된 문제행동 척도에는 그쪽에 기준선이 없습니다.",
+    "곡선 위에 덧그린 오차 범위는 검사 도구의 정밀도로 계산한 폭입니다. 집과 학교처럼 환경에 따라 아이의 모습이 "
+    "다르게 보고되는 차이는 이 폭보다 클 수 있고, 그 차이가 상담에서 다룰 자료입니다.",
 )
+# 첫 화면(머리글) 한 줄. 결과 정보가 아니라 이 자료의 성격 고지라 "점수 전에 렌즈" 순서와 충돌하지 않는다.
+HEADER_NOTE = "이 가이드는 원 보고서에 인쇄된 라벨과 수치를 그대로 옮긴 것이고, 어떤 진단도 확정하지 않습니다."
 # 척도 카드 상단의 밴드별 고정 문구 (ADR 0008). 어미는 관찰자 프레임("보고됐어요")을 유지하고
 # 심각성 단정과 완화를 모두 피한다. 쉬운 구간 이름은 같은 줄의 원 보고서 라벨 배지와 항상 짝이다.
 CARD_VERDICT = {
@@ -333,7 +340,10 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
     """
     prep = results["prep"]
     fallback_blocks = set(prep.fallback_blocks)
-    elevated = [s.name_ko for s in profile.elevated_scales()]
+    elevated_scales = profile.elevated_scales()
+    elevated = [s.name_ko for s in elevated_scales]
+    clinical_names = [s.name_ko for s in elevated_scales if s.band == "clinical"]
+    borderline_names = [s.name_ko for s in elevated_scales if s.band == "borderline"]
     questions = prep.output["questions_for_counselor"]
     observations = build_observation_points(profile)
     return _template_env().get_template("report.html.j2").render(
@@ -343,6 +353,10 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         mode_label=mode_label,
         model_label=model_label,
         lens_quote=LENS_QUOTE,
+        header_note=HEADER_NOTE,
+        clinical_names=clinical_names,
+        borderline_names=borderline_names,
+        has_normal_scales=len(elevated_scales) < len(profile.all_scales()),
         tscore_explain=TSCORE_EXPLAIN,
         footnotes_summary=FOOTNOTES_SUMMARY,
         footnotes=FOOTNOTES,
