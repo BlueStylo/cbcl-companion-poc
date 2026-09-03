@@ -26,3 +26,22 @@ jobs:
         run: pytest -q
       - name: 미니 평가 하네스 (mock) - 합격 게이트
         run: python harness/run_harness.py --mock
+
+  # 평가자가 Windows일 가능성이 높아 같은 테스트와 하네스를 Windows에서도 돌린다.
+  # PYTHONUTF8은 일부러 켜지 않는다: 파일 입출력의 기본 인코딩이 로캘(cp1252/cp949)이 되어
+  # encoding 인수를 빠뜨린 read/write가 있으면 여기서 드러난다. 표준 출력만 UTF-8로 고정한다.
+  windows:
+    runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 결정론 테스트 (Windows)
+        run: pytest -q
+      - name: 미니 평가 하네스 (mock, Windows)
+        run: python harness/run_harness.py --mock
