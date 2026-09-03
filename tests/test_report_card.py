@@ -175,3 +175,30 @@ def test_sem_copy_names_example_assumption_without_probability_claim():
     assert "가로 범위선" not in html
     assert "반복 측정 시" not in html
     assert "약 68%" not in html
+
+
+def test_result_header_states_labels_per_band_and_header_note_once():
+    """2페이지 첫 줄은 임상과 준임상 라벨을 나눠 재진술하고, 임상 라벨이 없으면 없다고 적는다.
+    첫 화면의 확정 아님 한 줄은 프로파일과 무관하게 정확히 한 번 나온다."""
+    from src.report_html import HEADER_NOTE
+
+    p2 = _profile("p2_partial_borderline")
+    html2 = build_report_html(p2, generate_all(p2, make_client("mock")))
+    assert "보고서에서 임상으로 표기된 척도는 없습니다." in html2
+    assert "준임상으로 표기된 척도는 내재화 문제, 위축, 우울/불안, 주의집중입니다." in html2
+    assert "나머지 포함 척도는 정상으로 표기되었습니다." in html2
+    assert "이 검사는 선별 도구이며 진단이 아닙니다." in html2
+
+    p4 = _profile("p4_clinical")
+    html4 = build_report_html(p4, generate_all(p4, make_client("mock")))
+    assert "임상으로 표기된 척도는 없습니다" not in html4
+    assert "보고서에서 임상으로 표기된 척도는 총 문제행동, 외현화 문제, 공격성입니다." in html4
+    assert "준임상으로 표기된 척도는 주의집중, 비행입니다." in html4
+
+    p1 = _profile("p1_all_normal")
+    html1 = build_report_html(p1, generate_all(p1, make_client("mock")))
+    assert "임상으로 표기된 척도" not in html1 and "준임상으로 표기된 척도" not in html1
+    assert "이번 가이드에 포함된 척도는 모두 정상 범위로 보고되었습니다" in html1
+
+    for html in (html1, html2, html4):
+        assert html.count(HEADER_NOTE) == 1
