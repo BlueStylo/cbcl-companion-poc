@@ -174,13 +174,24 @@ class OpenAICompatClient:
             "Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"})
         try:
             with urllib.request.urlopen(req, timeout=self.timeout_s) as r:
-                data = json.loads(r.read().decode("utf-8"))
+                try:
+                    data = json.loads(r.read().decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                    raise LLMError("Ollama /api/chat 응답 JSON 파싱 실패") from e
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", "replace")[:200]
             raise LLMError(f"Ollama /api/chat HTTP {e.code}: {detail}") from e
         except (urllib.error.URLError, socket.timeout, TimeoutError) as e:
             raise LLMError(f"Ollama /api/chat 연결 실패 또는 타임아웃({self.timeout_s:.0f}s): {e}") from e
-        return (data.get("message") or {}).get("content") or "", {
+        if not isinstance(data, dict):
+            raise LLMError("Ollama /api/chat 응답이 JSON 객체가 아님")
+        message = data.get("message")
+        if message is not None and not isinstance(message, dict):
+            raise LLMError("Ollama /api/chat 응답 message가 객체가 아님")
+        content = (message or {}).get("content")
+        if content is not None and not isinstance(content, str):
+            raise LLMError("Ollama /api/chat 응답 message.content가 문자열이 아님")
+        return content or "", {
             "prompt_tokens": data.get("prompt_eval_count"),
             "completion_tokens": data.get("eval_count"),
         }
