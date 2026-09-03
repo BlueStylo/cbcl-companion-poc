@@ -6,6 +6,8 @@
 
 import json
 import sys
+
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,3 +137,22 @@ def test_pipeline_uses_single_prep_call_per_profile():
     r = generate_all(a1, a1_client)["prep"]
     assert r.regen_count == 2 and r.fallback_blocks == ["questions_for_counselor"]
     assert [c["attempt"] for c in a1_client.calls] == [0, 1, 2]          # 위반 시 블록당 최대 2회 재생성으로 호출 3회
+
+
+def test_api_mode_loads_env_before_making_client(monkeypatch):
+    """--api는 README대로 저장소 루트의 .env를 읽은 뒤 클라이언트를 만든다 (Codex 최종 점검)."""
+    import harness.run_harness as rh
+
+    order = []
+    monkeypatch.setattr(sys, "argv", ["run_harness.py", "--api"])
+    monkeypatch.setattr(rh, "load_env_file", lambda path=None: order.append(("env", str(path))))
+
+    def stop(mode_label):
+        order.append(("client", mode_label))
+        raise RuntimeError("stop-here")
+
+    monkeypatch.setattr(rh, "make_client", stop)
+    with pytest.raises(RuntimeError, match="stop-here"):
+        rh.main()
+    assert [o[0] for o in order] == ["env", "client"] and order[1][1] == "api"
+    assert order[0][1].endswith(".env")

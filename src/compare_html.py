@@ -1,7 +1,8 @@
 """동점-상이의견 페어(P5a/P5b) 나란히 비교 HTML.
 
 동일한 T점수 프로파일에서 보호자 의견 텍스트만 다를 때 질문이 실제로 달라지는지를
-한 화면에서 보여준다. "LLM이 템플릿으로 대체되지 않는 지점"의 실증이 곧 데모다.
+한 화면에서 보여준다. "LLM이 템플릿으로 대체되지 않는 지점"을 보여 주는 설계 데모이며, 효과의
+실증 자료는 아니다.
 연결 문단은 결정론 조립(ADR 0010)이라 의견 인용만 다르고, 관찰 포인트는 점수만으로
 조립하므로 두 케이스에서 같다 (그 사실을 화면에 적는다).
 """
@@ -9,7 +10,8 @@
 from __future__ import annotations
 
 from .parser import BAND_KO, COMPOSITE_IDS, SYNDROME_IDS, CBCLProfile
-from .report_html import _items_view, _template_env, build_observation_points, build_overview_text
+from .report_html import (FALLBACK_TAG, _items_view, _template_env, build_observation_points,
+                          build_overview_text, generation_tag)
 
 
 def _comparison_input(profile: CBCLProfile) -> dict:
@@ -39,11 +41,15 @@ def build_compare_html(profile_a: CBCLProfile, results_a: dict,
                      for sid in (*COMPOSITE_IDS, *SYNDROME_IDS)]
 
     def case_view(profile: CBCLProfile, results: dict) -> dict:
+        items = results["prep"].output["questions_for_counselor"]
+        fallback = any(isinstance(q, dict) and q.get("_fallback") for q in items)
         return {
+            # 질문 머리글 태그: 폴백이면 "안전 문구로 대체됨", mock이면 템플릿 목, 그 외 LLM 생성 (사실 문구)
+            "gen_tag": FALLBACK_TAG if fallback else generation_tag(mode_label),
             "profile_id": profile.profile_id,
             "notes": list(profile.caregiver_notes),
             "overview": build_overview_text(profile),   # 결정론 조립 (ADR 0010)
-            "questions": _items_view(profile, results["prep"].output["questions_for_counselor"], "question"),
+            "questions": _items_view(profile, items, "question"),
             # 관찰 포인트는 점수만으로 조립하므로 동점 페어에서는 같다 (ADR 0010 보강). 달라지는 것은 질문뿐이다.
             "observations": _items_view(profile, build_observation_points(profile), "point"),
         }

@@ -284,7 +284,7 @@ def _run_panel(run: dict | None, stale: bool, preview_crisis: list[str]) -> None
     c = st.columns(5)
     c[0].metric("재생성 호출", f"{regen}회")
     c[1].metric("폴백 블록", f"{len(fallback)}개")
-    c[2].metric("LLM 호출", f"{len(stats['llm_calls'])}회")
+    c[2].metric("LLM 호출" if run["mode"] != "mock" else "목 응답 (LLM 아님)", f"{len(stats['llm_calls'])}회")
     c[3].metric("토큰 in / out", f"{tok_in} / {tok_out}" if (tok_in or tok_out) else "- (mock)")
     c[4].metric("LLM 시간", f"{stats['total_llm_seconds']}s")
     if fallback:

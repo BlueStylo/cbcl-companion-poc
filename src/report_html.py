@@ -122,8 +122,17 @@ BRIEFING_LABEL = "상담사에게 전달할 요약 미리보기"
 # 요약의 질문 절 머리글. 화면의 체크박스와 스크립트로 연동된다 (build_counselor_briefing 독스트링).
 BRIEFING_QUESTIONS_NOTE = "위 목록에서 체크한 질문"
 LLM_TAG = "LLM 생성 · 검증 통과"
+# mock 모드의 질문은 템플릿 목이 만든 것이라 "LLM 생성"이라고 쓰지 않는다 (사실 문구).
+MOCK_TAG = "템플릿 목 · 검증 통과 (LLM 아님)"
 # 질문 블록이 재생성 상한 뒤 안전 문구로 대체됐을 때의 태그. "검증 통과"라고 쓰지 않는다 (사실 문구).
 FALLBACK_TAG = "안전 문구로 대체됨"
+
+
+def generation_tag(mode_label: str) -> str:
+    """질문 블록 머리글 태그. mock이면 템플릿 목, 그 외(api, ollama 등)는 LLM 생성."""
+    return MOCK_TAG if mode_label == "mock" else LLM_TAG
+
+
 # 상담 미예약 표기. 화면 머리글 링크와 상담사 요약이 같은 문구를 쓴다.
 UNSCHEDULED_LABEL = "상담 예약 후 사용"
 
@@ -278,7 +287,8 @@ def _items_view(profile: CBCLProfile, items: list, text_key: str) -> list[dict]:
     return [{"text": _schedule_aware_text(
                  it.get(text_key, ""), profile.counseling_scheduled
              ),
-             "source_name": names.get(it.get("source_scale"), "원 보고서"),
+             "source_name": (names.get(it["source_scale"], "원 보고서")
+                             if isinstance(it.get("source_scale"), str) else "원 보고서"),
              "fallback": bool(it.get("_fallback")),
              "pending": bool(it.get("_pending"))}
             for it in items if isinstance(it, dict)]
@@ -376,7 +386,7 @@ def build_report_html(profile: CBCLProfile, results: dict, mode_label: str = "mo
         overview=build_overview_text(profile),
         overview_label=OVERVIEW_LABEL,
         assembled_tag=ASSEMBLED_TAG,
-        llm_tag=LLM_TAG,
+        llm_tag=generation_tag(mode_label),
         fallback_tag=FALLBACK_TAG,
         questions_fallback="questions_for_counselor" in fallback_blocks,
         unscheduled_label=UNSCHEDULED_LABEL,
