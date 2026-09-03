@@ -58,6 +58,11 @@ ACCENT = "#4a6fa5"  # 리포트 템플릿의 --accent와 같은 파랑. 결과 �
 # 이 파일이 직접 출력하는 cb-* 클래스만 쓴다 (data-testid 등 내부 DOM에는 의존하지 않음).
 PANEL_CSS = f"""
 <style>
+/* 두 패널을 같은 높이로 늘린다. 열(stColumn)은 기본으로 늘어나지만 안쪽 레이아웃 래퍼와 테두리 컨테이너는
+   내용 높이에 머물러 짧은 쪽 패널이 먼저 끝나 보이므로, :has()로 그 두 층만 flex로 채운다. */
+[data-testid="stLayoutWrapper"]:has(> .st-key-input_panel),
+[data-testid="stLayoutWrapper"]:has(> .st-key-result_panel) {{ flex: 1 1 auto; display: flex; flex-direction: column; }}
+.st-key-input_panel, .st-key-result_panel {{ flex: 1 1 auto; }}
 .st-key-input_panel {{ background: rgba(120, 130, 150, 0.07); border-color: rgba(120, 130, 150, 0.35) !important; }}
 .st-key-result_panel {{ border-color: rgba(74, 111, 165, 0.35) !important; }}
 .cb-badge {{ display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
