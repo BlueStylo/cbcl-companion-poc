@@ -123,6 +123,16 @@ open out/p2_partial_borderline.html
 python harness/run_harness.py --mock
 ```
 
+Windows(PowerShell)에서는 가상환경 활성화와 파일 열기 명령만 다릅니다. 리눅스는 위 명령에서
+`open`을 `xdg-open`으로 바꾸면 됩니다. CI가 Ubuntu와 Windows에서 같은 테스트와 하네스를 돌립니다.
+
+```powershell
+py -m venv .venv; .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py --profile data/profiles/p2_partial_borderline.json --mock
+start out\p2_partial_borderline.html
+```
+
 ## 실행 방법
 
 | 명령 | 설명 |
