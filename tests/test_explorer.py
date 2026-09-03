@@ -139,8 +139,8 @@ def test_pending_report_renders_deterministic_parts_without_llm():
     assert "생성 대기" in html and "검증 통과" not in html and "안전 문구" not in html
     assert "이번 검사 결과 67T" in html and "<svg" in html and "준임상" in html
     questions = html[html.index('id="question-list"'):html.index("</ul>", html.index('id="question-list"'))]
-    assert "근거:" not in questions                                  # 자리표시 항목에는 근거 배지를 붙이지 않는다
-    assert html.count("근거:") == 3                                  # 결정론 관찰 포인트 3개에는 붙는다
+    assert "참고 척도:" not in questions                                  # 자리표시 항목에는 근거 배지를 붙이지 않는다
+    assert html.count("참고 척도:") == 3                                  # 결정론 관찰 포인트 3개에는 붙는다
 
 
 def test_preview_gate_shows_crisis_screen_before_generation():

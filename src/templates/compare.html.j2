@@ -73,14 +73,14 @@
       <h3>생성된 질문 리스트 <span class="src">LLM 생성, 검증 통과</span></h3>
       <ul>
         {% for q in c.questions %}
-        <li>{{ q.text }} <span class="src">근거: {{ q.source_name }}</span></li>
+        <li>{{ q.text }} <span class="src">참고 척도: {{ q.source_name }}</span></li>
         {% endfor %}
       </ul>
 
       <h3>가정 관찰 포인트 <span class="src">결정론 조립 · 점수만으로 조립하므로 두 케이스에서 같음</span></h3>
       <ul>
         {% for o in c.observations %}
-        <li>{{ o.text }} <span class="src">근거: {{ o.source_name }}</span></li>
+        <li>{{ o.text }} <span class="src">참고 척도: {{ o.source_name }}</span></li>
         {% endfor %}
       </ul>
     </div>

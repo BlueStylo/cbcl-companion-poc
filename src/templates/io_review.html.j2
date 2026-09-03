@@ -239,7 +239,7 @@
                 {% elif cell.kind == "list" %}
                   <ol class="items">
                     {% for it in cell["items"] %}
-                    <li>{{ it.text|hl(sec.tokens) }}<span class="src">근거: {{ it.source_ko }}</span>{% if it.fallback %}<span class="fb">안전 문구</span>{% endif %}</li>
+                    <li>{{ it.text|hl(sec.tokens) }}<span class="src">참고 척도: {{ it.source_ko }}</span>{% if it.fallback %}<span class="fb">안전 문구</span>{% endif %}</li>
                     {% endfor %}
                   </ol>
                 {% else %}
@@ -291,7 +291,7 @@
         <div class="blocked"><h4>차단된 첫 시도 · {{ label }}</h4><p>원문 미저장 (run_stats에는 위반 규칙과 건수만 있음)</p></div>
         <div><h4>통과한 재생성 (최종) · {{ label }} <span class="state {{ cell.state }}">{{ cell.state_ko }}</span></h4>
           {% if cell.kind == "text" %}<p>{{ cell.text|hl(a.tokens) }}</p>
-          {% elif cell.kind == "list" %}<ol class="items">{% for it in cell["items"] %}<li>{{ it.text|hl(a.tokens) }}<span class="src">근거: {{ it.source_ko }}</span></li>{% endfor %}</ol>
+          {% elif cell.kind == "list" %}<ol class="items">{% for it in cell["items"] %}<li>{{ it.text|hl(a.tokens) }}<span class="src">참고 척도: {{ it.source_ko }}</span></li>{% endfor %}</ol>
           {% else %}<p class="missing">출력 없음</p>{% endif %}
         </div>
       </div>

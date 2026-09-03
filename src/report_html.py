@@ -212,9 +212,14 @@ def build_counselor_briefing(profile: CBCLProfile, questions: list, days: int,
         # 연결 문단과 같은 규칙: 특수 척도 미실시면 "모든 척도"라고 말하지 않는다
         scope = "모든 척도 정상 범위" if profile.special_scales_administered else "이번 가이드에 포함된 척도는 모두 정상 범위"
         lines.append(f"[상승 척도 없음] {scope}")
-    texts = [(q.get("question", "") if isinstance(q, dict) else str(q)).strip() for q in questions]
+    texts = [_schedule_aware_text((q.get("question", "") if isinstance(q, dict) else str(q)).strip(),
+                                  counseling_scheduled) for q in questions]
     texts = [t for t in texts if t]
-    if texts:
+    all_fallback = bool(questions) and all(isinstance(q, dict) and q.get("_fallback") for q in questions)
+    if all_fallback:
+        # 안전 문구는 질문이 아니므로 개수로 세지 않고 대체 사실만 적는다
+        lines.append(f"[상담사에게 물어볼 질문] {FALLBACK_TAG} (자동 생성 문구가 검증을 통과하지 못함)")
+    elif texts:
         lines.append(f"[상담사에게 물어볼 질문 {len(texts)}개] {BRIEFING_QUESTIONS_NOTE}")
         lines += [f"{i}. {t}" for i, t in enumerate(texts, 1)]
     else:

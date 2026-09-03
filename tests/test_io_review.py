@@ -120,7 +120,7 @@ def test_html_contains_inputs_models_blocks_and_highlight(stats_files):
     assert "1블록" in html and "구 스키마" not in html.split("<section")[1]
     assert "before_counseling" not in html and "counselor_briefing" not in html and "overview" not in html
     assert "observation_points" not in html and "가정 관찰 포인트" not in html
-    assert "근거: 주의집중" in html and "안전 문구" in html
+    assert "참고 척도: 주의집중" in html and "안전 문구" in html
     # 하이라이트: 인용된 어절에 mark, 인용되지 않은 어절은 점선 후보
     assert '<mark class="hit">학원</mark> <mark class="hit">숙제</mark>' in html
     assert '<span class="cand">놀이터</span>' in html
