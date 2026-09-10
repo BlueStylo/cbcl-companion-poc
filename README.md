@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/BlueStylo/cbcl-companion-poc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/BlueStylo/cbcl-companion-poc/actions/workflows/ci.yml)
 
-K-CBCL 결과 보고서를 받은 보호자가 상담 전화를 기다리는 며칠 동안 겪는 두 가지 문제, 즉 전문 용어를 못 읽어 생기는 과잉 해석과 정보 공백의 불안을 줄이는 "보고서 동반 가이드" PoC입니다. 인사이터 AX 엔지니어 사전 테스트 제출물이며, 데이터는 전부 자작 가상 프로파일입니다.
+K-CBCL 결과 보고서를 받은 보호자가 상담 전화를 기다리는 며칠 동안 겪는 두 가지 문제, 즉 전문 용어를 못 읽어 생기는 과잉 해석과 정보 공백의 불안을 줄이는 "보고서 동반 가이드" PoC입니다. 개인 프로젝트이며, 데이터는 전부 자작 가상 프로파일입니다.
 
 ## 10분 안에 읽는 법
 
